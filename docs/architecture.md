@@ -248,12 +248,10 @@ async with httpx.AsyncClient() as client:
 **Пример для notifications модуля:** Резолв email по auth_id через internal API users:
 
 ```python
-from src.modules.notifications.http_client import resolve_user_by_auth_id
+from src.core.clients.users_client import UsersClient
 
-# Внутри сервиса нотификаций
-email = await resolve_user_by_auth_id(auth_id)
-if email:
-    await send_email(email, subject, body)
+client = UsersClient()
+email = await client.resolve_email_by_auth_id(auth_id)
 ```
 
 URL внутреннего API вынесен в настройки: `settings.INTERNAL_API_BASE_URL = "http://localhost:8000/internal"`.

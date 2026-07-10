@@ -15,9 +15,9 @@
 - Поддерживать обратную совместимость
 
 **Примеры:**
-- `GET /api/v1/api/v1/public/users/me` — получение профиля
-- `POST /api/v1/api/v1/public/auth/login` — вход
-- `POST /api/v1/api/v1/public/media/upload` — загрузка файла
+- `GET /api/v1/public/users/me` — получение профиля
+- `POST /api/v1/public/auth/login` — вход
+- `POST /api/v1/public/media/upload` — загрузка файла
 
 Internal API (для внутреннего использования) остаются без версионирования:
 - `GET /internal/auth/{id}` — внутренний вызов
@@ -27,13 +27,13 @@ Internal API (для внутреннего использования) оста
 
 ## Auth
 
-### POST /api/v1/api/v1/public/auth/register
+### POST /api/v1/public/auth/register
 
 Регистрация нового пользователя. Создаёт учётную запись авторизации и возвращает JWT-токен.
 
 Поддерживает регистрацию по **email**, **телефону** ИЛИ **telegram username**.
 
-Профиль пользователя создаётся **отдельным запросом** `POST /api/v1/api/v1/public/users/`.
+Профиль пользователя создаётся **отдельным запросом** `POST /api/v1/public/users/`.
 
 **Тело запроса:**
 

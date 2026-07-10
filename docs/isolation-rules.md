@@ -92,21 +92,14 @@ from src.core.clients import UsersClient
 Если модулю нужно вызвать метод другого модуля напрямую:
 
 ```python
-# В модуле auth: определяем интерфейс
-class UserCreator(Protocol):
-    async def create_user_profile(self, session, auth_id: UUID) -> None: ...
+# Используем клиенты из src/core/clients/
+from src.core.clients.users_client import UsersClient
 
-# В модуле users: реализуем интерфейс
-class UserService(BaseService):
-    async def create_user_profile(self, session, auth_id: UUID) -> None: ...
-
-# В dependencies.py: связываем через DI
-def get_auth_service(
-    user_creator: UserCreator = Depends(get_user_service),
-) -> AuthService: ...
+client = UsersClient()
+email = await client.resolve_email_by_auth_id(auth_id)
 ```
 
-Модуль auth зависит от абстракции `UserCreator`, а не от конкретного `UserService`.
+Клиенты находятся в `src/core/clients/` и используют прямые импорты сервисов модулей — это **единственное разрешённое исключение** из правил изоляции. При выносе модуля в микросервис клиент переписывается на HTTP.
 
 ---
 
