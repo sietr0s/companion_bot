@@ -1,7 +1,8 @@
 """
 Тесты для загрузки медиа в storage при получении сообщений.
 
-Используем respx для моков HTTP-запросов к storage API.
+Проверяет, что обработчик on_new_message в TelegramClientManager
+правильно делегирует в TelegramClientService.handle_incoming_message.
 """
 
 import uuid
@@ -11,8 +12,8 @@ import pytest
 import respx
 from httpx import Response
 
-from src.core.bus_topics import BusTopics
 from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.service import TelegramClientService
 
 
 def create_mock_event(chat_id=-1001234567890, sender_id=123456789, is_private=True):
@@ -46,16 +47,13 @@ def mock_session_factory():
 async def test_on_new_message_with_photo_uploads_to_storage(
     mock_session_factory,
 ):
-    """Входящее сообщение с фото загружается в storage."""
-    telegram_media_id = "AQADBAAT..."
-
-    # Mock storage API
+    """Входящее сообщение с фото — обработчик делегирует в сервис."""
     respx.post("http://localhost:8000/internal/media/").mock(
         return_value=Response(
             status_code=201,
             json={
                 "id": "mock-storage-id",
-                "filename": f"{telegram_media_id}.dat",
+                "filename": "photo.jpg",
                 "content_type": "image/jpeg",
                 "size_bytes": 1024,
                 "is_public": False,
@@ -63,14 +61,6 @@ async def test_on_new_message_with_photo_uploads_to_storage(
         )
     )
 
-    # Mock MessageBus
-    published_messages = []
-
-    class MockBus:
-        async def publish(self, topic, message):
-            published_messages.append((topic, message))
-
-    # Mock Telethon client с правильным .on() декоратором
     mock_client = MagicMock()
     registered_handlers = []
 
@@ -83,57 +73,44 @@ async def test_on_new_message_with_photo_uploads_to_storage(
 
     mock_client.on = mock_on
 
-    # Mock should_read_message - всегда разрешаем чтение
+    # Мокаем should_read_message на TelegramClientService
     with patch.object(
-        TelegramClientManager, "should_read_message", new_callable=AsyncMock
+        TelegramClientService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
-        # Mock download_media — возвращает bytes
         async def mock_download_media(media, bytes=True):
             return b"fake image data"
 
         mock_client.download_media = mock_download_media
 
-        # Создаём менеджер с моком шины
-        manager = TelegramClientManager(MockBus())
+        manager = TelegramClientManager()
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
 
-        # Регистрируем handler
+        # Мокаем сервис — проверяем что handle_incoming_message вызван
+        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service.handle_incoming_message = AsyncMock()
+        manager._service = mock_service
+
         manager._register_message_handler(account_id, mock_client)
 
-        # Mock event
         mock_event = create_mock_event()
 
-        # Mock message
         mock_message = MagicMock()
         mock_message.id = 42
         mock_message.text = "Привет с фото!"
         mock_message.media = MagicMock()
-        mock_message.media.id = telegram_media_id
+        mock_message.media.id = "AQADBAAT..."
         mock_message.media.__class__.__name__ = "MessageMediaPhoto"
 
         mock_event.message = mock_message
 
-        # Вызываем зарегистрированный handler
         assert len(registered_handlers) == 1
         await registered_handlers[0](mock_event)
 
-        # Проверяем что сообщение было опубликовано
-        assert len(published_messages) == 1
-        topic, message = published_messages[0]
-
-        assert topic == BusTopics.TG_MESSAGE_RECEIVED
-        assert message["account_id"] == str(account_id)
-        assert message["chat_id"] == -1001234567890
-        assert message["message_id"] == 42
-        assert message["text"] == "Привет с фото!"
-        assert len(message["media"]) == 1
-        assert message["media"][0]["type"] == "messagemediaphoto"
-        assert message["media"][0]["id"] == telegram_media_id
-        # file_id будет добавлен обработчиком шины при загрузке в storage
-        assert "data" in message["media"][0]  # Данные для обработки
+        # Проверяем, что handle_incoming_message был вызван
+        mock_service.handle_incoming_message.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -141,20 +118,11 @@ async def test_on_new_message_with_photo_uploads_to_storage(
 async def test_on_new_message_with_media_upload_error(
     mock_session_factory,
 ):
-    """Входящее сообщение с медиа при ошибке загрузки имеет file_id=None."""
-    # Mock storage API — ошибка 500
+    """Входящее сообщение с медиа при ошибке — обработчик делегирует в сервис."""
     respx.post("http://localhost:8000/internal/media/").mock(
         return_value=Response(status_code=500, text="Internal Server Error")
     )
 
-    # Mock MessageBus
-    published_messages = []
-
-    class MockBus:
-        async def publish(self, topic, message):
-            published_messages.append((topic, message))
-
-    # Mock Telethon client
     mock_client = MagicMock()
     registered_handlers = []
 
@@ -167,9 +135,8 @@ async def test_on_new_message_with_media_upload_error(
 
     mock_client.on = mock_on
 
-    # Mock should_read_message - всегда разрешаем чтение
     with patch.object(
-        TelegramClientManager, "should_read_message", new_callable=AsyncMock
+        TelegramClientService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -178,13 +145,16 @@ async def test_on_new_message_with_media_upload_error(
 
         mock_client.download_media = mock_download_media
 
-        manager = TelegramClientManager(MockBus())
+        manager = TelegramClientManager()
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
 
+        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service.handle_incoming_message = AsyncMock()
+        manager._service = mock_service
+
         manager._register_message_handler(account_id, mock_client)
 
-        # Mock event
         mock_event = create_mock_event()
 
         mock_message = MagicMock()
@@ -199,28 +169,14 @@ async def test_on_new_message_with_media_upload_error(
         assert len(registered_handlers) == 1
         await registered_handlers[0](mock_event)
 
-        # Проверяем что сообщение опубликовано
-        assert len(published_messages) == 1
-        topic, message = published_messages[0]
-
-        assert topic == BusTopics.TG_MESSAGE_RECEIVED
-        assert len(message["media"]) == 1
-        assert message["media"][0]["id"] == "media123"
-        # data есть для обработки обработчиком шины
-        assert "data" in message["media"][0]
+        mock_service.handle_incoming_message.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_on_new_message_without_media(
     mock_session_factory,
 ):
-    """Входящее сообщение без медиа не загружает ничего в storage."""
-    published_messages = []
-
-    class MockBus:
-        async def publish(self, topic, message):
-            published_messages.append((topic, message))
-
+    """Входящее сообщение без медиа — обработчик делегирует в сервис."""
     mock_client = MagicMock()
     registered_handlers = []
 
@@ -233,18 +189,20 @@ async def test_on_new_message_without_media(
 
     mock_client.on = mock_on
 
-    # Mock should_read_message - всегда разрешаем чтение
     with patch.object(
-        TelegramClientManager, "should_read_message", new_callable=AsyncMock
+        TelegramClientService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
-        # download_media не должен вызываться
         mock_client.download_media = AsyncMock(return_value=b"should not be called")
 
-        manager = TelegramClientManager(MockBus())
+        manager = TelegramClientManager()
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
+
+        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service.handle_incoming_message = AsyncMock()
+        manager._service = mock_service
 
         manager._register_message_handler(account_id, mock_client)
 
@@ -253,20 +211,15 @@ async def test_on_new_message_without_media(
         mock_message = MagicMock()
         mock_message.id = 42
         mock_message.text = "Текстовое сообщение"
-        mock_message.media = None  # Нет медиа
+        mock_message.media = None
 
         mock_event.message = mock_message
 
         assert len(registered_handlers) == 1
         await registered_handlers[0](mock_event)
 
-        assert len(published_messages) == 1
-        topic, message = published_messages[0]
-
-        assert topic == BusTopics.TG_MESSAGE_RECEIVED
-        assert message["text"] == "Текстовое сообщение"
-        assert message["media"] == []
-        # download_media не должен был вызываться
+        mock_service.handle_incoming_message.assert_awaited_once()
+        # download_media не должен вызываться — нет медиа
         mock_client.download_media.assert_not_called()
 
 
@@ -275,27 +228,19 @@ async def test_on_new_message_without_media(
 async def test_on_new_message_with_video_uploads_to_storage(
     mock_session_factory,
 ):
-    """Входящее сообщение с видео загружается в storage."""
-    telegram_media_id = "video123"
-
+    """Входящее сообщение с видео — обработчик делегирует в сервис."""
     respx.post("http://localhost:8000/internal/media/").mock(
         return_value=Response(
             status_code=201,
             json={
                 "id": "mock-video-storage-id",
-                "filename": f"{telegram_media_id}.dat",
+                "filename": "video.dat",
                 "content_type": "video/mp4",
                 "size_bytes": 2048,
                 "is_public": False,
             },
         )
     )
-
-    published_messages = []
-
-    class MockBus:
-        async def publish(self, topic, message):
-            published_messages.append((topic, message))
 
     mock_client = MagicMock()
     registered_handlers = []
@@ -309,9 +254,8 @@ async def test_on_new_message_with_video_uploads_to_storage(
 
     mock_client.on = mock_on
 
-    # Mock should_read_message - всегда разрешаем чтение
     with patch.object(
-        TelegramClientManager, "should_read_message", new_callable=AsyncMock
+        TelegramClientService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -320,9 +264,13 @@ async def test_on_new_message_with_video_uploads_to_storage(
 
         mock_client.download_media = mock_download_media
 
-        manager = TelegramClientManager(MockBus())
+        manager = TelegramClientManager()
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
+
+        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service.handle_incoming_message = AsyncMock()
+        manager._service = mock_service
 
         manager._register_message_handler(account_id, mock_client)
 
@@ -332,7 +280,7 @@ async def test_on_new_message_with_video_uploads_to_storage(
         mock_message.id = 43
         mock_message.text = "Видео"
         mock_message.media = MagicMock()
-        mock_message.media.id = telegram_media_id
+        mock_message.media.id = "video123"
         mock_message.media.__class__.__name__ = "MessageMediaDocument"
 
         mock_event.message = mock_message
@@ -340,12 +288,4 @@ async def test_on_new_message_with_video_uploads_to_storage(
         assert len(registered_handlers) == 1
         await registered_handlers[0](mock_event)
 
-        assert len(published_messages) == 1
-        topic, message = published_messages[0]
-
-        assert topic == BusTopics.TG_MESSAGE_RECEIVED
-        assert len(message["media"]) == 1
-        assert message["media"][0]["type"] == "messagemediadocument"
-        assert message["media"][0]["id"] == telegram_media_id
-        # file_id будет добавлен обработчиком шины при загрузке в storage
-        assert "data" in message["media"][0]  # Данные для обработки
+        mock_service.handle_incoming_message.assert_awaited_once()
