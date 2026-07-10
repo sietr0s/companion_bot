@@ -11,6 +11,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from functools import partial
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -20,6 +21,7 @@ from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.kafka.consumer import KafkaConsumerRouter
 from src.bus.kafka.producer import KafkaProducerBus
+from src.core.bus_topics import BusTopics
 from src.core.config import settings
 from src.core.database import engine
 from src.core.exceptions import AppException
@@ -68,8 +70,8 @@ else:
     producer = InMemoryProducer()
 
 # TelegramClientManager — singleton для управления Telethon-клиентами.
-# Инициализируется с шиной сообщений для публикации входящих событий.
-client_manager = create_telegram_client_manager(message_bus=producer)
+# Инициализируется без параметров, сервис устанавливается позже
+client_manager = create_telegram_client_manager()
 
 # Регистрация обработчиков событий на шину.
 register_handlers(producer)
@@ -90,6 +92,25 @@ register_job_matcher_handlers(
     producer,
     partial(get_job_matcher_service_factory, bus=producer),
 )
+
+# Регистрация DLQ-обработчика (dead-letter queue для сообщений с ошибками)
+@producer.subscribe(BusTopics.DLQ)
+async def handle_dlq(message: dict) -> None:
+    """
+    Обработчик dead-letter queue.
+
+    Логирует сообщения, которые не удалось обработать.
+    В будущем может отправлять в отдельный топик Kafka
+    или в систему мониторинга.
+    """
+    logger.warning(
+        "DLQ: сообщение из топика '%s' не обработано. "
+        "Ошибка: %s (%s). Обработчик: %s",
+        message.get("original_topic"),
+        message.get("error_detail"),
+        message.get("error_type"),
+        message.get("handler"),
+    )
 
 # Создание консьюмера с реестром подписчиков от продюсера
 if settings.MESSAGE_BUS == "kafka":
@@ -132,8 +153,28 @@ async def lifespan(app: FastAPI):
 
         LocalStorage().ensure_base_path()
 
+    # Создаём сервис и устанавливаем в менеджер для обработки входящих сообщений
+    from src.modules.telegram_clients.repository import (
+        TelegramAccountRepository,
+        TelegramChatStateRepository,
+        TelegramSettingsRepository,
+    )
+    from src.modules.telegram_clients.service import TelegramClientService
+
+    telegram_service = TelegramClientService(
+        repository=TelegramAccountRepository(),
+        message_bus=producer,
+        client_manager=client_manager,
+        settings_repository=TelegramSettingsRepository(),
+        chat_state_repository=TelegramChatStateRepository(),
+    )
+    client_manager.set_service(telegram_service)
+
     # Подключаем все ранее авторизованные Telegram-аккаунты
     await _restore_tg_sessions()
+
+    # Читаем непрочитанные сообщения для всех аккаунтов
+    await _read_unread_telegram_messages(telegram_service)
 
     # Запуск Telegram-бота (если настроен)
     if settings.TG_BOT_TOKEN:
@@ -189,6 +230,36 @@ async def _restore_tg_sessions() -> None:
             logger.error("Ошибка подключения Telegram для аккаунта %s: %s", account.id, e)
         except Exception as e:
             logger.exception("Неожиданная ошибка при подключении Telegram-аккаунта %s: %s", account.id, e)
+
+
+async def _read_unread_telegram_messages(telegram_service: Any) -> None:
+    """Чтение непрочитанных сообщений для всех подключённых аккаунтов."""
+    from sqlalchemy import select
+
+    from src.core.database import async_session_factory
+    from src.modules.telegram_clients.models import TelegramAccount
+
+    async with async_session_factory() as session:
+        # Получаем все подключённые аккаунты
+        stmt = select(TelegramAccount).where(TelegramAccount.is_connected.is_(True))
+        result = await session.execute(stmt)
+        accounts = result.scalars().all()
+
+        if not accounts:
+            logger.info("Нет подключённых Telegram-аккаунтов для чтения сообщений")
+            return
+
+        for account in accounts:
+            count = await telegram_service.read_unread_messages(
+                session=session,
+                account_id=account.id,
+            )
+
+            logger.info(
+                "Аккаунт %s: прочитано %d непрочитанных сообщений",
+                account.id,
+                count,
+            )
 
 
 # Создание FastAPI-приложения

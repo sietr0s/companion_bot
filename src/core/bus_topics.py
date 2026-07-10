@@ -47,3 +47,6 @@ class BusTopics:
     # Модуль Classifier
     TEXT_CLASSIFY_REQUEST: str = "text.classify.request"
     TEXT_CLASSIFY_COMPLETED: str = "text.classify.completed"
+
+    # Системные топики
+    DLQ: str = "bus.dlq"

@@ -3,6 +3,11 @@ Kafka-реализация консьюмера шины сообщений.
 
 Подписывается на топики Kafka и вызывает зарегистрированные
 обработчики при получении сообщений.
+
+Ошибки в обработчиках обрабатываются через BusErrorHandler:
+- Бизнес-исключения (AppException) — публикуются в DLQ
+- Сетевые ошибки — логируются и публикуются в DLQ
+- Неожиданные ошибки — логируются с traceback
 """
 
 import asyncio
@@ -12,6 +17,7 @@ from collections.abc import Callable
 
 from aiokafka import AIOKafkaConsumer
 
+from src.bus.error_handler import safe_handle
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -49,7 +55,7 @@ class KafkaConsumerRouter:
         logger.info("KafkaConsumerRouter запущен, топики: %s", topics)
 
     async def _consume(self) -> None:
-        """Цикл чтения сообщений из Kafka и вызова обработчиков."""
+        """Цикл чтения сообщений из Kafka и вызова обработчиков через safe_handle."""
         if not self._consumer:
             return
 
@@ -58,21 +64,7 @@ class KafkaConsumerRouter:
                 topic = msg.topic
                 handlers = self._subscribers.get(topic, [])
                 for handler in handlers:
-                    try:
-                        if asyncio.iscoroutinefunction(handler):
-                            await handler(msg.value)
-                        else:
-                            handler(msg.value)
-                    except asyncio.CancelledError:
-                        logger.warning("Обработчик %s отменён для топика '%s'", handler.__name__, topic)
-                        raise
-                    except Exception as e:
-                        logger.exception(
-                            "Ошибка в обработчике %s для топика '%s': %s",
-                            handler.__name__,
-                            topic,
-                            e,
-                        )
+                    await safe_handle(handler, topic, msg.value)
         except asyncio.CancelledError:
             logger.info("KafkaConsumerRouter: задача чтения отменена")
             raise

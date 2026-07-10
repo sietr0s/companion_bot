@@ -4,6 +4,11 @@ In-memory реализация продюсера шины сообщений.
 Используется в монолитном режиме: обработчики вызываются
 синхронно в том же процессе. Это упрощает разработку
 и отладку, не требуя внешнего брокера сообщений.
+
+Ошибки в обработчиках обрабатываются через BusErrorHandler:
+- Бизнес-исключения (AppException) — публикуются в DLQ
+- Сетевые ошибки — логируются и публикуются в DLQ
+- Неожиданные ошибки — логируются с traceback
 """
 
 import asyncio
@@ -11,6 +16,8 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
+
+from src.bus.error_handler import safe_handle
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +39,15 @@ class InMemoryProducer:
 
         Если запущен event loop — асинхронные обработчики
         планируются через create_task. Иначе — вызываются напрямую.
+        Ошибки обрабатываются через safe_handle — бизнес-исключения
+        публикуются в DLQ, остальные логируются.
         """
         handlers = self._subscribers.get(topic, [])
         for handler in handlers:
             if asyncio.iscoroutinefunction(handler):
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(handler(message))
+                    loop.create_task(safe_handle(handler, topic, message))
                 except RuntimeError:
                     # Нет запущенного event loop — вызываем синхронно
                     logger.warning(
