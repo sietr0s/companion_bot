@@ -7,6 +7,7 @@
 """
 
 import logging
+import uuid
 
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
@@ -79,7 +80,7 @@ def register_handlers(
         Обработчик: обновить category_ids и найти подходящие подписки.
 
         message: {
-            "request_id": int (job_offer_id),
+            "request_id": str (UUID),
             "category_ids": list[uuid.UUID],
             "title": str,
             "tags": list[str],
@@ -95,9 +96,9 @@ def register_handlers(
             logger.warning("Нет request_id в сообщении: %s", message)
             return
 
-        # Преобразуем request_id в int
+        # Преобразуем request_id в UUID
         try:
-            job_offer_id = int(request_id)
+            job_offer_id = uuid.UUID(request_id)
         except (ValueError, TypeError):
             logger.warning("Некорректный request_id: %s", request_id)
             return

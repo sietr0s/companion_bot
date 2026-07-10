@@ -63,6 +63,169 @@ class TestSubscriptionRepository:
         matching = await repo.find_matching(db_session, tags=["python"])
         assert len(matching) == 0
 
+    async def test_find_matching_by_category_ids(self, db_session: AsyncSession):
+        """Поиск подходящих подписок по пересечению категорий."""
+        cat_a = str(uuid.uuid4())
+        cat_b = str(uuid.uuid4())
+        cat_c = str(uuid.uuid4())
+
+        sub1 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            category_ids=[cat_a, cat_b],
+        )
+        sub2 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            category_ids=[cat_c],
+        )
+        db_session.add_all([sub1, sub2])
+        await db_session.commit()
+
+        repo = SubscriptionRepository(model=Subscription)
+
+        # Ищем по cat_a — должна найтись sub1
+        matching = await repo.find_matching(
+            db_session,
+            category_ids=[uuid.UUID(cat_a)],
+        )
+        assert len(matching) == 1
+        assert matching[0].id == sub1.id
+
+        # Ищем по cat_c — должна найтись sub2
+        matching = await repo.find_matching(
+            db_session,
+            category_ids=[uuid.UUID(cat_c)],
+        )
+        assert len(matching) == 1
+        assert matching[0].id == sub2.id
+
+        # Ищем по cat_a и cat_c — должны найтись обе
+        matching = await repo.find_matching(
+            db_session,
+            category_ids=[uuid.UUID(cat_a), uuid.UUID(cat_c)],
+        )
+        assert len(matching) == 2
+
+    async def test_find_matching_by_salary(self, db_session: AsyncSession):
+        """Поиск подходящих подписок по зарплате."""
+        sub1 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            min_salary=100_000,
+            max_salary=200_000,
+        )
+        sub2 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            min_salary=150_000,
+            max_salary=300_000,
+        )
+        sub3 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            min_salary=None,
+            max_salary=None,
+        )
+        db_session.add_all([sub1, sub2, sub3])
+        await db_session.commit()
+
+        repo = SubscriptionRepository(model=Subscription)
+
+        # Оффер с зарплатой 120_000–180_000
+        # Все три подписки подходят:
+        # - sub1 (100-200) — пересечение с 120-180
+        # - sub2 (150-300) — пересечение с 120-180
+        # - sub3 (без ограничений) — подходит всегда
+        matching = await repo.find_matching(
+            db_session,
+            salary_min=120_000,
+            salary_max=180_000,
+        )
+        assert len(matching) == 3
+
+    async def test_find_matching_by_location(self, db_session: AsyncSession):
+        """Поиск подходящих подписок по локации."""
+        sub1 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            locations=["Moscow", "SPb"],
+        )
+        sub2 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            locations=["Kazan"],
+        )
+        sub3 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            locations=None,
+        )
+        db_session.add_all([sub1, sub2, sub3])
+        await db_session.commit()
+
+        repo = SubscriptionRepository(model=Subscription)
+
+        # Ищем по Moscow
+        matching = await repo.find_matching(db_session, location="Moscow")
+        assert len(matching) == 2  # sub1 (Moscow) и sub3 (без ограничений)
+        assert sub1 in matching
+        assert sub3 in matching
+
+    async def test_find_matching_all_filters(self, db_session: AsyncSession):
+        """Поиск подходящих подписок со всеми фильтрами одновременно."""
+        cat_a = str(uuid.uuid4())
+
+        sub1 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            category_ids=[cat_a],
+            keywords=["python", "backend"],
+            min_salary=100_000,
+            max_salary=200_000,
+            locations=["Moscow"],
+        )
+        sub2 = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            category_ids=[cat_a],
+            keywords=["python"],
+            min_salary=150_000,
+            max_salary=300_000,
+            locations=["SPb"],
+        )
+        db_session.add_all([sub1, sub2])
+        await db_session.commit()
+
+        repo = SubscriptionRepository(model=Subscription)
+
+        # Ищем оффер: категория A, тег python, зарплата 120_000, локация Moscow
+        matching = await repo.find_matching(
+            db_session,
+            category_ids=[uuid.UUID(cat_a)],
+            tags=["python"],
+            salary_min=120_000,
+            location="Moscow",
+        )
+        assert len(matching) == 1
+        assert matching[0].id == sub1.id
+
+    async def test_find_matching_empty_category_ids(self, db_session: AsyncSession):
+        """Поиск без category_ids возвращает все активные подписки."""
+        sub1 = Subscription(auth_id=uuid.uuid4(), is_active=True)
+        sub2 = Subscription(auth_id=uuid.uuid4(), is_active=True)
+        sub3 = Subscription(auth_id=uuid.uuid4(), is_active=False)
+        db_session.add_all([sub1, sub2, sub3])
+        await db_session.commit()
+
+        repo = SubscriptionRepository(model=Subscription)
+
+        # Без фильтров — только активные
+        matching = await repo.find_matching(db_session)
+        assert len(matching) == 2
+        assert sub1 in matching
+        assert sub2 in matching
+
 
 class TestJobOfferRepository:
     """Тесты JobOfferRepository."""

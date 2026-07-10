@@ -7,7 +7,7 @@ JobOfferRepository — CRUD для предложений о работе.
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.repository import BaseRepository
@@ -38,32 +38,37 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         Найти активные подписки, подходящие под оффер.
 
         Используется в обработчике job.offer.classified.
-        Матчинг происходит по пересечению category_ids.
+        Матчинг по категориям — пересечение множеств через JSON contains.
+        Матчинг по тегам — JSON contains (портабельно между SQLite и PostgreSQL).
         """
+
         stmt = select(Subscription).where(Subscription.is_active.is_(True))
 
         # Матчинг по категориям (пересечение множеств)
         # Если у оффера есть категории — ищем подписки где category_ids пересекается
         if category_ids:
-            # Хотя бы одна категория оффера должна быть в подписке
-            # subscription.category_ids && [offer_category_ids]
             category_strs = [str(cat_id) for cat_id in category_ids]
 
             # Строим условие: subscription.category_ids содержит хотя бы один из category_strs
-            overlap_condition = None
-            for cat_str in category_strs:
-                cond = Subscription.category_ids.contains([cat_str])
-                overlap_condition = (
-                    cond if overlap_condition is None else (overlap_condition | cond)
-                )
-
-            # Пропускаем подписки где category_ids = NULL, но показываем где category_ids = []
-            stmt = stmt.where(overlap_condition)
+            # Используем cast к String + contains для портабельности между SQLite и PostgreSQL
+            # В PostgreSQL JSON колонка приводится к тексту, в SQLite — тоже к тексту
+            category_col = cast(Subscription.category_ids, String)
+            overlap_conditions = [
+                category_col.contains(f'"{cat_str}"')
+                for cat_str in category_strs
+            ]
+            stmt = stmt.where(
+                Subscription.category_ids.isnot(None),
+                or_(*overlap_conditions),
+            )
 
         if tags:
-            # Поиск по тегам (JSON contains — работает в SQLite и PostgreSQL)
+            tags_col = cast(Subscription.keywords, String)
             for tag in tags:
-                stmt = stmt.where(Subscription.keywords.contains(tag))
+                stmt = stmt.where(
+                    Subscription.keywords.isnot(None),
+                    tags_col.contains(f'"{tag}"'),
+                )
         if salary_min is not None:
             stmt = stmt.where(
                 (Subscription.max_salary.is_(None)) | (Subscription.max_salary >= salary_min)
@@ -73,8 +78,11 @@ class SubscriptionRepository(BaseRepository[Subscription]):
                 (Subscription.min_salary.is_(None)) | (Subscription.min_salary <= salary_max)
             )
         if location:
+            locations_col = cast(Subscription.locations, String)
             stmt = stmt.where(
-                (Subscription.locations.is_(None)) | (Subscription.locations.contains([location]))
+                (Subscription.locations.is_(None))
+                | (cast(Subscription.locations, String) == "null")
+                | locations_col.contains(f'"{location}"'),
             )
 
         result = await session.execute(stmt)

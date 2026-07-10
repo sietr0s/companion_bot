@@ -6,18 +6,24 @@
 клиент-менеджеру, а персистентность — репозиторию.
 """
 
+import asyncio
+import logging
 import os
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from telethon import TelegramClient
+from telethon.events import NewMessage
 
+from src.core.database import async_session_factory
 from src.base.filters import Filter
 from src.base.service import BaseService
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
-from src.modules.telegram_clients.constants import TgAuthStatus
+from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
@@ -29,14 +35,18 @@ from src.modules.telegram_clients.repository import (
     TelegramSettingsRepository,
 )
 from src.modules.telegram_clients.schemas.events import (
+    Media,
     TgAccountConnected,
     TgAccountDisconnected,
+    TgMessageReceived,
 )
 from src.modules.telegram_clients.schemas.public import (
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TelegramClientService(BaseService[TelegramAccountRepository]):
@@ -340,3 +350,200 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         # Получаем все состояния
         return await self.chat_state_repository.get_all_by_account(session, account_id)
+
+    async def read_unread_messages(
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+    ) -> int:
+        """
+        Прочитать непрочитанные сообщения для аккаунта.
+
+        Для каждого чата с TelegramChatState:
+        1. Получаем непрочитанные сообщения (message_id > last_read_message_id)
+        2. Публикуем каждое сообщение в шину
+        3. Обновляем состояние чтения
+
+        Args:
+            session: SQLAlchemy сессия
+            account_id: ID аккаунта
+
+        Returns:
+            Количество прочитанных сообщений.
+        """
+        # Получаем все состояния чтения для аккаунта
+        chat_states = await self.chat_state_repository.get_all_by_account(session, account_id)
+
+        total_read = 0
+
+        for state in chat_states:
+            # Получаем непрочитанные сообщения
+            unread_messages = await self.client_manager.get_messages(
+                account_id=account_id,
+                chat_id=state.chat_id,
+                last_read_message_id=state.last_read_message_id,
+            )
+
+            if not unread_messages:
+                continue
+
+            # Публикуем каждое сообщение в шину и обновляем состояние
+            for msg_event in unread_messages:
+                await self.message_bus.publish(
+                    BusTopics.TG_MESSAGE_RECEIVED,
+                    msg_event.to_bus_dict(),
+                )
+
+                # Обновляем состояние чтения
+                await self.chat_state_repository.upsert_last_read(
+                    session=session,
+                    account_id=account_id,
+                    chat_id=state.chat_id,
+                    message_id=msg_event.message_id,
+                )
+
+            total_read += len(unread_messages)
+            logger.info(
+                "Прочитано %d сообщений из чата %s для аккаунта %s",
+                len(unread_messages),
+                state.chat_id,
+                account_id,
+            )
+
+        logger.info(
+            "Всего прочитано %d непрочитанных сообщений для аккаунта %s",
+            total_read,
+            account_id,
+        )
+        return total_read
+
+    async def should_read_message(
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        chat_id: int,
+        chat_type: ChatType,
+    ) -> bool:
+        """
+        Проверить нужно ли читать сообщение из данного чата.
+
+        Использует настройки TelegramSettings для аккаунта.
+        Если whitelist_chat_ids задан - проверяет наличие chat_id в списке.
+        Если whitelist пустой - читает все чаты разрешённых типов.
+
+        Args:
+            session: SQLAlchemy async сессия
+            account_id: ID аккаунта
+            chat_id: ID чата в Telegram
+            chat_type: Тип чата (private, group, channel, etc.)
+
+        Returns:
+            True если сообщение нужно читать, False иначе
+        """
+        settings = await self.settings_repository.get_by_account_id(session, account_id)
+
+        # Если настроек нет - читаем всё по умолчанию
+        if not settings:
+            return True
+
+        # Проверка типа чата
+        if chat_type == ChatType.PRIVATE and not settings.read_personal:
+            return False
+        if chat_type in [ChatType.GROUP, ChatType.SUPERGROUP] and not settings.read_groups:
+            return False
+        if chat_type == ChatType.CHANNEL and not settings.read_channels:
+            return False
+
+        # Проверка whitelist
+        if settings.whitelist_chat_ids:
+            # Если whitelist задан - проверяем наличие chat_id
+            return (
+                str(chat_id) in settings.whitelist_chat_ids
+                or chat_id in settings.whitelist_chat_ids
+            )
+
+        return True  # Если whitelist пустой - читать все чаты разрешённого типа
+
+    async def handle_incoming_message(
+        self,
+        session: AsyncSession,
+        client: TelegramClient,
+        account_id: uuid.UUID,
+        event: NewMessage.Event,
+    ) -> None:
+        """
+        Обработать входящее сообщение.
+
+        Выполняет:
+        1. Проверка настроек (should_read_message)
+        2. Публикация события в шину
+        3. Обновление состояния чтения чата
+        4. Загрузка медиа в storage
+
+        Args:
+            session: SQLAlchemy async сессия
+            client: Telegram клиент
+            account_id: ID аккаунта
+            event: Событие NewMessage.Event
+        """
+        try:
+            # Определяем тип чата
+            if event.is_private:
+                chat_type = ChatType.PRIVATE
+            elif event.is_group:
+                chat_type = ChatType.GROUP
+            elif event.is_channel:
+                chat_type = ChatType.SUPERGROUP
+            else:
+                chat_type = ChatType.PRIVATE
+
+            should_read = await self.should_read_message(
+                session,
+                account_id,
+                event.chat_id,
+                chat_type,
+            )
+
+            if not should_read:
+                return  # Пропускаем сообщение согласно настройкам
+
+            # Извлекаем медиа из сообщения
+            media = await self.client_manager.extract_media(client, event.message)
+
+            # Публикуем событие в шину
+            msg_event = TgMessageReceived(
+                account_id=account_id,
+                chat_id=event.chat_id,
+                message_id=event.message.id,
+                sender_id=event.sender_id,
+                text=event.message.text,
+                media=media,
+            )
+            await self.message_bus.publish(
+                BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict()
+            )
+
+            # Обновляем состояние чтения чата
+            await self.chat_state_repository.upsert_last_read(
+                session=session,
+                account_id=account_id,
+                chat_id=event.chat_id,
+                message_id=event.message.id,
+            )
+            logger.info(
+                "Состояние чтения обновлено: account=%s, chat=%s, message_id=%s",
+                account_id,
+                event.chat_id,
+                event.message.id,
+            )
+
+        except asyncio.CancelledError:
+            logger.warning("Обработка входящего сообщения отменена для аккаунта %s", account_id)
+        except (ConnectionError, TimeoutError) as e:
+            logger.error("Ошибка подключения при обработке сообщения для аккаунта %s: %s", account_id, e)
+        except Exception as e:
+            logger.exception(
+                "Неожиданная ошибка при обработке входящего сообщения для аккаунта %s: %s",
+                account_id,
+                e,
+            )
