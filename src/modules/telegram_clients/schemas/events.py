@@ -4,8 +4,16 @@
 
 import uuid
 
+from pydantic import Field, BaseModel
+
 from src.bus.schemes import BaseEvent
 from src.core.bus_topics import BusTopics
+
+
+class Media(BaseModel):
+    telegram_id: int
+    type: str
+    media_id: uuid.UUID | None = None
 
 
 class TgMessageReceived(BaseEvent):
@@ -27,7 +35,7 @@ class TgMessageReceived(BaseEvent):
     message_id: int
     sender_id: int | None = None
     text: str | None = None
-    media: list[dict[str, str | None]] = []
+    media: list[Media] = Field(default_factory=list)
 
 
 class TgMessageSend(BaseEvent):
@@ -42,7 +50,7 @@ class TgMessageSend(BaseEvent):
     account_id: uuid.UUID
     chat_id: int
     text: str
-    media: list[dict] = []
+    media: list[dict] = Field(default_factory=list)
 
 
 class TgAccountConnected(BaseEvent):

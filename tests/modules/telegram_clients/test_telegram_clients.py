@@ -45,8 +45,8 @@ def message_bus() -> InMemoryProducer:
 
 
 @pytest.fixture
-def client_manager(message_bus: InMemoryProducer) -> TelegramClientManager:
-    return TelegramClientManager(message_bus=message_bus)
+def client_manager() -> TelegramClientManager:
+    return TelegramClientManager()
 
 
 @pytest.fixture
@@ -310,7 +310,7 @@ class TestTelegramClientServiceDeleteAccount:
                 published.append((topic, message))
 
         repo = TelegramAccountRepository()
-        manager = TelegramClientManager(message_bus=MockBus())
+        manager = TelegramClientManager()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
         service = TelegramClientService(
@@ -351,7 +351,7 @@ class TestTelegramClientServiceAuth:
     ):
         """Ввод кода для чужого аккаунта — NotFoundError."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -375,7 +375,7 @@ class TestTelegramClientServiceAuth:
     ):
         """Ввод 2FA пароля для чужого аккаунта — NotFoundError."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -405,7 +405,7 @@ class TestTelegramClientServiceAuth:
                 published.append((topic, message))
 
         # Мокаем client_manager.sign_in_with_code → "connected"
-        manager = TelegramClientManager(message_bus=MockBus())
+        manager = TelegramClientManager()
         manager.sign_in_with_code = AsyncMock(return_value="connected")
         manager.get_me = AsyncMock(
             return_value={
@@ -442,7 +442,7 @@ class TestTelegramClientServiceAuth:
     ):
         """Если аккаунт с 2FA — возвращается статус 2fa_required."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         manager.sign_in_with_code = AsyncMock(return_value="2fa_required")
 
         repo = TelegramAccountRepository()
@@ -474,7 +474,7 @@ class TestTelegramClientServiceAuth:
             async def publish(self, topic, message):
                 published.append((topic, message))
 
-        manager = TelegramClientManager(message_bus=MockBus())
+        manager = TelegramClientManager()
         manager.sign_in_with_password = AsyncMock(return_value="connected")
         manager.get_me = AsyncMock(
             return_value={
@@ -518,7 +518,7 @@ class TestTelegramClientServiceChatsMessages:
     ):
         """Получение чатов чужого аккаунта — NotFoundError."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -541,7 +541,7 @@ class TestTelegramClientServiceChatsMessages:
     ):
         """Получение чатов отключённого аккаунта — ConflictError."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -564,7 +564,7 @@ class TestTelegramClientServiceChatsMessages:
     ):
         """Получение сообщений отключённого аккаунта — ConflictError."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -589,7 +589,7 @@ class TestTelegramClientServiceChatsMessages:
     ):
         """Успешное получение чатов подключённого аккаунта."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         manager.get_chats = AsyncMock(
             return_value=[
                 {"id": 1, "name": "Chat1", "chat_type": "private", "username": "u1"},
@@ -619,7 +619,7 @@ class TestTelegramClientServiceChatsMessages:
     ):
         """Успешное получение сообщений подключённого аккаунта."""
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         manager.get_messages = AsyncMock(
             return_value=[
                 {
@@ -664,7 +664,7 @@ class TestTgEvents:
             message_id=42,
             sender_id=123456,
             text="Привет!",
-            media=[{"type": "photo", "id": "file123"}],
+            media=[{"telegram_id": 123, "type": "photo"}],
         )
         data = event.to_bus_dict()
         assert data["event_name"] == "tg.message.received"
@@ -770,7 +770,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -806,7 +806,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -859,7 +859,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -903,7 +903,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -946,7 +946,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -986,7 +986,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -1025,7 +1025,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
@@ -1064,7 +1064,7 @@ class TestTelegramClientServiceChatState:
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
 
         bus = InMemoryProducer()
-        manager = TelegramClientManager(message_bus=bus)
+        manager = TelegramClientManager()
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()

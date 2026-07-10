@@ -32,6 +32,11 @@ class TelegramAccount(BaseModel):
         nullable=False,
         index=True,
     )
+    telegram_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
+
     phone: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
@@ -55,10 +60,6 @@ class TelegramAccount(BaseModel):
     )
     username: Mapped[str | None] = mapped_column(
         String(100),
-        nullable=True,
-    )
-    telegram_id: Mapped[int | None] = mapped_column(
-        BigInteger,
         nullable=True,
     )
 

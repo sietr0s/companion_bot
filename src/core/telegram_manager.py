@@ -8,7 +8,6 @@
 
 import logging
 
-from src.bus.interface import MessageBus
 from src.modules.telegram_clients.client_manager import TelegramClientManager
 
 logger = logging.getLogger(__name__)
@@ -17,19 +16,16 @@ logger = logging.getLogger(__name__)
 _telegram_client_manager: TelegramClientManager | None = None
 
 
-def create_telegram_client_manager(message_bus: MessageBus) -> TelegramClientManager:
+def create_telegram_client_manager() -> TelegramClientManager:
     """
     Создать или вернуть существующий TelegramClientManager.
-
-    Args:
-        message_bus: Шина сообщений для публикации входящих событий
 
     Returns:
         Singleton-экземпляр TelegramClientManager
     """
     global _telegram_client_manager
     if _telegram_client_manager is None:
-        _telegram_client_manager = TelegramClientManager(message_bus=message_bus)
+        _telegram_client_manager = TelegramClientManager()
         logger.info("Создан новый экземпляр TelegramClientManager")
     return _telegram_client_manager
 

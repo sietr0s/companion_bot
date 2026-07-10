@@ -35,7 +35,7 @@ def mock_session_factory():
     mock_session.__aexit__ = AsyncMock(return_value=None)
 
     with patch(
-        "src.modules.telegram_clients.client_manager.async_session_factory",
+        "src.core.database.async_session_factory",
         return_value=mock_session,
     ):
         yield mock_session
