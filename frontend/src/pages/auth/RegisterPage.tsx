@@ -3,7 +3,7 @@ import { Button, Form, Input, Tabs, message } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/layout/AuthLayout';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { AuthService, TokenResponse } from '../../api/generated';
 import { extractErrorMessage } from '../../utils/api';
 

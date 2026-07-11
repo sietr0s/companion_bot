@@ -10,10 +10,13 @@ import {
   MessageOutlined,
   RobotOutlined,
   SafetyCertificateOutlined,
+  SunOutlined,
+  MoonOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import type { MenuProps } from 'antd';
 
 const { Header, Content, Sider } = Layout;
@@ -22,6 +25,7 @@ export function ProtectedLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
+  const { mode, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handler = () => {
@@ -100,6 +104,12 @@ export function ProtectedLayout() {
           </div>
           <Space>
             <Tag color="blue">OpenAPI generated client</Tag>
+            <Button
+              icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggleTheme}
+              type="text"
+              title={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            />
             <Button
               icon={<LogoutOutlined />}
               onClick={() => {

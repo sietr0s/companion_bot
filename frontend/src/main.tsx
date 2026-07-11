@@ -1,24 +1,19 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ConfigProvider, App as AntApp, theme } from 'antd';
-
+import { App as AntApp } from 'antd';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import App from './App';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: '#1677ff',
-          borderRadius: 10,
-        },
-      }}
-    >
+    <ThemeProvider>
       <AntApp>
-        <App />
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
       </AntApp>
-    </ConfigProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

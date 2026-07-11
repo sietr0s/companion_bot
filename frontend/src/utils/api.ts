@@ -4,6 +4,22 @@ export function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
+export function isForbidden(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403;
+}
+
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
+export function isConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409;
+}
+
+export function isValidationError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 422;
+}
+
 export function extractErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const detail = error.body?.detail;

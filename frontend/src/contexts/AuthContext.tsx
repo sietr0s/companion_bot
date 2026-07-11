@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { OpenAPI } from '../api/generated';
 
 const TOKEN_STORAGE_KEY = 'ms_starter_admin_token';
 
 type AuthContextValue = {
   token: string | null;
+  isAuthenticated: boolean;
   setToken: (value: string | null) => void;
   logout: () => void;
 };
@@ -25,16 +26,23 @@ function useStoredToken(): [string | null, (value: string | null) => void] {
   return [token, setToken];
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useStoredToken();
 
   useEffect(() => {
     OpenAPI.BASE = '';
-    OpenAPI.TOKEN = token ?? undefined;
+    OpenAPI.TOKEN = async () => token ?? (undefined as unknown as string);
   }, [token]);
+
+  useEffect(() => {
+    const handleUnauthorized = () => setToken(null);
+    window.addEventListener('ms-admin:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('ms-admin:unauthorized', handleUnauthorized);
+  }, [setToken]);
 
   const value: AuthContextValue = {
     token,
+    isAuthenticated: token !== null,
     setToken,
     logout: () => setToken(null),
   };

@@ -3,7 +3,7 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { PageTitle } from '../../components/common/PageTitle';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { AuthService } from '../../api/generated';
 import { extractErrorMessage } from '../../utils/api';
 
