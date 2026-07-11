@@ -1,0 +1,111 @@
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  background: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.brand {
+  padding: 20px 16px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: auto;
+  min-height: 72px;
+  padding: 16px 24px;
+  background: rgba(15, 23, 42, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-title {
+  margin: 0 0 6px !important;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+.page-stack,
+.page-stack.ant-space {
+  display: flex;
+  width: 100%;
+}
+
+.page-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.page-title h2 {
+  margin-bottom: 8px !important;
+}
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 520px;
+}
+
+.auth-footer {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.narrow-form {
+  max-width: 420px;
+}
+
+.steps-content {
+  margin-top: 20px;
+}
+
+.chat-row {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.chat-row.active {
+  background: rgba(22, 119, 255, 0.15);
+}
+
+@media (max-width: 992px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-title {
+    flex-direction: column;
+  }
+}

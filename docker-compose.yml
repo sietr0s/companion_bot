@@ -30,12 +30,31 @@ services:
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-noreply@example.com}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-App}
       - TEMPLATES_DIR=/app/templates
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-postgres_secure_password_change_me}
+      - DB_NAME=modular_monolith
     volumes:
       - ./sessions:/app/sessions
       - ./templates:/app/templates:ro
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - ms_network
+    restart: unless-stopped
+
+  # Frontend Admin Panel
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ms_starter_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
     networks:
       - ms_network
     restart: unless-stopped
@@ -112,7 +131,7 @@ services:
     container_name: ms_starter_pgadmin
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@example.com}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set in .env for security}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
       - PGADMIN_CONFIG_SERVER_MODE=False
       - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
     ports:
@@ -137,3 +156,4 @@ volumes:
     driver: local
   pgadmin_data:
     driver: local
+
