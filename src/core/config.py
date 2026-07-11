@@ -84,6 +84,12 @@ class Settings(BaseSettings):
     TG_BOT_WEBHOOK_SECRET: str = ""
     APP_URL: str = "http://localhost:8000"  # для webhook
 
+    # Admin (seed-пользователь)
+    ADMIN_EMAIL: str = "admin@example.com"
+    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_FIRST_NAME: str = "Admin"
+    ADMIN_LAST_NAME: str = ""
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

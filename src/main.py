@@ -23,8 +23,9 @@ from src.bus.kafka.consumer import KafkaConsumerRouter
 from src.bus.kafka.producer import KafkaProducerBus
 from src.core.bus_topics import BusTopics
 from src.core.config import settings
-from src.core.database import engine
+from src.core.database import async_session_factory, engine
 from src.core.exceptions import AppException
+from src.core.seed import seed_admin
 from src.core.telegram_manager import create_telegram_client_manager
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
@@ -143,6 +144,10 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Таблицы БД созданы (режим разработки)")
+
+    # Создаём admin-пользователя при старте
+    async with async_session_factory() as session:
+        await seed_admin(session, producer)
 
     # Инициализация категорий по умолчанию
     await init_default_categories_on_startup()

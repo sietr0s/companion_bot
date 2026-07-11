@@ -58,6 +58,9 @@ class AuthService(BaseService[AuthRepository]):
         Создаёт только учётную запись авторизации.
         Профиль пользователя создаётся отдельным запросом
         через POST /users/ с auth_id из JWT.
+
+        Поддерживает опциональное поле role в data — если не указано,
+        используется значение по умолчанию из модели Auth ("user").
         """
         # Проверяем уникальность identifier
         existing = await self.repository.get_by_identifier(session, data["identifier"])
@@ -70,14 +73,15 @@ class AuthService(BaseService[AuthRepository]):
 
         # Хэшируем пароль и создаём учётную запись
         hashed_pw = hash_password(data["password"])
-        account = await self.repository.create(
-            session,
-            {
-                "identifier": data["identifier"],
-                "identifier_type": data["identifier_type"],
-                "hashed_password": hashed_pw,
-            },
-        )
+        account_data = {
+            "identifier": data["identifier"],
+            "identifier_type": data["identifier_type"],
+            "hashed_password": hashed_pw,
+        }
+        # Пробрасываем role, если указана (для seed admin)
+        if "role" in data:
+            account_data["role"] = data["role"]
+        account = await self.repository.create(session, account_data)
 
         # Публикуем событие о регистрации
         event = UserRegistered(
