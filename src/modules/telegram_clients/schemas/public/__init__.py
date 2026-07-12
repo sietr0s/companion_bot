@@ -8,6 +8,8 @@ from .auth import (
     CodeRequest,
     PasswordRequest,
     PhoneRequest,
+    QrStartResponse,
+    QrStatusResponse,
 )
 from .chat import ChatRead
 from .media import MediaItem
@@ -20,6 +22,8 @@ __all__ = [
     "AuthStep1Response",
     "AuthStep2Response",
     "AuthStep3Response",
+    "QrStartResponse",
+    "QrStatusResponse",
     "AccountRead",
     "ChatRead",
     "MediaItem",

@@ -8,6 +8,7 @@ import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.base.repository import BaseRepository
 from src.modules.users.models import Telegram, User
@@ -24,6 +25,18 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).where(User.auth_id == auth_id)
         result = await session.execute(stmt)
         return result.scalars().first()
+
+    async def get_by_auth_id_with_telegram(
+        self, session: AsyncSession, auth_id: uuid.UUID
+    ) -> User | None:
+        """Найти профиль с подгруженным Telegram по auth_id."""
+        stmt = (
+            select(User)
+            .options(selectinload(User.telegram))
+            .where(User.auth_id == auth_id)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 class TelegramRepository(BaseRepository[Telegram]):

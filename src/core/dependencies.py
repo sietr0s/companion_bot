@@ -79,14 +79,13 @@ async def get_current_admin(
 # Они получают шину сообщений через DI, а не создают новую.
 
 
-def get_users_client(
-    session: AsyncSession = Depends(get_db_session),
-):
+def get_users_client():
     """
     Фабрика клиента пользователей для прямого вызова сервисов.
 
     Используется другими модулями для вызова методов UserService без HTTP-запросов.
+    Клиент получает сервис через DI-фабрику с общей шиной сообщений.
     """
     from src.core.clients.users_client import UsersClient
 
-    return UsersClient(session=session)
+    return UsersClient()

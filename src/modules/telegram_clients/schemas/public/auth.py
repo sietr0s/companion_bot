@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from src.modules.telegram_clients.constants import QrAuthStatus
+
 
 class PhoneRequest(BaseModel):
     """Шаг 1: отправка номера телефона для получения SMS-кода."""
@@ -44,3 +46,18 @@ class AuthStep3Response(BaseModel):
 
     account_id: uuid.UUID
     status: str = "connected"
+
+
+class QrStartResponse(BaseModel):
+    """Ответ на старт QR-авторизации."""
+
+    account_id: uuid.UUID
+    qr_url: str
+    expires_at: float | None = None
+
+
+class QrStatusResponse(BaseModel):
+    """Текущий статус QR-сессии."""
+
+    status: QrAuthStatus
+    message: str | None = None

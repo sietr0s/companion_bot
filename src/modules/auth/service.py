@@ -166,7 +166,7 @@ class AuthService(BaseService[AuthRepository]):
             raise UnauthorizedError(detail="Неверный текущий пароль")
 
         hashed_pw = hash_password(new_password)
-        await self.repository.update(session, account.id, {"hashed_password": hashed_pw})
+        await self.repository.update(session, account, {"hashed_password": hashed_pw})
 
     async def delete_account(
         self,
@@ -178,7 +178,7 @@ class AuthService(BaseService[AuthRepository]):
         if not account:
             raise UnauthorizedError(detail="Учётная запись не найдена")
 
-        await self.repository.delete(session, account.id)
+        await self.repository.delete(session, account)
 
         # Публикуем событие в шину
         event = UserDeleted(auth_id=auth_id)
@@ -213,7 +213,7 @@ class AuthService(BaseService[AuthRepository]):
         if not account:
             raise UnauthorizedError(detail="Учётная запись не найдена")
 
-        updated = await self.repository.update(session, account.id, data)
+        updated = await self.repository.update(session, account, data)
         return updated
 
     async def delete_account_internal(

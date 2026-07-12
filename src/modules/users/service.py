@@ -170,13 +170,7 @@ class UserService(BaseService[UserRepository]):
         Returns:
             Кортеж (User, Telegram | None)
         """
-        from sqlalchemy import select
-        from sqlalchemy.orm import selectinload
-
-        stmt = select(User).options(selectinload(User.telegram)).where(User.auth_id == auth_id)
-        result = await session.execute(stmt)
-        profile = result.scalar_one_or_none()
-
+        profile = await self.repository.get_by_auth_id_with_telegram(session, auth_id)
         telegram = profile.telegram if profile else None
         return profile, telegram
 
@@ -186,11 +180,5 @@ class UserService(BaseService[UserRepository]):
         auth_id: uuid.UUID,
     ):
         """Получить Telegram профиль текущего пользователя."""
-        from sqlalchemy import select
-        from sqlalchemy.orm import selectinload
-
-        stmt = select(User).options(selectinload(User.telegram)).where(User.auth_id == auth_id)
-        result = await session.execute(stmt)
-        profile = result.scalar_one_or_none()
-
+        profile = await self.repository.get_by_auth_id_with_telegram(session, auth_id)
         return profile.telegram if profile else None

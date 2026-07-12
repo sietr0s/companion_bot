@@ -2,8 +2,12 @@
 Фабрика для создания TelegramClientManager.
 
 Этот модуль устраняет циклическую зависимость:
-- Раньше: telegram_clients/dependencies.py → main.py → client_manager
-- Теперь: telegram_clients/dependencies.py → core/telegram_manager.py
+- telegram_clients/dependencies.py → core/telegram_manager.py → telegram_clients/client_manager.py
+- Без этого файла: telegram_clients/dependencies.py → main.py → client_manager (цикл)
+
+Это осознанный архитектурный компромисс. Правильное решение —
+вынести TelegramClientManager в отдельный shared-пакет или
+использовать DI-контейнер с отложенным разрешением зависимостей.
 """
 
 import logging

@@ -13,6 +13,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
 from telethon import TelegramClient
 from telethon.events import NewMessage
 
@@ -24,6 +25,7 @@ from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
 from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
+from src.modules.telegram_clients.domain import Message as DomainMessage
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
@@ -44,6 +46,8 @@ from src.modules.telegram_clients.schemas.public import (
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
+    QrStartResponse,
+    QrStatusResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,23 +82,36 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         Создаёт запись в БД и инициирует отправку кода через Telethon.
         """
-        # Создаём запись аккаунта
+        phone = data["phone"]
         account_id = uuid.uuid4()
         session_path = self.client_manager._get_session_path(account_id)
+
+        logger.info(
+            "[tg auth] Запрос кода: auth_id=%s, account_id=%s, phone=%s",
+            auth_id,
+            account_id,
+            phone,
+        )
 
         await self.repository.create(
             session,
             {
                 "id": account_id,
                 "auth_id": auth_id,
-                "phone": data["phone"],
+                "phone": phone,
                 "session_file": session_path,
                 "is_connected": False,
             },
         )
 
         # Отправляем код через Telethon
-        await self.client_manager.send_code(data["phone"], account_id)
+        phone_code_hash = await self.client_manager.send_code(phone, account_id)
+
+        logger.info(
+            "[tg auth] Код отправлен через Telegram API: account_id=%s, phone_code_hash=%s",
+            account_id,
+            phone_code_hash,
+        )
 
         return AuthStep1Response(account_id=account_id)
 
@@ -110,6 +127,9 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         account = await self._get_user_account(session, data["account_id"], auth_id)
 
         status = await self.client_manager.sign_in_with_code(data["account_id"], data["code"])
+
+        if status == TgAuthStatus.INVALID_CODE:
+            raise HTTPException(status_code=400, detail="Неверный или истёкший код подтверждения")
 
         if status == TgAuthStatus.CONNECTED:
             # Обновляем данные аккаунта из Telegram
@@ -220,7 +240,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         auth_id: uuid.UUID,
         limit: int = 50,
         offset_id: int = 0,
-    ) -> list[dict]:
+    ) -> list[DomainMessage]:
         """Получить сообщения чата из Telegram API (on-demand)."""
         account = await self._get_user_account(session, account_id, auth_id)
         if not account.is_connected:
@@ -240,6 +260,81 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         account = await self.repository.get_by_id(session, account_id)
         if not account or account.auth_id != auth_id:
             raise NotFoundError(detail="Аккаунт не найден")
+        return account
+
+    # ── QR-авторизация ─────────────────────────────────────────────
+
+    async def start_qr_auth(
+        self, session: AsyncSession, auth_id: uuid.UUID
+    ) -> QrStartResponse:
+        """
+        Шаг 1 QR-авторизации: создать QR-сессию.
+
+        Запись в БД не создаётся. Возвращает account_id и qr_url.
+        """
+        account_id = uuid.uuid4()
+
+        logger.info(
+            "[tg qr auth] Старт QR-авторизации: auth_id=%s, account_id=%s",
+            auth_id,
+            account_id,
+        )
+
+        result = await self.client_manager.start_qr_login(account_id)
+
+        return QrStartResponse(
+            account_id=account_id,
+            qr_url=result["qr_url"],
+            expires_at=result.get("expires_at"),
+        )
+
+    async def get_qr_status(self, account_id: uuid.UUID) -> QrStatusResponse:
+        """Получить статус QR-сессии."""
+        result = self.client_manager.get_qr_status(account_id)
+        return QrStatusResponse(**result)
+
+    async def cancel_qr_auth(self, account_id: uuid.UUID) -> None:
+        """Отменить QR-авторизацию."""
+        await self.client_manager.cancel_qr_login(account_id)
+
+    async def complete_qr_auth(
+        self, session: AsyncSession, auth_id: uuid.UUID, account_id: uuid.UUID
+    ) -> TelegramAccount:
+        """
+        Финализировать QR-авторизацию: создать запись в БД и опубликовать событие.
+        """
+        me = await self.client_manager.complete_qr_login(account_id)
+
+        session_path = self.client_manager._get_session_path(account_id)
+
+        account = await self.repository.create(
+            session,
+            {
+                "id": account_id,
+                "auth_id": auth_id,
+                "phone": me.get("phone", "") or "",
+                "session_file": session_path,
+                "is_connected": True,
+                "first_name": me.get("first_name"),
+                "last_name": me.get("last_name"),
+                "username": me.get("username"),
+                "telegram_id": me.get("telegram_id"),
+            },
+        )
+
+        event = TgAccountConnected(
+            account_id=account.id,
+            auth_id=account.auth_id,
+            phone=account.phone,
+        )
+        await self.message_bus.publish(BusTopics.TG_ACCOUNT_CONNECTED, event.to_bus_dict())
+
+        logger.info(
+            "[tg qr auth] QR-авторизация завершена: account_id=%s, telegram_id=%s",
+            account_id,
+            me.get("telegram_id"),
+        )
+
         return account
 
     # Методы для работы с настройками
@@ -388,10 +483,11 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
                 continue
 
             # Публикуем каждое сообщение в шину и обновляем состояние
-            for msg_event in unread_messages:
+            for domain_msg in unread_messages:
+                bus_event = self._domain_to_bus_event(domain_msg)
                 await self.message_bus.publish(
                     BusTopics.TG_MESSAGE_RECEIVED,
-                    msg_event.to_bus_dict(),
+                    bus_event.to_bus_dict(),
                 )
 
                 # Обновляем состояние чтения
@@ -399,7 +495,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
                     session=session,
                     account_id=account_id,
                     chat_id=state.chat_id,
-                    message_id=msg_event.message_id,
+                    message_id=domain_msg.message_id,
                 )
 
             total_read += len(unread_messages)
@@ -464,6 +560,21 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         return True  # Если whitelist пустой - читать все чаты разрешённого типа
 
+    @staticmethod
+    def _domain_to_bus_event(msg: DomainMessage) -> TgMessageReceived:
+        """Маппинг доменной модели Message в событие шины TgMessageReceived."""
+        return TgMessageReceived(
+            account_id=msg.account_id,
+            chat_id=msg.chat_id,
+            message_id=msg.message_id,
+            sender_id=msg.sender_id,
+            text=msg.text,
+            media=[
+                Media(telegram_id=m.telegram_id, type=m.type)
+                for m in msg.media
+            ],
+        )
+
     async def handle_incoming_message(
         self,
         session: AsyncSession,
@@ -508,17 +619,21 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
                 return  # Пропускаем сообщение согласно настройкам
 
             # Извлекаем медиа из сообщения
-            media = await self.client_manager.extract_media(client, event.message)
+            domain_media = await self.client_manager.extract_media(client, event.message)
 
-            # Публикуем событие в шину
-            msg_event = TgMessageReceived(
+            # Создаём доменную модель
+            domain_msg = DomainMessage(
                 account_id=account_id,
                 chat_id=event.chat_id,
                 message_id=event.message.id,
                 sender_id=event.sender_id,
                 text=event.message.text,
-                media=media,
+                media=domain_media,
+                date=event.message.date,
             )
+
+            # Маппим в событие шины
+            msg_event = self._domain_to_bus_event(domain_msg)
             await self.message_bus.publish(
                 BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict()
             )

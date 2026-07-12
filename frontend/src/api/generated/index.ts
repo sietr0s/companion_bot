@@ -36,6 +36,8 @@ export type { PaginatedResponse_TemplateRead_ } from './models/PaginatedResponse
 export type { PaginatedResponse_UserRead_ } from './models/PaginatedResponse_UserRead_';
 export type { PasswordRequest } from './models/PasswordRequest';
 export type { PhoneRequest } from './models/PhoneRequest';
+export type { QrStartResponse } from './models/QrStartResponse';
+export type { QrStatusResponse } from './models/QrStatusResponse';
 export type { RegisterRequest } from './models/RegisterRequest';
 export type { SendNotificationRequest } from './models/SendNotificationRequest';
 export type { src__modules__users__schemas__internal__telegram__TelegramRead } from './models/src__modules__users__schemas__internal__telegram__TelegramRead';

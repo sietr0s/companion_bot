@@ -28,7 +28,6 @@ async def init_default_categories_on_startup() -> None:
             entity_extractor=None,
         )
         await service.init_default_categories(session)
-        await session.commit()
 
 
 def register_handlers(
@@ -61,7 +60,6 @@ def register_handlers(
                 request_id=request_id,
                 text=text,
             )
-            await session.commit()
 
             # Публикуем событие с результатом классификации
             if result:

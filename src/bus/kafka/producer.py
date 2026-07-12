@@ -3,14 +3,17 @@ Kafka-реализация продюсера шины сообщений.
 
 Используется при переходе к микросервисной архитектуре.
 Сообщения сериализуются в JSON и отправляются в Kafka-топик.
+При старте ждёт готовности Kafka с экспоненциальным backoff.
 """
 
+import asyncio
 import json
 import logging
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any
 
+import backoff
 from aiokafka import AIOKafkaProducer
 
 from src.core.config import settings
@@ -31,12 +34,27 @@ class KafkaProducerBus:
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
 
     async def start(self) -> None:
-        """Инициализация и запуск Kafka-продюсера."""
-        self._producer = AIOKafkaProducer(
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        """Инициализация и запуск Kafka-продюсера с retry."""
+
+        @backoff.on_exception(
+            backoff.expo,
+            Exception,
+            max_time=60,
+            on_backoff=lambda details: logger.warning(
+                "Kafka недоступен (попытка %d): %s. Повтор через %.1fс...",
+                details["tries"],
+                details["exception"],
+                details["wait"],
+            ),
         )
-        await self._producer.start()
+        async def _connect() -> None:
+            self._producer = AIOKafkaProducer(
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            )
+            await self._producer.start()
+
+        await _connect()
         logger.info("KafkaProducerBus запущен")
 
     async def stop(self) -> None:

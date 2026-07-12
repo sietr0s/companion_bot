@@ -29,9 +29,12 @@ from src.modules.telegram_clients.schemas.public import (
     AuthStep3Response,
     ChatRead,
     CodeRequest,
+    MediaItem,
     MessageRead,
     PasswordRequest,
     PhoneRequest,
+    QrStartResponse,
+    QrStatusResponse,
 )
 from src.modules.telegram_clients.service import TelegramClientService
 
@@ -81,6 +84,64 @@ async def auth_password(
 ) -> AuthStep3Response:
     """Вводит пароль облачного шифрования (2FA)."""
     return await service.verify_password(session, data.model_dump(), auth_id)
+
+
+# --- QR-авторизация ---
+
+
+@router.post(
+    "/auth/qr",
+    response_model=QrStartResponse,
+    summary="Запустить QR-авторизацию Telegram",
+)
+async def auth_qr_start(
+    auth_id: uuid.UUID = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    service: TelegramClientService = Depends(get_telegram_client_service),
+) -> QrStartResponse:
+    """Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода."""
+    return await service.start_qr_auth(session, auth_id)
+
+
+@router.get(
+    "/auth/qr/{account_id}/status",
+    response_model=QrStatusResponse,
+    summary="Статус QR-авторизации",
+)
+async def auth_qr_status(
+    account_id: uuid.UUID,
+    service: TelegramClientService = Depends(get_telegram_client_service),
+) -> QrStatusResponse:
+    """Возвращает текущий статус QR-сессии: pending, connected, expired или error."""
+    return await service.get_qr_status(account_id)
+
+
+@router.delete(
+    "/auth/qr/{account_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Отменить QR-авторизацию",
+)
+async def auth_qr_cancel(
+    account_id: uuid.UUID,
+    service: TelegramClientService = Depends(get_telegram_client_service),
+) -> None:
+    """Отменяет QR-сессию и очищает временные данные."""
+    await service.cancel_qr_auth(account_id)
+
+
+@router.post(
+    "/auth/qr/{account_id}/complete",
+    response_model=AccountRead,
+    summary="Завершить QR-авторизацию",
+)
+async def auth_qr_complete(
+    account_id: uuid.UUID,
+    auth_id: uuid.UUID = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    service: TelegramClientService = Depends(get_telegram_client_service),
+) -> AccountRead:
+    """Создаёт запись аккаунта в БД после успешного QR-сканирования."""
+    return await service.complete_qr_auth(session, auth_id, account_id)
 
 
 # --- Управление аккаунтами ---
@@ -173,9 +234,23 @@ async def get_messages(
     service: TelegramClientService = Depends(get_telegram_client_service),
 ) -> list[MessageRead]:
     """Возвращает сообщения указанного чата (on-demand из Telegram API)."""
-    return await service.get_messages(
+    domain_messages = await service.get_messages(
         session, account_id, chat_id, auth_id, limit=limit, offset_id=offset_id
     )
+    return [
+        MessageRead(
+            id=m.message_id,
+            chat_id=m.chat_id,
+            sender_id=m.sender_id,
+            text=m.text,
+            media=[
+                MediaItem(id=str(media.telegram_id), type=media.type)
+                for media in m.media
+            ],
+            date=m.date,
+        )
+        for m in domain_messages
+    ]
 
 
 # --- Настройки чтения ---

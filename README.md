@@ -57,6 +57,7 @@ pre-commit run --all-files
 | **internal** | `/internal` | Межмодульный API: users, media (network-level) |
 | **job_bot** | — | Telegram-бот (aiogram): шлюз для входящих/исходящих сообщений |
 | **job_matcher** | — | Бизнес-логика подбора вакансий: парсинг, классификация, подписки |
+| **classifier** | `/classifier` | AI-классификация текстов: категории, NER, логирование |
 
 ## Тесты и линтинг
 

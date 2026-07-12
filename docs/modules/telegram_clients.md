@@ -11,6 +11,7 @@
 ### Основные возможности
 
 - Пошаговая авторизация в Telegram (SMS → код → 2FA)
+- QR-авторизация в Telegram (альтернатива SMS)
 - Подключение аккаунтов по session-файлам
 - Отключение аккаунтов
 - Получение списка чатов
@@ -165,6 +166,65 @@ async def verify_password(
     Raises:
         UnauthorizedError: Если неверный пароль
     """
+```
+
+### QR-авторизация (альтернативный метод)
+
+#### start_qr_auth
+```python
+async def start_qr_auth(
+    self, session: AsyncSession, auth_id: UUID
+) -> QrStartResponse:
+    """
+    Шаг 1 QR: Создание QR-сессии
+
+    - Генерирует account_id
+    - Создаёт временный Telethon-клиент
+    - Запускает qr_login() и фоновый asyncio.Task для ожидания
+    - НЕ создаёт запись в БД
+    - Возвращает account_id и qr_url для генерации QR-кода
+
+    Запись в БД создаётся только после успешного сканирования QR
+    через complete_qr_auth()
+    """
+```
+
+#### get_qr_status
+```python
+async def get_qr_status(
+    self, account_id: UUID
+) -> QrStatusResponse:
+    """
+    Статус QR-сессии
+
+    Возвращает один из статусов:
+    - pending: ожидание сканирования
+    - connected: QR отсканирован успешно
+    - expired: QR истёк по времени
+    - error: ошибка авторизации
+    """
+```
+
+#### complete_qr_auth
+```python
+async def complete_qr_auth(
+    self, session: AsyncSession, auth_id: UUID, account_id: UUID
+) -> TelegramAccount:
+    """
+    Финализация QR-авторизации
+
+    - Получает данные пользователя из Telegram (get_me)
+    - Создаёт TelegramAccount в БД
+    - Публикует TgAccountConnected
+    """
+```
+
+#### cancel_qr_auth
+```python
+async def cancel_qr_auth(
+    self, account_id: UUID
+) -> None:
+    """Отмена QR-сессии и очистка временных данных"""
 ```
 
 ### Методы управления аккаунтами
@@ -367,6 +427,10 @@ async def stop_all(self) -> None:
 | `POST` | `/public/telegram/{account_id}/settings` | Создание настроек | ✅ JWT |
 | `PUT` | `/public/telegram/{account_id}/settings` | Обновление настроек | ✅ JWT |
 | `DELETE` | `/public/telegram/{account_id}/settings` | Удаление настроек | ✅ JWT |
+| `POST` | `/public/telegram/auth/qr` | Старт QR-сессии | ✅ JWT |
+| `GET` | `/public/telegram/auth/qr/{account_id}/status` | Статус QR-сессии | ✅ JWT |
+| `DELETE` | `/public/telegram/auth/qr/{account_id}` | Отмена QR-сессии | ✅ JWT |
+| `POST` | `/public/telegram/auth/qr/{account_id}/complete` | Завершение QR-авторизации | ✅ JWT |
 
 #### Примеры запросов
 

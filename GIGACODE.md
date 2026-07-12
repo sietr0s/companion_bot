@@ -45,6 +45,12 @@ src/
     │   ├── bot.py               # Создание Bot/Dispatcher
     │   ├── service.py           # Отправка сообщений через бота
     │   └── handlers.py          # Подписка на шину (входящие/исходящие)
+    ├── classifier/              # AI-классификация текстов (категории, NER)
+    │   ├── ai/                  # Абстракции и реализации AI-классификаторов
+    │   ├── models.py            # Category, ClassificationLog
+    │   ├── repository.py        # Репозиторий категорий и логов
+    │   ├── service.py           # ClassifierService
+    │   └── handlers.py          # Обработчики шины
     └── job_matcher/             # Бизнес-логика подбора вакансий
         ├── models.py            # Subscription, JobOffer
         ├── repository.py        # Репозиторий подписок

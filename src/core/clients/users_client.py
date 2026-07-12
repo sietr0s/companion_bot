@@ -1,8 +1,8 @@
 """
 Клиент для прямого вызова сервиса пользователей.
 
-Использует DI для получения сервиса и вызывает методы напрямую,
-без HTTP-запросов. Для межмодульного взаимодействия в модульном монолите.
+Использует DI-фабрику для получения сервиса с общей шиной.
+Session создаётся и закрывается внутри каждого метода.
 """
 
 import logging
@@ -11,11 +11,8 @@ import uuid
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bus.in_memory.producer import InMemoryProducer
 from src.core.database import get_session
 from src.core.exceptions import ConflictError, NotFoundError
-from src.modules.users.repository import TelegramRepository, UserRepository
-from src.modules.users.service import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +21,16 @@ class UsersClient:
     """
     Клиент для вызова методов UserService напрямую.
 
-    Создаёт сервис напрямую (не через Depends), чтобы
-    можно было вызывать из обработчиков шины.
+    Получает сервис через фабрику зависимостей (как MediaClient).
+    Session создаётся и закрывается внутри каждого метода.
     """
 
-    def __init__(self, message_bus=None):
-        """
-        Args:
-            message_bus: Опциональная шина сообщений. Если None — создаётся новая.
-        """
-        self._message_bus = message_bus
-        self._user_service = UserService(
-            repository=UserRepository(),
-            telegram_repository=TelegramRepository(),
-            message_bus=message_bus or InMemoryProducer(),
-        )
+    @staticmethod
+    def _get_service():
+        """Получить экземпляр UserService через DI-фабрику."""
+        from src.modules.users.dependencies import get_user_service
+
+        return get_user_service()
 
     async def resolve_email_by_auth_id(
         self,
@@ -54,8 +46,9 @@ class UsersClient:
             Email пользователя или None, если не найден.
         """
         try:
+            service = self._get_service()
             async for session in get_session():
-                profile = await self._user_service.get_profile(session, auth_id)
+                profile = await service.get_profile(session, auth_id)
                 return getattr(profile, "email", None) if profile else None
         except NotFoundError:
             logger.warning("Профиль не найден для auth_id: %s", auth_id)
@@ -78,8 +71,9 @@ class UsersClient:
             Объект профиля или None.
         """
         try:
+            service = self._get_service()
             async for session in get_session():
-                return await self._user_service.get_profile(session, auth_id)
+                return await service.get_profile(session, auth_id)
         except NotFoundError:
             logger.warning("Профиль не найден для auth_id: %s", auth_id)
             return None
@@ -108,14 +102,15 @@ class UsersClient:
             True если создан, False при ошибке.
         """
         try:
+            service = self._get_service()
             if session is not None:
-                await self._user_service.create_user_profile(
+                await service.create_user_profile(
                     session, auth_id, {"first_name": first_name}
                 )
                 return True
 
             async for s in get_session():
-                await self._user_service.create_user_profile(s, auth_id, {"first_name": first_name})
+                await service.create_user_profile(s, auth_id, {"first_name": first_name})
                 return True
         except ConflictError as e:
             logger.warning("Профиль уже существует для auth_id %s: %s", auth_id, e)

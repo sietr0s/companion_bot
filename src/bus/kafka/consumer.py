@@ -3,6 +3,7 @@ Kafka-реализация консьюмера шины сообщений.
 
 Подписывается на топики Kafka и вызывает зарегистрированные
 обработчики при получении сообщений.
+При старте ждёт готовности Kafka с экспоненциальным backoff.
 
 Ошибки в обработчиках обрабатываются через BusErrorHandler:
 - Бизнес-исключения (AppException) — публикуются в DLQ
@@ -15,6 +16,7 @@ import json
 import logging
 from collections.abc import Callable
 
+import backoff
 from aiokafka import AIOKafkaConsumer
 
 from src.bus.error_handler import safe_handle
@@ -43,13 +45,28 @@ class KafkaConsumerRouter:
             logger.info("Нет топиков для подписки, KafkaConsumerRouter не запускается")
             return
 
-        self._consumer = AIOKafkaConsumer(
-            *topics,
-            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-            group_id=settings.KAFKA_GROUP_ID,
-            value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+        @backoff.on_exception(
+            backoff.expo,
+            Exception,
+            max_time=60,
+            on_backoff=lambda details: logger.warning(
+                "Kafka недоступен для консьюмера (попытка %d): %s. Повтор через %.1fс...",
+                details["tries"],
+                details["exception"],
+                details["wait"],
+            ),
         )
-        await self._consumer.start()
+        async def _connect() -> None:
+            nonlocal_consumer = AIOKafkaConsumer(
+                *topics,
+                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+                group_id=settings.KAFKA_GROUP_ID,
+                value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+            )
+            await nonlocal_consumer.start()
+            self._consumer = nonlocal_consumer
+
+        await _connect()
         # Запускаем цикл чтения в фоновой задаче
         self._task = asyncio.create_task(self._consume())
         logger.info("KafkaConsumerRouter запущен, топики: %s", topics)

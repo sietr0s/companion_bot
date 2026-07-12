@@ -866,6 +866,183 @@
         ]
       }
     },
+    "/api/v1/public/telegram/auth/qr": {
+      "post": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Запустить QR-авторизацию Telegram",
+        "description": "Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода.",
+        "operationId": "auth_qr_start_api_v1_public_telegram_auth_qr_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStartResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/public/telegram/auth/qr/{account_id}/status": {
+      "get": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Статус QR-авторизации",
+        "description": "Возвращает текущий статус QR-сессии: pending, connected, expired или error.",
+        "operationId": "auth_qr_status_api_v1_public_telegram_auth_qr__account_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QrStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/telegram/auth/qr/{account_id}": {
+      "delete": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Отменить QR-авторизацию",
+        "description": "Отменяет QR-сессию и очищает временные данные.",
+        "operationId": "auth_qr_cancel_api_v1_public_telegram_auth_qr__account_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/telegram/auth/qr/{account_id}/complete": {
+      "post": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Завершить QR-авторизацию",
+        "description": "Создаёт запись аккаунта в БД после успешного QR-сканирования.",
+        "operationId": "auth_qr_complete_api_v1_public_telegram_auth_qr__account_id__complete_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/telegram/": {
       "get": {
         "tags": [
@@ -3027,6 +3204,68 @@
         ],
         "title": "AuthStep3Response",
         "description": "Ответ после ввода 2FA пароля."
+      },
+      "QrStartResponse": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "qr_url": {
+            "type": "string",
+            "title": "Qr Url"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "qr_url"
+        ],
+        "title": "QrStartResponse",
+        "description": "Ответ на старт QR-авторизации."
+      },
+      "QrStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "connected",
+              "expired",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "QrStatusResponse",
+        "description": "Текущий статус QR-сессии."
       },
       "AuthUpdate": {
         "properties": {

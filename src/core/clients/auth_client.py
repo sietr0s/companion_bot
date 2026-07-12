@@ -1,8 +1,8 @@
 """
 Клиент для прямого вызова сервиса авторизации.
 
-Использует DI для получения сервиса и вызывает методы напрямую,
-без HTTP-запросов. Для межмодульного взаимодействия в модульном монолите.
+Использует DI-фабрику для получения сервиса с общей шиной.
+Session создаётся и закрывается внутри каждого метода.
 """
 
 import logging
@@ -11,11 +11,8 @@ import uuid
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bus.in_memory.producer import InMemoryProducer
 from src.core.database import get_session
 from src.core.exceptions import ConflictError, NotFoundError
-from src.modules.auth.repository import AuthRepository
-from src.modules.auth.service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +21,16 @@ class AuthClient:
     """
     Клиент для вызова методов AuthService напрямую.
 
-    Создаёт сервис напрямую (не через Depends), чтобы
-    можно было вызывать из обработчиков шины.
+    Получает сервис через фабрику зависимостей (как MediaClient).
+    Session создаётся и закрывается внутри каждого метода.
     """
 
-    def __init__(self, message_bus=None):
-        """
-        Args:
-            message_bus: Опциональная шина сообщений. Если None — создаётся новая.
-        """
-        self._message_bus = message_bus
-        self._auth_service = AuthService(
-            repository=AuthRepository(),
-            message_bus=message_bus or InMemoryProducer(),
-        )
+    @staticmethod
+    def _get_service():
+        """Получить экземпляр AuthService через DI-фабрику."""
+        from src.modules.auth.dependencies import get_auth_service
+
+        return get_auth_service()
 
     async def register(
         self,
@@ -59,6 +52,7 @@ class AuthClient:
             ID созданной учётной записи или None при ошибке.
         """
         try:
+            service = self._get_service()
             data: dict = {
                 "identifier": identifier,
                 "identifier_type": identifier_type,
@@ -66,11 +60,11 @@ class AuthClient:
             }
 
             if session is not None:
-                auth_id = await self._auth_service.register_and_return_id(session, data)
+                auth_id = await service.register_and_return_id(session, data)
                 return auth_id
 
             async for s in get_session():
-                auth_id = await self._auth_service.register_and_return_id(s, data)
+                auth_id = await service.register_and_return_id(s, data)
                 return auth_id
         except ConflictError as e:
             logger.warning("Пользователь уже существует: %s (%s)", identifier, e)
@@ -103,10 +97,11 @@ class AuthClient:
         Returns:
             ID учётной записи или None.
         """
+        service = self._get_service()
         if session is not None:
-            account = await self._auth_service.repository.get_by_identifier(session, identifier)
+            account = await service.repository.get_by_identifier(session, identifier)
             return account.id if account else None
 
         async for s in get_session():
-            account = await self._auth_service.repository.get_by_identifier(s, identifier)
+            account = await service.repository.get_by_identifier(s, identifier)
             return account.id if account else None

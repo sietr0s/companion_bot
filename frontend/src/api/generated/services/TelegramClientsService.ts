@@ -12,6 +12,8 @@ import type { MessageRead } from '../models/MessageRead';
 import type { PaginatedResponse_AccountRead_ } from '../models/PaginatedResponse_AccountRead_';
 import type { PasswordRequest } from '../models/PasswordRequest';
 import type { PhoneRequest } from '../models/PhoneRequest';
+import type { QrStartResponse } from '../models/QrStartResponse';
+import type { QrStatusResponse } from '../models/QrStatusResponse';
 import type { TelegramSettingsCreate } from '../models/TelegramSettingsCreate';
 import type { TelegramSettingsRead } from '../models/TelegramSettingsRead';
 import type { TelegramSettingsUpdate } from '../models/TelegramSettingsUpdate';
@@ -74,6 +76,84 @@ export class TelegramClientsService {
             url: '/api/v1/public/telegram/auth/password',
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Запустить QR-авторизацию Telegram
+     * Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода.
+     * @returns QrStartResponse Successful Response
+     * @throws ApiError
+     */
+    public static authQrStartApiV1PublicTelegramAuthQrPost(): CancelablePromise<QrStartResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/auth/qr',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Статус QR-авторизации
+     * Возвращает текущий статус QR-сессии: pending, connected, expired или error.
+     * @param accountId
+     * @returns QrStatusResponse Successful Response
+     * @throws ApiError
+     */
+    public static authQrStatusApiV1PublicTelegramAuthQrAccountIdStatusGet(
+        accountId: string,
+    ): CancelablePromise<QrStatusResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/auth/qr/{account_id}/status',
+            path: {
+                'account_id': accountId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Отменить QR-авторизацию
+     * Отменяет QR-сессию и очищает временные данные.
+     * @param accountId
+     * @returns void
+     * @throws ApiError
+     */
+    public static authQrCancelApiV1PublicTelegramAuthQrAccountIdDelete(
+        accountId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/auth/qr/{account_id}',
+            path: {
+                'account_id': accountId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Завершить QR-авторизацию
+     * Создаёт запись аккаунта в БД после успешного QR-сканирования.
+     * @param accountId
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static authQrCompleteApiV1PublicTelegramAuthQrAccountIdCompletePost(
+        accountId: string,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/auth/qr/{account_id}/complete',
+            path: {
+                'account_id': accountId,
+            },
             errors: {
                 422: `Validation Error`,
             },

@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     MESSAGE_BUS: str = "in_memory"
 
     # Kafka
-    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
     KAFKA_GROUP_ID: str = "modular-monolith"
 
     # Приложение
@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     TG_API_ID: int = 0
     TG_API_HASH: str = ""
     TG_SESSION_DIR: str = "sessions"
+    TG_APP_VERSION: str = "modular_monolith"
+    TG_DEVICE_MODEL: str = "ModularMonolith"
+    TG_SYSTEM_VERSION: str = "4.16.30-vxCUSTOM"
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
 
     # SMTP
     SMTP_HOST: str = "localhost"

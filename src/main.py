@@ -24,8 +24,19 @@ from src.bus.kafka.producer import KafkaProducerBus
 from src.core.bus_topics import BusTopics
 from src.core.config import settings
 from src.core.database import async_session_factory, engine
+
+# Настройка логирования приложения (INFO по умолчанию, переопределяется LOG_LEVEL)
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    force=True,
+)
+
+# Подавление шумных логов внешних библиотек
+logging.getLogger("aiokafka").setLevel(logging.WARNING)
+
 from src.core.exceptions import AppException
-from src.core.seed import seed_admin
+from src.modules.auth.seed import seed_admin
 from src.core.telegram_manager import create_telegram_client_manager
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router

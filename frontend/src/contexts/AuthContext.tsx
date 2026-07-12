@@ -31,8 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     OpenAPI.BASE = '';
-    OpenAPI.TOKEN = async () => token ?? (undefined as unknown as string);
-  }, [token]);
+    OpenAPI.TOKEN = async () => localStorage.getItem(TOKEN_STORAGE_KEY) ?? '';
+  }, []);
 
   useEffect(() => {
     const handleUnauthorized = () => setToken(null);

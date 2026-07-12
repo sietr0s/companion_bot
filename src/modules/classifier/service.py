@@ -103,6 +103,7 @@ class ClassifierService(BaseService[CategoryRepository]):
         Создать категории по умолчанию, если их нет.
 
         Вызывается при старте приложения один раз.
+        Управляет транзакцией самостоятельно.
         """
         # Проверяем есть ли уже категории
         existing, _ = await self.get_all_categories(session, limit=1)
