@@ -8,7 +8,9 @@ import { DeleteAccountPage } from './pages/auth/DeleteAccountPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { UsersPage } from './pages/users/UsersPage';
 import { MediaPage } from './pages/media/MediaPage';
-import { TelegramPage } from './pages/telegram/TelegramPage';
+import { TelegramAccountsPage } from './pages/telegram/TelegramAccountsPage';
+import { TelegramChatsPage } from './pages/telegram/TelegramChatsPage';
+import { TelegramSettingsPage } from './pages/telegram/TelegramSettingsPage';
 import { ClassifierPage } from './pages/classifier/ClassifierPage';
 import { TemplatesPage } from './pages/notifications/TemplatesPage';
 import { HistoryPage } from './pages/notifications/HistoryPage';
@@ -38,7 +40,9 @@ export function AppRouter() {
           <Route path="delete-account" element={<DeleteAccountPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="media" element={<MediaPage />} />
-          <Route path="telegram" element={<TelegramPage />} />
+          <Route path="telegram" element={<TelegramAccountsPage />} />
+          <Route path="telegram/:accountId/chats" element={<TelegramChatsPage />} />
+          <Route path="telegram/:accountId/settings" element={<TelegramSettingsPage />} />
           <Route path="classifier/categories" element={<ClassifierPage />} />
           <Route path="notifications/templates" element={<TemplatesPage />} />
           <Route path="notifications/history" element={<HistoryPage />} />

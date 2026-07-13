@@ -1,18 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Button,
   Card,
   Col,
-  Empty,
   Form,
   Input,
-  List,
   Popconfirm,
   Radio,
   Row,
   Space,
   Steps,
-  Switch,
   Table,
   Tag,
   Typography,
@@ -20,75 +17,32 @@ import {
 } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
+import { useNavigate } from 'react-router-dom';
 import { PageTitle } from '../../components/common/PageTitle';
-import { AccountRead, ApiError, ChatRead, TelegramClientsService } from '../../api/generated';
+import { AccountRead, TelegramClientsService } from '../../api/generated';
 import { formatDate } from '../../utils/formatters';
 import { extractErrorMessage } from '../../utils/api';
 
-export function TelegramPage() {
+export function TelegramAccountsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [phoneForm] = Form.useForm<{ phone: string }>();
   const [codeForm] = Form.useForm<{ code: string }>();
   const [passwordForm] = Form.useForm<{ password: string }>();
-  const [settingsForm] = Form.useForm<{
-    read_groups: boolean;
-    read_personal: boolean;
-    read_channels: boolean;
-    whitelist_chat_ids: string;
-  }>();
   const [wizardStep, setWizardStep] = useState(0);
   const [pendingAccountId, setPendingAccountId] = useState<string | null>(null);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
   const [authMethod, setAuthMethod] = useState<'sms' | 'qr'>('sms');
   const [qrAccountId, setQrAccountId] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<string>('pending');
   const [qrMessage, setQrMessage] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const qrPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: ['telegram', 'accounts'],
     queryFn: () => TelegramClientsService.getAccountsApiV1PublicTelegramGet(undefined, 1, 100),
   });
-  const chatsQuery = useQuery({
-    queryKey: ['telegram', 'chats', selectedAccountId],
-    enabled: Boolean(selectedAccountId),
-    queryFn: () => TelegramClientsService.getChatsApiV1PublicTelegramAccountIdChatsGet(selectedAccountId!, 100),
-  });
-  const messagesQuery = useQuery({
-    queryKey: ['telegram', 'messages', selectedAccountId, selectedChatId],
-    enabled: Boolean(selectedAccountId && selectedChatId !== null),
-    queryFn: () =>
-      TelegramClientsService.getMessagesApiV1PublicTelegramAccountIdChatsChatIdMessagesGet(
-        selectedAccountId!,
-        selectedChatId!,
-        50
-      ),
-  });
-  const settingsQuery = useQuery({
-    queryKey: ['telegram', 'settings', selectedAccountId],
-    enabled: Boolean(selectedAccountId),
-    queryFn: () => TelegramClientsService.getSettingsApiV1PublicTelegramAccountIdSettingsGet(selectedAccountId!),
-  });
-
-  useEffect(() => {
-    if (settingsQuery.data) {
-      settingsForm.setFieldsValue({
-        read_groups: settingsQuery.data.read_groups,
-        read_personal: settingsQuery.data.read_personal,
-        read_channels: settingsQuery.data.read_channels,
-        whitelist_chat_ids: settingsQuery.data.whitelist_chat_ids.join(', '),
-      });
-    } else if (settingsQuery.error instanceof ApiError && settingsQuery.error.status === 404) {
-      settingsForm.setFieldsValue({
-        read_groups: true,
-        read_personal: true,
-        read_channels: false,
-        whitelist_chat_ids: '',
-      });
-    }
-  }, [settingsForm, settingsQuery.data, settingsQuery.error]);
 
   const phoneMutation = useMutation({
     mutationFn: (values: { phone: string }) => TelegramClientsService.authPhoneApiV1PublicTelegramAuthPhonePost(values),
@@ -142,8 +96,6 @@ export function TelegramPage() {
       TelegramClientsService.deleteAccountApiV1PublicTelegramAccountIdDelete(accountId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['telegram'] });
-      setSelectedAccountId(null);
-      setSelectedChatId(null);
       void message.success('Аккаунт удалён');
     },
     onError: (error: unknown) => void message.error(extractErrorMessage(error)),
@@ -204,42 +156,10 @@ export function TelegramPage() {
       }
     }, 3000);
 
+    qrPollIntervalRef.current = interval;
+
     return () => clearInterval(interval);
   }, [qrAccountId, qrStatus, queryClient]);
-  const settingsMutation = useMutation({
-    mutationFn: async (values: {
-      read_groups: boolean;
-      read_personal: boolean;
-      read_channels: boolean;
-      whitelist_chat_ids: string;
-    }) => {
-      const whitelistChatIds = values.whitelist_chat_ids
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-
-      if (settingsQuery.data) {
-        // TelegramSettingsUpdate has whitelist_chat_ids as null, so we cast it
-        return TelegramClientsService.updateSettingsApiV1PublicTelegramAccountIdSettingsPut(selectedAccountId!, {
-          read_groups: values.read_groups,
-          read_personal: values.read_personal,
-          read_channels: values.read_channels,
-        });
-      }
-
-      return TelegramClientsService.createSettingsApiV1PublicTelegramAccountIdSettingsPost(selectedAccountId!, {
-        read_groups: values.read_groups,
-        read_personal: values.read_personal,
-        read_channels: values.read_channels,
-        whitelist_chat_ids: whitelistChatIds,
-      });
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['telegram', 'settings', selectedAccountId] });
-      void message.success('Настройки сохранены');
-    },
-    onError: (error: unknown) => void message.error(extractErrorMessage(error)),
-  });
 
   return (
     <Space direction="vertical" size="large" className="page-stack">
@@ -350,10 +270,8 @@ export function TelegramPage() {
               dataSource={accountsQuery.data?.items ?? []}
               pagination={false}
               onRow={(record: AccountRead) => ({
-                onClick: () => {
-                  setSelectedAccountId(record.id);
-                  setSelectedChatId(null);
-                },
+                onClick: () => navigate(`/telegram/${record.id}/chats`),
+                style: { cursor: 'pointer' },
               })}
               columns={[
                 { title: 'Phone', dataIndex: 'phone' },
@@ -381,70 +299,6 @@ export function TelegramPage() {
           </Card>
         </Col>
       </Row>
-      {selectedAccountId ? (
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={8}>
-            <Card title="Чаты аккаунта">
-              <List
-                loading={chatsQuery.isLoading}
-                dataSource={chatsQuery.data ?? []}
-                locale={{ emptyText: <Empty description="Нет чатов" /> }}
-                renderItem={(item: ChatRead) => (
-                  <List.Item
-                    className={selectedChatId === item.id ? 'chat-row active' : 'chat-row'}
-                    onClick={() => setSelectedChatId(item.id)}
-                  >
-                    <List.Item.Meta title={item.name ?? item.username ?? item.id} description={item.chat_type} />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} xl={8}>
-            <Card title="Сообщения">
-              <List
-                loading={messagesQuery.isLoading}
-                dataSource={messagesQuery.data ?? []}
-                locale={{ emptyText: <Empty description="Выберите чат" /> }}
-                renderItem={(item) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      title={`#${item.id} / ${formatDate(item.date)}`}
-                      description={
-                        <Space direction="vertical" size={4}>
-                          <Typography.Text>{item.text ?? '(без текста)'}</Typography.Text>
-                          {item.media?.length ? <Tag color="blue">media: {item.media.length}</Tag> : null}
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} xl={8}>
-            <Card title="Настройки аккаунта">
-              <Form layout="vertical" form={settingsForm} onFinish={(values) => settingsMutation.mutate(values)}>
-                <Form.Item name="read_groups" label="Read groups" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item name="read_personal" label="Read personal" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item name="read_channels" label="Read channels" valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-                <Form.Item name="whitelist_chat_ids" label="Whitelist chat ids">
-                  <Input.TextArea rows={4} placeholder="1, 2, -100123..." />
-                </Form.Item>
-                <Button type="primary" htmlType="submit" loading={settingsMutation.isPending}>
-                  Сохранить настройки
-                </Button>
-              </Form>
-            </Card>
-          </Col>
-        </Row>
-      ) : null}
     </Space>
   );
 }

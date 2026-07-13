@@ -68,6 +68,8 @@ export function ProtectedLayout() {
     templates: 'Templates',
     history: 'History',
     'job-matcher': 'Job Matcher',
+    chats: 'Chats',
+    settings: 'Settings',
     subscriptions: 'Subscriptions',
     'change-password': 'Change Password',
     'delete-account': 'Delete Account',
