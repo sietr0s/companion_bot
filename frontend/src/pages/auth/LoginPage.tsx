@@ -35,11 +35,6 @@ export function LoginPage() {
     <AuthLayout
       title="Вход"
       subtitle="Админ-панель работает поверх автогенерированного клиента из openapi.json"
-      footer={
-        <Button type="link" onClick={() => navigate('/register')}>
-          Нет аккаунта? Зарегистрироваться
-        </Button>
-      }
     >
       <Form layout="vertical" form={form} onFinish={(values) => loginMutation.mutate(values)}>
         <Form.Item

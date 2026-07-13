@@ -10,7 +10,7 @@ export function AuthLayout({
   title: string;
   subtitle: string;
   children: React.ReactNode;
-  footer: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="auth-page">
@@ -18,7 +18,7 @@ export function AuthLayout({
         <Typography.Title level={2}>{title}</Typography.Title>
         <Typography.Paragraph type="secondary">{subtitle}</Typography.Paragraph>
         {children}
-        <div className="auth-footer">{footer}</div>
+        {footer ? <div className="auth-footer">{footer}</div> : null}
       </Card>
     </div>
   );

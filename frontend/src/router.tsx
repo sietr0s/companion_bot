@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { useAuth } from './contexts/AuthContext';
 import { ProtectedLayout } from './components/layout/ProtectedLayout';
 import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
 import { DeleteAccountPage } from './pages/auth/DeleteAccountPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
@@ -32,7 +31,6 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/" element={<ProtectedRoute />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
