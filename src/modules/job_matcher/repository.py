@@ -17,6 +17,9 @@ from src.modules.job_matcher.models import JobOffer, Subscription
 class SubscriptionRepository(BaseRepository[Subscription]):
     """Репозиторий подписок пользователя."""
 
+    def __init__(self) -> None:
+        super().__init__(Subscription)
+
     async def get_by_auth_id(
         self, session: AsyncSession, auth_id: uuid.UUID
     ) -> Subscription | None:
@@ -91,6 +94,9 @@ class SubscriptionRepository(BaseRepository[Subscription]):
 
 class JobOfferRepository(BaseRepository[JobOffer]):
     """Репозиторий предложений о работе."""
+
+    def __init__(self) -> None:
+        super().__init__(JobOffer)
 
     async def get_by_source(
         self,

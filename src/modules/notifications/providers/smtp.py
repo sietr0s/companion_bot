@@ -65,5 +65,10 @@ class SmtpProvider:
             logger.error("Ошибка валидации данных email to=%s: %s", to, e)
             raise
         except Exception as e:
-            logger.exception("Неожиданная ошибка отправки email to=%s, subject=%s: %s", to, subject, e)
+            logger.exception(
+                "Неожиданная ошибка отправки email to=%s, subject=%s: %s",
+                to,
+                subject,
+                e,
+            )
             raise

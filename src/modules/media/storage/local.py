@@ -102,7 +102,7 @@ class LocalStorage:
 
     async def generate_url(self, key: str, expires: int = 3600) -> str:
         """URL для скачивания через внутренний роут."""
-        return f"/public/media/download/{key}"
+        return f"/api/v1/public/media/download/{key}"
 
     def ensure_base_path(self) -> None:
         """Создать базовую папку если не существует."""

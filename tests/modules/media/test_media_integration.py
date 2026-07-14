@@ -201,7 +201,7 @@ class TestMediaPublicAPI:
         data = {"is_public": "true"}
 
         upload_resp = await client.post(
-            "/public/media/upload", data=data, files=files, headers=headers
+            "/api/v1/public/media/upload", data=data, files=files, headers=headers
         )
         assert upload_resp.status_code == 201
         uploaded = upload_resp.json()
@@ -231,7 +231,7 @@ class TestMediaPublicAPI:
         file_id = upload_resp.json()["id"]
 
         # Скачиваем публичный файл без токена
-        download_resp = await client.get(f"/public/media/{file_id}/download")
+        download_resp = await client.get(f"/api/v1/public/media/{file_id}/download")
         assert download_resp.status_code == 200
         downloaded_content = download_resp.content
         assert downloaded_content == original_content
@@ -253,7 +253,7 @@ class TestMediaPublicAPI:
         file_id = upload_resp.json()["id"]
 
         # Попытка скачать без токена должна вернуть 401 или 404
-        download_resp = await client.get(f"/public/media/{file_id}/download")
+        download_resp = await client.get(f"/api/v1/public/media/{file_id}/download")
         assert download_resp.status_code in [401, 404]
 
         # Очистка

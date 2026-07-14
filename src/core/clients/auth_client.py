@@ -1,18 +1,16 @@
 """
 Клиент для прямого вызова сервиса авторизации.
 
-Использует DI-фабрику для получения сервиса с общей шиной.
+Использует AuthService напрямую (без FastAPI Depends).
 Session создаётся и закрывается внутри каждого метода.
 """
 
 import logging
 import uuid
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_session
-from src.core.exceptions import ConflictError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +19,23 @@ class AuthClient:
     """
     Клиент для вызова методов AuthService напрямую.
 
-    Получает сервис через фабрику зависимостей (как MediaClient).
+    Принимает опциональный экземпляр AuthService.
+    Если не передан — создаёт через прямое инстанцирование (без Depends).
     Session создаётся и закрывается внутри каждого метода.
     """
 
-    @staticmethod
-    def _get_service():
-        """Получить экземпляр AuthService через DI-фабрику."""
-        from src.modules.auth.dependencies import get_auth_service
+    def __init__(self, service=None):
+        self._service = service
 
-        return get_auth_service()
+    def _get_service(self):
+        """Получить экземпляр AuthService."""
+        if self._service is not None:
+            return self._service
+        from src.bus.providers import get_message_bus
+        from src.modules.auth.repository import AuthRepository
+        from src.modules.auth.service import AuthService
+
+        return AuthService(repository=AuthRepository(), message_bus=get_message_bus())
 
     async def register(
         self,
@@ -38,7 +43,7 @@ class AuthClient:
         identifier_type: str = "telegram",
         password: str | None = None,
         session: AsyncSession | None = None,
-    ) -> uuid.UUID | None:
+    ) -> uuid.UUID:
         """
         Зарегистрировать нового пользователя через прямой вызов сервиса.
 
@@ -49,38 +54,25 @@ class AuthClient:
             session: Опциональная сессия. Если None — создаётся новая.
 
         Returns:
-            ID созданной учётной записи или None при ошибке.
+            ID созданной учётной записи.
+
+        Raises:
+            Исключения пробрасываются наверх (NotFoundError, ConflictError и т.д.).
         """
-        try:
-            service = self._get_service()
-            data: dict = {
-                "identifier": identifier,
-                "identifier_type": identifier_type,
-                "password": password or "",
-            }
+        service = self._get_service()
+        data: dict = {
+            "identifier": identifier,
+            "identifier_type": identifier_type,
+            "password": password or "",
+        }
 
-            if session is not None:
-                auth_id = await service.register_and_return_id(session, data)
-                return auth_id
+        if session is not None:
+            auth_id = await service.register_and_return_id(session, data)
+            return auth_id
 
-            async for s in get_session():
-                auth_id = await service.register_and_return_id(s, data)
-                return auth_id
-        except ConflictError as e:
-            logger.warning("Пользователь уже существует: %s (%s)", identifier, e)
-            return None
-        except NotFoundError as e:
-            logger.error("Ресурс не найден при регистрации %s: %s", identifier, e)
-            return None
-        except SQLAlchemyError as e:
-            logger.error("Ошибка БД при регистрации %s: %s", identifier, e)
-            raise
-        except (ValueError, TypeError) as e:
-            logger.error("Ошибка валидации данных при регистрации %s: %s", identifier, e)
-            return None
-        except Exception as e:
-            logger.exception("Неожиданная ошибка при регистрации %s: %s", identifier, e)
-            return None
+        async for s in get_session():
+            auth_id = await service.register_and_return_id(s, data)
+            return auth_id
 
     async def get_by_identifier(
         self,
@@ -95,7 +87,7 @@ class AuthClient:
             session: Опциональная сессия.
 
         Returns:
-            ID учётной записи или None.
+            ID учётной записи или None, если не найдена.
         """
         service = self._get_service()
         if session is not None:

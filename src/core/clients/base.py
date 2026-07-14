@@ -42,7 +42,6 @@ class BaseHTTPClient:
         except httpx.RequestError as e:
             logger.error("Ошибка запроса %s %s: %s", method, path, e)
             return None
-        return None
 
     async def get(self, path: str, **kwargs: Any) -> httpx.Response | None:
         return await self._request("GET", path, **kwargs)

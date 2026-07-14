@@ -24,8 +24,8 @@ class TestHandlers:
         """
         bus = InMemoryProducer()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=MockBus(),
         )
 
@@ -41,8 +41,8 @@ class TestHandlers:
         """
         bus = InMemoryProducer()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=MockBus(),
         )
 
@@ -57,8 +57,8 @@ class TestHandlers:
         """
         bus = InMemoryProducer()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=MockBus(),
         )
 

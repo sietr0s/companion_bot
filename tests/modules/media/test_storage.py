@@ -60,7 +60,7 @@ class TestLocalStorage:
     @pytest.mark.asyncio
     async def test_generate_url(self, storage):
         url = await storage.generate_url("ab/cd/test.jpg")
-        assert "/public/media/" in url
+        assert "/api/v1/public/media/" in url
 
     @pytest.mark.asyncio
     async def test_ensure_base_path(self, tmp_path):

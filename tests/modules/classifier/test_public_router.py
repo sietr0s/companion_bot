@@ -12,7 +12,7 @@ class TestClassifierPublicRouter:
     async def test_get_categories_empty(self, client: AsyncClient, admin_token: str):
         """Получение пустого списка категорий."""
         response = await client.get(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
@@ -28,7 +28,7 @@ class TestClassifierPublicRouter:
             "is_active": True,
         }
         response = await client.post(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             json=data,
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -49,7 +49,7 @@ class TestClassifierPublicRouter:
             "description": "Test",
         }
         response = await client.post(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             json=data,
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -64,7 +64,7 @@ class TestClassifierPublicRouter:
             "description": "Test",
         }
         response = await client.post(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             json=data,
         )
         assert response.status_code == 401
@@ -78,7 +78,7 @@ class TestClassifierPublicRouter:
             "description": "Test",
         }
         response = await client.post(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             json=data,
             headers={"Authorization": f"Bearer {auth_token}"},
         )
@@ -105,7 +105,7 @@ class TestClassifierPublicRouter:
         await db_session.commit()
 
         response = await client.get(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
@@ -140,7 +140,7 @@ class TestClassifierPublicRouter:
             "description": "New description",
         }
         response = await client.patch(
-            "/classifier/categories/old_slug",
+            "/api/v1/public/classifier/categories/old_slug",
             json=update_data,
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -155,7 +155,7 @@ class TestClassifierPublicRouter:
         """Обновление несуществующей категории."""
         update_data = {"name": "New Name"}
         response = await client.patch(
-            "/classifier/categories/nonexistent",
+            "/api/v1/public/classifier/categories/nonexistent",
             json=update_data,
             headers={"Authorization": f"Bearer {admin_token}"},
         )
@@ -183,14 +183,14 @@ class TestClassifierPublicRouter:
 
         # Удаляем
         response = await client.delete(
-            "/classifier/categories/to_delete",
+            "/api/v1/public/classifier/categories/to_delete",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 204
 
         # Проверяем что удалена
         response = await client.get(
-            "/classifier/categories",
+            "/api/v1/public/classifier/categories",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 200
@@ -200,7 +200,7 @@ class TestClassifierPublicRouter:
     async def test_delete_category_not_found(self, client: AsyncClient, admin_token: str):
         """Удаление несуществующей категории."""
         response = await client.delete(
-            "/classifier/categories/nonexistent",
+            "/api/v1/public/classifier/categories/nonexistent",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert response.status_code == 404

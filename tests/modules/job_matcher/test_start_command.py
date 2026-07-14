@@ -34,8 +34,8 @@ class TestStartCommand:
         chat_id = 888888
         mock_bus = MockBus()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=mock_bus,
         )
 
@@ -75,8 +75,8 @@ class TestStartCommand:
         chat_id = 888888
         mock_bus = MockBus()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=mock_bus,
         )
 
@@ -92,7 +92,7 @@ class TestStartCommand:
         await service.handle_subscribe(session=db_session, chat_id=chat_id)
 
         # Assert — проверяем, что подписка создана с правильным auth_id
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
         sub = await repo.get_by_auth_id(session=db_session, auth_id=auth_account.id)
         assert sub is not None
         assert sub.auth_id == auth_account.id
@@ -123,8 +123,8 @@ class TestStartCommand:
 
         mock_bus = MockBus()
         service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
-            sub_repo=SubscriptionRepository(model=Subscription),
+            offer_repo=JobOfferRepository(),
+            sub_repo=SubscriptionRepository(),
             bus=mock_bus,
         )
 

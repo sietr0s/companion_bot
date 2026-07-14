@@ -4,6 +4,7 @@
 
 import uuid
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.clients.auth_client import AuthClient
@@ -32,10 +33,12 @@ class TestAuthClient:
         assert account is not None
         assert account.identifier == "tg_test_register"
 
-    async def test_register_returns_none_on_error(self, db_session: AsyncSession):
+    async def test_register_raises_on_duplicate(self, db_session: AsyncSession):
         """
-        register() возвращает None при ошибке (дубликат).
+        register() выбрасывает ConflictError при дубликате.
         """
+        from src.core.exceptions import ConflictError
+
         repo = AuthRepository()
         await repo.create(
             db_session,
@@ -47,13 +50,13 @@ class TestAuthClient:
         )
 
         client = AuthClient()
-        auth_id = await client.register(
-            identifier="tg_duplicate",
-            identifier_type="telegram",
-            password="testpass",
-            session=db_session,
-        )
-        assert auth_id is None
+        with pytest.raises(ConflictError):
+            await client.register(
+                identifier="tg_duplicate",
+                identifier_type="telegram",
+                password="testpass",
+                session=db_session,
+            )
 
     async def test_get_by_identifier_found(self, db_session: AsyncSession):
         """

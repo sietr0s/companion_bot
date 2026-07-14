@@ -296,7 +296,7 @@ async def create_settings(
     if not account or account.auth_id != auth_id:
         raise NotFoundError(detail="Telegram-аккаунт не найден")
 
-    settings = await service._create_default_settings(session, account_id)
+    settings = await service.create_default_settings(session, account_id)
     # Если переданы кастомные значения - обновляем
     if data.model_dump(exclude_unset=True):
         settings = await service.update_settings(

@@ -63,12 +63,15 @@ class KafkaProducerBus:
             await self._producer.stop()
             logger.info("KafkaProducerBus остановлен")
 
-    async def publish(self, topic: str, message: dict[str, Any]) -> None:
+    async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
         """
         Отправка сообщения в Kafka-топик.
 
         send_and_wait — гарантированная отправка
         с подтверждением от брокера.
+
+        Параметр await_handlers добавлен для совместимости
+        с протоколом MessageBus. Kafka всегда асинхронная.
         """
         if not self._producer:
             logger.error("Kafka-продюсер не инициализирован")

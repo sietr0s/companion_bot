@@ -33,7 +33,7 @@ class InMemoryProducer:
     def __init__(self) -> None:
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
 
-    async def publish(self, topic: str, message: dict[str, Any]) -> None:
+    async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
         """
         Вызывает все обработчики, подписанные на топик.
 
@@ -41,13 +41,18 @@ class InMemoryProducer:
         планируются через create_task. Иначе — вызываются напрямую.
         Ошибки обрабатываются через safe_handle — бизнес-исключения
         публикуются в DLQ, остальные логируются.
+
+        Если await_handlers=True — дожидается завершения всех
+        обработчиков через asyncio.gather с return_exceptions=True.
         """
         handlers = self._subscribers.get(topic, [])
+        tasks: list[asyncio.Task] = []
         for handler in handlers:
             if asyncio.iscoroutinefunction(handler):
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(safe_handle(handler, topic, message))
+                    task = loop.create_task(safe_handle(handler, topic, message))
+                    tasks.append(task)
                 except RuntimeError:
                     # Нет запущенного event loop — вызываем синхронно
                     logger.warning(
@@ -56,6 +61,9 @@ class InMemoryProducer:
                     )
             else:
                 handler(message)
+
+        if await_handlers and tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def subscribe(self, topic: str) -> Callable:
         """

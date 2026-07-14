@@ -26,8 +26,7 @@ def register_handlers(
 
     Обработчики:
     - TG_MESSAGE_RECEIVED — сохранение вакансий и отправка на классификацию
-    - BOT_MESSAGE_INCOMING (/start) — регистрация пользователя
-    - BOT_MESSAGE_INCOMING (/subscribe) — создание подписки
+    - BOT_MESSAGE_INCOMING — диспатч команд /start и /subscribe
     - JOB_OFFER_CLASSIFIED — обновление категорий и поиск подходящих подписок
     """
 
@@ -51,28 +50,20 @@ def register_handlers(
         )
 
     @bus.subscribe(BusTopics.BOT_MESSAGE_INCOMING)
-    async def handle_start(message: dict) -> None:
-        """Обработчик: /start — регистрация пользователя."""
+    async def handle_bot_command(message: dict) -> None:
+        """Обработчик: диспатч команд /start и /subscribe."""
         chat_id = message.get("chat_id")
         command = message.get("command")
 
-        if command != "/start" or not chat_id:
+        if not chat_id:
             return
 
         session, service = await service_factory()
-        await service.handle_start(session=session, chat_id=chat_id)
 
-    @bus.subscribe(BusTopics.BOT_MESSAGE_INCOMING)
-    async def handle_subscribe(message: dict) -> None:
-        """Обработчик: /subscribe — создание подписки."""
-        chat_id = message.get("chat_id")
-        command = message.get("command")
-
-        if command != "/subscribe" or not chat_id:
-            return
-
-        session, service = await service_factory()
-        await service.handle_subscribe(session=session, chat_id=chat_id)
+        if command == "/start":
+            await service.handle_start(session=session, chat_id=chat_id)
+        elif command == "/subscribe":
+            await service.handle_subscribe(session=session, chat_id=chat_id)
 
     @bus.subscribe(BusTopics.JOB_OFFER_CLASSIFIED)
     async def handle_job_offer_classified(message: dict) -> None:

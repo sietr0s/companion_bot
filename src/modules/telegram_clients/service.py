@@ -10,14 +10,12 @@ import asyncio
 import logging
 import os
 import uuid
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from telethon import TelegramClient
 from telethon.events import NewMessage
 
-from src.core.database import async_session_factory
 from src.base.filters import Filter
 from src.base.service import BaseService
 from src.bus.interface import MessageBus
@@ -84,7 +82,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         """
         phone = data["phone"]
         account_id = uuid.uuid4()
-        session_path = self.client_manager._get_session_path(account_id)
+        session_path = self.client_manager.get_session_path(account_id)
 
         logger.info(
             "[tg auth] Запрос кода: auth_id=%s, account_id=%s, phone=%s",
@@ -305,7 +303,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         """
         me = await self.client_manager.complete_qr_login(account_id)
 
-        session_path = self.client_manager._get_session_path(account_id)
+        session_path = self.client_manager.get_session_path(account_id)
 
         account = await self.repository.create(
             session,
@@ -344,10 +342,10 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         settings = await self.settings_repository.get_by_account_id(session, account_id)
         if not settings:
-            return await self._create_default_settings(session, account_id)
+            return await self.create_default_settings(session, account_id)
         return settings
 
-    async def _create_default_settings(
+    async def create_default_settings(
         self, session: AsyncSession, account_id: uuid.UUID
     ) -> TelegramSettings:
         """Создать настройки по умолчанию."""
@@ -368,7 +366,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         settings = await self.settings_repository.get_by_account_id(session, account_id)
         if not settings:
-            return await self._create_default_settings(session, account_id)
+            return await self.create_default_settings(session, account_id)
 
         update_data = {k: v for k, v in data.items() if v is not None}
         return await self.settings_repository.update(session, settings, update_data)
@@ -655,7 +653,11 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         except asyncio.CancelledError:
             logger.warning("Обработка входящего сообщения отменена для аккаунта %s", account_id)
         except (ConnectionError, TimeoutError) as e:
-            logger.error("Ошибка подключения при обработке сообщения для аккаунта %s: %s", account_id, e)
+            logger.error(
+                "Ошибка подключения при обработке сообщения для аккаунта %s: %s",
+                account_id,
+                e,
+            )
         except Exception as e:
             logger.exception(
                 "Неожиданная ошибка при обработке входящего сообщения для аккаунта %s: %s",

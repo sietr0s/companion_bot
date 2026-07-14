@@ -19,7 +19,7 @@ class MessageBus(Protocol):
     или на базе Kafka (для микросервисной архитектуры).
     """
 
-    async def publish(self, topic: str, message: dict[str, Any]) -> None:
+    async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
         """Опубликовать сообщение в топик."""
         ...
 

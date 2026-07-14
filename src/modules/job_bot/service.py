@@ -98,7 +98,9 @@ class BotService:
         if description:
             text_parts.append(description)
         if salary_from or salary_to:
-            salary = f"{salary_from or VACANCY_SALARY_UNKNOWN} - {salary_to or VACANCY_SALARY_UNKNOWN} ₽"
+            salary_from_str = salary_from or VACANCY_SALARY_UNKNOWN
+            salary_to_str = salary_to or VACANCY_SALARY_UNKNOWN
+            salary = f"{salary_from_str} - {salary_to_str} ₽"
             text_parts.append(VACANCY_SALARY_TEMPLATE.format(salary=salary))
         if location:
             text_parts.append(VACANCY_LOCATION_TEMPLATE.format(location=location))

@@ -75,7 +75,8 @@ async def telegram_client() -> TelegramClient:
         if not TG_TEST_USER_PHONE:
             raise ValueError(
                 "TG_TEST_USER_PHONE не указан. "
-                "Установите переменную окружения или удалите session-файл для интерактивной аутентификации."
+                "Установите переменную окружения или удалите session-файл "
+            "для интерактивной аутентификации."
             )
         
         await client.send_code_request(TG_TEST_USER_PHONE)

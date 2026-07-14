@@ -70,10 +70,6 @@ omit = [
     "src/main.py",
     "src/core/config.py",
     "src/core/database.py",
-    "src/core/exceptions.py",
-    "src/core/security.py",
-    "src/base/*",
-    "src/bus/*",
 ]
 
 [tool.coverage.report]

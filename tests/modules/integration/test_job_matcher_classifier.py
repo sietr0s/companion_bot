@@ -82,7 +82,7 @@ class TestJobMatcherClassifierIntegration:
         """
         bus = InMemoryProducer()
         job_matcher_service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
+            offer_repo=JobOfferRepository(),
             sub_repo=None,
             bus=bus,
         )
@@ -176,7 +176,7 @@ class TestJobMatcherClassifierIntegration:
         """
         bus = InMemoryProducer()
         job_matcher_service = JobMatcherService(
-            offer_repo=JobOfferRepository(model=JobOffer),
+            offer_repo=JobOfferRepository(),
             sub_repo=None,
             bus=bus,
         )

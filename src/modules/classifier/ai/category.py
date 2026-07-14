@@ -1,5 +1,6 @@
 """Zero-shot классификатор категорий на основе BART."""
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
@@ -73,8 +74,12 @@ class ZeroShotCategoryClassifier:
         label_names = [label["name"] for label in labels]
 
         try:
-            # Запускаем классификацию
-            result = pipeline(text, label_names, multi_label=False)
+            # Запускаем классификацию в executor, чтобы не блокировать event loop
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: pipeline(text, label_names, multi_label=False),
+            )
 
             # Маппинг результата обратно в CategoryScore
             # result: {"labels": [...], "scores": [...], "sequence": "..."}

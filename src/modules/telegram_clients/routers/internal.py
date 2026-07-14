@@ -44,7 +44,7 @@ async def create_settings(
     service: TelegramClientService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
     """Создать настройки Telegram-аккаунта."""
-    settings = await service._create_default_settings(session, account_id)
+    settings = await service.create_default_settings(session, account_id)
     # Если переданы кастомные значения - обновляем
     if data.model_dump(exclude_unset=True):
         settings = await service.update_settings(

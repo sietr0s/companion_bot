@@ -219,7 +219,7 @@ class TestTelegramSettingsPublicAPI:
 
         # Пытаемся получить настройки без токена
         fake_account_id = uuid.uuid4()
-        resp = await client.get(f"/public/telegram/{fake_account_id}/settings")
+        resp = await client.get(f"/api/v1/public/telegram/{fake_account_id}/settings")
 
         # Должен вернуть 401 Unauthorized
         assert resp.status_code == 401

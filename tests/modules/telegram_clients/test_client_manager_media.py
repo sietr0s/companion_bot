@@ -93,7 +93,7 @@ async def test_on_new_message_with_photo_uploads_to_storage(
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
-        manager._register_message_handler(account_id, mock_client)
+        manager.register_message_handler(account_id, mock_client)
 
         mock_event = create_mock_event()
 
@@ -153,7 +153,7 @@ async def test_on_new_message_with_media_upload_error(
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
-        manager._register_message_handler(account_id, mock_client)
+        manager.register_message_handler(account_id, mock_client)
 
         mock_event = create_mock_event()
 
@@ -204,7 +204,7 @@ async def test_on_new_message_without_media(
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
-        manager._register_message_handler(account_id, mock_client)
+        manager.register_message_handler(account_id, mock_client)
 
         mock_event = create_mock_event()
 
@@ -272,7 +272,7 @@ async def test_on_new_message_with_video_uploads_to_storage(
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
-        manager._register_message_handler(account_id, mock_client)
+        manager.register_message_handler(account_id, mock_client)
 
         mock_event = create_mock_event()
 

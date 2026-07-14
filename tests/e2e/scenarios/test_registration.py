@@ -2,7 +2,7 @@
 E2E тест: Регистрация пользователя и подключение Telegram.
 
 Сценарий:
-1. POST /public/auth/register → создание пользователя
+1. POST /api/v1/public/auth/register → создание пользователя
 2. Проверка: пользователь создан, токен получен
 
 Примечание: Полная интеграция с Telegram (SMS-код) требует
@@ -35,7 +35,7 @@ async def test_registration_flow(e2e_client: httpx.AsyncClient):
     }
     
     # Шаг 1: Регистрация
-    response = await e2e_client.post("/public/auth/register", json=register_data)
+    response = await e2e_client.post("/api/v1/public/auth/register", json=register_data)
     
     # Проверка статуса
     assert response.status_code == 201, f"Registration failed: {response.text}"
@@ -66,7 +66,7 @@ async def test_registration_with_phone(e2e_client: httpx.AsyncClient):
         "password": test_password
     }
     
-    response = await e2e_client.post("/public/auth/register", json=register_data)
+    response = await e2e_client.post("/api/v1/public/auth/register", json=register_data)
     
     assert response.status_code == 201, f"Phone registration failed: {response.text}"
     
@@ -90,11 +90,11 @@ async def test_registration_duplicate_email(e2e_client: httpx.AsyncClient):
         "password": test_password
     }
     
-    response1 = await e2e_client.post("/public/auth/register", json=register_data)
+    response1 = await e2e_client.post("/api/v1/public/auth/register", json=register_data)
     assert response1.status_code == 201
     
     # Вторая регистрация с тем же email
-    response2 = await e2e_client.post("/public/auth/register", json=register_data)
+    response2 = await e2e_client.post("/api/v1/public/auth/register", json=register_data)
     
     # Ожидаем конфликт (409) или другую ошибку
     assert response2.status_code in [409, 400], "Дубликат должен вернуть ошибку"
@@ -116,7 +116,7 @@ async def test_login_after_registration(e2e_client: httpx.AsyncClient):
         "password": test_password
     }
     
-    await e2e_client.post("/public/auth/register", json=register_data)
+    await e2e_client.post("/api/v1/public/auth/register", json=register_data)
     
     # Вход
     login_data = {
@@ -124,7 +124,7 @@ async def test_login_after_registration(e2e_client: httpx.AsyncClient):
         "password": test_password
     }
     
-    response = await e2e_client.post("/public/auth/login", json=login_data)
+    response = await e2e_client.post("/api/v1/public/auth/login", json=login_data)
     
     assert response.status_code == 200, f"Login failed: {response.text}"
     

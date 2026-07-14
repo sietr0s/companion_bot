@@ -29,7 +29,7 @@ class MockStorage:
         self._files.pop(key, None)
 
     async def generate_url(self, key: str, expires: int = 3600) -> str:
-        return f"/public/media/download/{key}"
+        return f"/api/v1/public/media/download/{key}"
 
 
 @pytest_asyncio.fixture

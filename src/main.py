@@ -7,14 +7,16 @@ TelegramClientManager, подключает роутеры модулей,
 Модули изолированы — связаны только через шину сообщений.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from functools import partial
-from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 
 from src.base.model import Base
 from src.bus.in_memory.consumer import InMemoryConsumer
@@ -36,7 +38,7 @@ logging.basicConfig(
 logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
 from src.core.exceptions import AppException
-from src.modules.auth.seed import seed_admin
+from src.core.seed import seed_admin
 from src.core.telegram_manager import create_telegram_client_manager
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
@@ -70,6 +72,14 @@ from src.modules.telegram_clients.handlers import (
 from src.modules.telegram_clients.routers import internal_router as tg_internal_router
 from src.modules.telegram_clients.routers import public_router as tg_router
 from src.modules.users.handlers import register_handlers
+from src.modules.media.storage.local import LocalStorage
+from src.modules.telegram_clients.models import TelegramAccount
+from src.modules.telegram_clients.repository import (
+    TelegramAccountRepository,
+    TelegramChatStateRepository,
+    TelegramSettingsRepository,
+)
+from src.modules.telegram_clients.service import TelegramClientService
 from src.modules.users.routers import internal_router as users_internal_router
 from src.modules.users.routers import public_router as users_router
 
@@ -165,18 +175,9 @@ async def lifespan(app: FastAPI):
 
     # Создаём папку для загрузок если LocalStorage
     if settings.MEDIA_STORAGE_PROVIDER == "local":
-        from src.modules.media.storage.local import LocalStorage
-
         LocalStorage().ensure_base_path()
 
     # Создаём сервис и устанавливаем в менеджер для обработки входящих сообщений
-    from src.modules.telegram_clients.repository import (
-        TelegramAccountRepository,
-        TelegramChatStateRepository,
-        TelegramSettingsRepository,
-    )
-    from src.modules.telegram_clients.service import TelegramClientService
-
     telegram_service = TelegramClientService(
         repository=TelegramAccountRepository(),
         message_bus=producer,
@@ -229,11 +230,6 @@ async def lifespan(app: FastAPI):
 
 async def _restore_tg_sessions() -> None:
     """Восстановление подключений Telegram-аккаунтов при старте."""
-    from sqlalchemy import select
-
-    from src.core.database import async_session_factory
-    from src.modules.telegram_clients.models import TelegramAccount
-
     async with async_session_factory() as session:
         stmt = select(TelegramAccount).where(TelegramAccount.is_connected.is_(True))
         result = await session.execute(stmt)
@@ -245,16 +241,15 @@ async def _restore_tg_sessions() -> None:
         except (ConnectionError, TimeoutError) as e:
             logger.error("Ошибка подключения Telegram для аккаунта %s: %s", account.id, e)
         except Exception as e:
-            logger.exception("Неожиданная ошибка при подключении Telegram-аккаунта %s: %s", account.id, e)
+            logger.exception(
+                "Неожиданная ошибка при подключении Telegram-аккаунта %s: %s",
+                account.id,
+                e,
+            )
 
 
-async def _read_unread_telegram_messages(telegram_service: Any) -> None:
+async def _read_unread_telegram_messages(telegram_service: TelegramClientService) -> None:
     """Чтение непрочитанных сообщений для всех подключённых аккаунтов."""
-    from sqlalchemy import select
-
-    from src.core.database import async_session_factory
-    from src.modules.telegram_clients.models import TelegramAccount
-
     async with async_session_factory() as session:
         # Получаем все подключённые аккаунты
         stmt = select(TelegramAccount).where(TelegramAccount.is_connected.is_(True))

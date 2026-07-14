@@ -67,9 +67,26 @@ class KafkaConsumerRouter:
             self._consumer = nonlocal_consumer
 
         await _connect()
-        # Запускаем цикл чтения в фоновой задаче
-        self._task = asyncio.create_task(self._consume())
+        # Запускаем цикл чтения с retry в фоновой задаче
+        self._task = asyncio.create_task(self._run_with_retry())
         logger.info("KafkaConsumerRouter запущен, топики: %s", topics)
+
+    async def _run_with_retry(self) -> None:
+        """Цикл чтения с exponential backoff при ошибках подключения к Kafka."""
+        retry_delay = 1
+        max_delay = 60
+        while True:
+            try:
+                await self._consume()
+            except asyncio.CancelledError:
+                logger.info("KafkaConsumerRouter: задача отменена, останавливаем retry")
+                raise
+            except Exception:
+                logger.exception(
+                    "KafkaConsumerRouter: ошибка, перезапуск через %ds", retry_delay
+                )
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_delay)
 
     async def _consume(self) -> None:
         """Цикл чтения сообщений из Kafka и вызова обработчиков через safe_handle."""

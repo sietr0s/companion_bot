@@ -23,14 +23,14 @@ class TestSubscriptionRepository:
         db_session.add(sub)
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
         found = await repo.get_by_auth_id(db_session, auth_id)
         assert found is not None
         assert found.auth_id == auth_id
 
     async def test_get_by_auth_id_not_found(self, db_session: AsyncSession):
         """Поиск несуществующей подписки."""
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
         found = await repo.get_by_auth_id(db_session, uuid.uuid4())
         assert found is None
 
@@ -44,7 +44,7 @@ class TestSubscriptionRepository:
         db_session.add(sub)
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
         matching = await repo.find_matching(db_session, tags=["python"])
         assert len(matching) == 1
         assert matching[0].auth_id == sub.auth_id
@@ -59,7 +59,7 @@ class TestSubscriptionRepository:
         db_session.add(sub)
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
         matching = await repo.find_matching(db_session, tags=["python"])
         assert len(matching) == 0
 
@@ -82,7 +82,7 @@ class TestSubscriptionRepository:
         db_session.add_all([sub1, sub2])
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
 
         # Ищем по cat_a — должна найтись sub1
         matching = await repo.find_matching(
@@ -130,7 +130,7 @@ class TestSubscriptionRepository:
         db_session.add_all([sub1, sub2, sub3])
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
 
         # Оффер с зарплатой 120_000–180_000
         # Все три подписки подходят:
@@ -164,7 +164,7 @@ class TestSubscriptionRepository:
         db_session.add_all([sub1, sub2, sub3])
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
 
         # Ищем по Moscow
         matching = await repo.find_matching(db_session, location="Moscow")
@@ -197,7 +197,7 @@ class TestSubscriptionRepository:
         db_session.add_all([sub1, sub2])
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
 
         # Ищем оффер: категория A, тег python, зарплата 120_000, локация Moscow
         matching = await repo.find_matching(
@@ -218,7 +218,7 @@ class TestSubscriptionRepository:
         db_session.add_all([sub1, sub2, sub3])
         await db_session.commit()
 
-        repo = SubscriptionRepository(model=Subscription)
+        repo = SubscriptionRepository()
 
         # Без фильтров — только активные
         matching = await repo.find_matching(db_session)
@@ -240,13 +240,13 @@ class TestJobOfferRepository:
         db_session.add(offer)
         await db_session.commit()
 
-        repo = JobOfferRepository(model=JobOffer)
+        repo = JobOfferRepository()
         found = await repo.get_by_source(db_session, source_chat_id=100, source_message_id=200)
         assert found is not None
         assert found.title == "Python Developer"
 
     async def test_get_by_source_not_found(self, db_session: AsyncSession):
         """Поиск несуществующего оффера."""
-        repo = JobOfferRepository(model=JobOffer)
+        repo = JobOfferRepository()
         found = await repo.get_by_source(db_session, source_chat_id=999, source_message_id=999)
         assert found is None

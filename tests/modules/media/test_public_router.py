@@ -76,7 +76,7 @@ class TestPublicUpload:
     async def test_upload_requires_auth(self, test_client_with_db: AsyncClient):
         file_data = io.BytesIO(b"test content")
         resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("test.txt", file_data, "text/plain")},
         )
         assert resp.status_code == 401
@@ -85,7 +85,7 @@ class TestPublicUpload:
     async def test_upload_success(self, test_client_with_db: AsyncClient, auth_headers: dict):
         file_data = io.BytesIO(b"hello world")
         resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("test.txt", file_data, "text/plain")},
             headers=auth_headers,
         )
@@ -99,7 +99,7 @@ class TestPublicUpload:
     async def test_upload_public_file(self, test_client_with_db: AsyncClient, auth_headers: dict):
         file_data = io.BytesIO(b"public content")
         resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("pub.txt", file_data, "text/plain")},
             data={"is_public": "true"},
             headers=auth_headers,
@@ -113,14 +113,14 @@ class TestPublicGet:
     async def test_get_public_file(self, test_client_with_db: AsyncClient, auth_headers: dict):
         file_data = io.BytesIO(b"public data")
         upload_resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("pub.txt", file_data, "text/plain")},
             data={"is_public": "true"},
             headers=auth_headers,
         )
         file_id = upload_resp.json()["id"]
 
-        resp = await test_client_with_db.get(f"/public/media/{file_id}")
+        resp = await test_client_with_db.get(f"/api/v1/public/media/{file_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == file_id
 
@@ -130,13 +130,13 @@ class TestPublicGet:
     ):
         file_data = io.BytesIO(b"private data")
         upload_resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("priv.txt", file_data, "text/plain")},
             headers=auth_headers,
         )
         file_id = upload_resp.json()["id"]
 
-        resp = await test_client_with_db.get(f"/public/media/{file_id}")
+        resp = await test_client_with_db.get(f"/api/v1/public/media/{file_id}")
         assert resp.status_code == 404
 
 
@@ -145,14 +145,14 @@ class TestPublicDownload:
     async def test_download_public_file(self, test_client_with_db: AsyncClient, auth_headers: dict):
         file_data = io.BytesIO(b"download me")
         upload_resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("dl.txt", file_data, "text/plain")},
             data={"is_public": "true"},
             headers=auth_headers,
         )
         file_id = upload_resp.json()["id"]
 
-        resp = await test_client_with_db.get(f"/public/media/{file_id}/download")
+        resp = await test_client_with_db.get(f"/api/v1/public/media/{file_id}/download")
         assert resp.status_code == 200
         assert resp.content == b"download me"
 
@@ -162,13 +162,13 @@ class TestPublicDownload:
     ):
         file_data = io.BytesIO(b"private")
         upload_resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("priv.txt", file_data, "text/plain")},
             headers=auth_headers,
         )
         file_id = upload_resp.json()["id"]
 
-        resp = await test_client_with_db.get(f"/public/media/{file_id}/download")
+        resp = await test_client_with_db.get(f"/api/v1/public/media/{file_id}/download")
         assert resp.status_code == 404
 
 
@@ -176,7 +176,7 @@ class TestPublicDelete:
     @pytest.mark.asyncio
     async def test_delete_requires_auth(self, test_client_with_db: AsyncClient):
         resp = await test_client_with_db.delete(
-            "/public/media/00000000-0000-0000-0000-000000000000"
+            "/api/v1/public/media/00000000-0000-0000-0000-000000000000"
         )
         assert resp.status_code == 401
 
@@ -184,11 +184,12 @@ class TestPublicDelete:
     async def test_delete_success(self, test_client_with_db: AsyncClient, auth_headers: dict):
         file_data = io.BytesIO(b"to delete")
         upload_resp = await test_client_with_db.post(
-            "/public/media/upload",
+            "/api/v1/public/media/upload",
             files={"file": ("del.txt", file_data, "text/plain")},
             headers=auth_headers,
         )
         file_id = upload_resp.json()["id"]
 
-        resp = await test_client_with_db.delete(f"/public/media/{file_id}", headers=auth_headers)
+        url = f"/api/v1/public/media/{file_id}"
+        resp = await test_client_with_db.delete(url, headers=auth_headers)
         assert resp.status_code == 204

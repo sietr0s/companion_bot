@@ -8,11 +8,9 @@ Session создаётся и закрывается внутри каждого
 import logging
 import uuid
 
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_session
-from src.core.exceptions import ConflictError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +25,16 @@ class UsersClient:
 
     @staticmethod
     def _get_service():
-        """Получить экземпляр UserService через DI-фабрику."""
-        from src.modules.users.dependencies import get_user_service
+        """Получить экземпляр UserService через прямое инстанцирование."""
+        from src.modules.users.repository import UserRepository, TelegramRepository
+        from src.modules.users.service import UserService
+        from src.bus.providers import get_message_bus
 
-        return get_user_service()
+        return UserService(
+            repository=UserRepository(),
+            telegram_repository=TelegramRepository(),
+            message_bus=get_message_bus(),
+        )
 
     async def resolve_email_by_auth_id(
         self,
@@ -44,21 +48,14 @@ class UsersClient:
 
         Returns:
             Email пользователя или None, если не найден.
+
+        Raises:
+            Исключения пробрасываются наверх (NotFoundError, SQLAlchemyError и т.д.).
         """
-        try:
-            service = self._get_service()
-            async for session in get_session():
-                profile = await service.get_profile(session, auth_id)
-                return getattr(profile, "email", None) if profile else None
-        except NotFoundError:
-            logger.warning("Профиль не найден для auth_id: %s", auth_id)
-            return None
-        except SQLAlchemyError as e:
-            logger.error("Ошибка БД при получении профиля %s: %s", auth_id, e)
-            raise
-        except Exception as e:
-            logger.exception("Неожиданная ошибка при резолве email для auth_id %s: %s", auth_id, e)
-            return None
+        service = self._get_service()
+        async for session in get_session():
+            profile = await service.get_profile(session, auth_id)
+            return getattr(profile, "email", None) if profile else None
 
     async def get_profile(self, auth_id: uuid.UUID):
         """
@@ -69,20 +66,13 @@ class UsersClient:
 
         Returns:
             Объект профиля или None.
+
+        Raises:
+            Исключения пробрасываются наверх (NotFoundError, SQLAlchemyError и т.д.).
         """
-        try:
-            service = self._get_service()
-            async for session in get_session():
-                return await service.get_profile(session, auth_id)
-        except NotFoundError:
-            logger.warning("Профиль не найден для auth_id: %s", auth_id)
-            return None
-        except SQLAlchemyError as e:
-            logger.error("Ошибка БД при получении профиля %s: %s", auth_id, e)
-            raise
-        except Exception as e:
-            logger.exception("Неожиданная ошибка при получении профиля для auth_id %s: %s", auth_id, e)
-            return None
+        service = self._get_service()
+        async for session in get_session():
+            return await service.get_profile(session, auth_id)
 
     async def create_profile(
         self,
@@ -99,31 +89,18 @@ class UsersClient:
             session: Опциональная сессия.
 
         Returns:
-            True если создан, False при ошибке.
-        """
-        try:
-            service = self._get_service()
-            if session is not None:
-                await service.create_user_profile(
-                    session, auth_id, {"first_name": first_name}
-                )
-                return True
+            True если создан.
 
-            async for s in get_session():
-                await service.create_user_profile(s, auth_id, {"first_name": first_name})
-                return True
-        except ConflictError as e:
-            logger.warning("Профиль уже существует для auth_id %s: %s", auth_id, e)
-            return False
-        except NotFoundError as e:
-            logger.error("Ресурс не найден при создании профиля %s: %s", auth_id, e)
-            return False
-        except SQLAlchemyError as e:
-            logger.error("Ошибка БД при создании профиля %s: %s", auth_id, e)
-            raise
-        except (ValueError, TypeError) as e:
-            logger.error("Ошибка валидации данных при создании профиля %s: %s", auth_id, e)
-            return False
-        except Exception as e:
-            logger.exception("Неожиданная ошибка при создании профиля для auth_id %s: %s", auth_id, e)
-            return False
+        Raises:
+            Исключения пробрасываются наверх (ConflictError, NotFoundError, SQLAlchemyError и т.д.).
+        """
+        service = self._get_service()
+        if session is not None:
+            await service.create_user_profile(
+                session, auth_id, {"first_name": first_name}
+            )
+            return True
+
+        async for s in get_session():
+            await service.create_user_profile(s, auth_id, {"first_name": first_name})
+            return True

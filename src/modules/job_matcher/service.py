@@ -71,7 +71,7 @@ class JobMatcherService(BaseService[JobOfferRepository]):
 
     async def send_for_classification(
         self,
-        job_offer_id: int,
+        job_offer_id: uuid.UUID,
         text: str,
     ) -> None:
         """
@@ -91,7 +91,7 @@ class JobMatcherService(BaseService[JobOfferRepository]):
     async def update_job_offer_categories(
         self,
         session: AsyncSession,
-        job_offer_id: int,
+        job_offer_id: uuid.UUID,
         category_ids: list,
     ) -> None:
         """

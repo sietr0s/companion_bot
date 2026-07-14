@@ -131,7 +131,7 @@ class TestAuthUsersIntegration:
 
         # 4. Получаем свой профиль через публичное API с JWT
         headers = {"Authorization": f"Bearer {token}"}
-        me_resp = await client.get("/public/users/me", headers=headers)
+        me_resp = await client.get("/api/v1/public/users/me", headers=headers)
         assert me_resp.status_code == 200
         me_data = me_resp.json()
         assert me_data["auth_id"] == str(auth_id)
