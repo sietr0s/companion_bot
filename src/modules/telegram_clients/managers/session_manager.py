@@ -24,14 +24,14 @@ from src.core.database import async_session_factory
 logger = logging.getLogger(__name__)
 
 
-async def get_session_path(client_manager: Any, account_id: uuid.UUID) -> str:
+def get_session_path(client_manager: Any, account_id: uuid.UUID) -> str:
     """Формирует путь к session-файлу."""
     session_dir = settings.TG_SESSION_DIR
     os.makedirs(session_dir, exist_ok=True)
     return os.path.join(session_dir, str(account_id))
 
 
-async def create_client(session_path: str) -> TelegramClient:
+def create_client(session_path: str) -> TelegramClient:
     """Создаёт экземпляр TelegramClient."""
     logger.debug("TG_API_ID: %s", settings.TG_API_ID)
     logger.debug("TG_API_HASH: %s", settings.TG_API_HASH)
