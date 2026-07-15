@@ -1,56 +1,52 @@
 """
 Менеджер Telegram-клиентов (singleton) — фасад.
 
-Делегирует вызовы специализированным менеджерам:
-- TelegramAuthManager — авторизация (код, пароль, QR)
-- TelegramMessageManager — чтение/отправка сообщений, медиа
-- TelegramSessionManager — управление сессиями (подключение/отключение)
+Единственный владелец состояния:
+- Реестр активных Telethon-клиентов
+- Сервис для обработки входящих сообщений
+- Данные авторизации (phone_code_hashes, phones, QR-сессии)
 
-Сохраняет обратную совместимость: все публичные методы
-TelegramClientManager доступны с теми же сигнатурами.
+Делегирует вызовы stateless-менеджерам, передавая self первым параметром.
 """
 
-import asyncio
 import logging
 import os
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import asyncio
 
 from telethon import TelegramClient
 
 from src.core.config import settings
-from src.modules.telegram_clients.managers.auth_manager import TelegramAuthManager
-from src.modules.telegram_clients.managers.message_manager import TelegramMessageManager
-from src.modules.telegram_clients.managers.session_manager import TelegramSessionManager
 from src.modules.telegram_clients.domain import Media, Message
+from src.modules.telegram_clients.managers import (
+    auth_manager,
+    message_manager,
+    session_manager,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class TelegramClientManager:
     """
-    Singleton-менеджер Telethon-клиентов — фасад.
+    Фасад — владелец состояния Telegram-клиентов.
 
-    Держит все активные подключения в памяти.
-    При старте приложения загружает все сессии из БД.
-
-    Делегирует вызовы:
-    - self.auth_manager — авторизация
-    - self.message_manager — сообщения и медиа
-    - self.session_manager — сессии
+    Хранит:
+    - _clients: реестр подключённых TelegramClient
+    - _service: сервис для обработки входящих сообщений
+    - _phone_code_hashes, _phones, _qr_sessions, _qr_tasks: данные авторизации
     """
 
     def __init__(self) -> None:
         self._clients: dict[uuid.UUID, TelegramClient] = {}
         self._phone_code_hashes: dict[uuid.UUID, str] = {}
+        self._phones: dict[uuid.UUID, str] = {}
         self._qr_sessions: dict[uuid.UUID, dict[str, str]] = {}
         self._qr_tasks: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._service = None
-
-        # Инициализация специализированных менеджеров
-        self.auth_manager = TelegramAuthManager(self)
-        self.message_manager = TelegramMessageManager(self)
-        self.session_manager = TelegramSessionManager(self)
 
     def get_client(self, account_id: uuid.UUID) -> TelegramClient | None:
         """Получить клиент по ID аккаунта."""
@@ -95,53 +91,53 @@ class TelegramClientManager:
             device_model=settings.TG_DEVICE_MODEL,
         )
 
-    # ── Делегирование в TelegramAuthManager ─────────────────────────
+    # ── Делегирование в stateless-менеджеры ─────────────────────────
 
     async def send_code(self, phone: str, account_id: uuid.UUID) -> str:
-        """Делегирует в TelegramAuthManager.send_code."""
-        return await self.auth_manager.send_code(phone, account_id)
+        """Делегирует в auth_manager.send_code."""
+        return await auth_manager.send_code(self, phone, account_id)
 
     async def sign_in_with_code(self, account_id: uuid.UUID, code: str) -> str:
-        """Делегирует в TelegramAuthManager.sign_in_with_code."""
-        return await self.auth_manager.sign_in_with_code(account_id, code)
+        """Делегирует в auth_manager.sign_in_with_code."""
+        return await auth_manager.sign_in_with_code(self, account_id, code)
 
     async def sign_in_with_password(self, account_id: uuid.UUID, password: str) -> str:
-        """Делегирует в TelegramAuthManager.sign_in_with_password."""
-        return await self.auth_manager.sign_in_with_password(account_id, password)
+        """Делегирует в auth_manager.sign_in_with_password."""
+        return await auth_manager.sign_in_with_password(self, account_id, password)
 
     async def start_qr_login(self, account_id: uuid.UUID) -> dict[str, Any]:
-        """Делегирует в TelegramAuthManager.start_qr_login."""
-        return await self.auth_manager.start_qr_login(account_id)
+        """Делегирует в auth_manager.start_qr_login."""
+        return await auth_manager.start_qr_login(self, account_id)
 
     def get_qr_status(self, account_id: uuid.UUID) -> dict[str, str]:
-        """Делегирует в TelegramAuthManager.get_qr_status."""
-        return self.auth_manager.get_qr_status(account_id)
+        """Делегирует в auth_manager.get_qr_status."""
+        return auth_manager.get_qr_status(self, account_id)
 
     async def cancel_qr_login(self, account_id: uuid.UUID) -> None:
-        """Делегирует в TelegramAuthManager.cancel_qr_login."""
-        await self.auth_manager.cancel_qr_login(account_id)
+        """Делегирует в auth_manager.cancel_qr_login."""
+        await auth_manager.cancel_qr_login(self, account_id)
 
     async def complete_qr_login(self, account_id: uuid.UUID) -> dict[str, Any]:
-        """Делегирует в TelegramAuthManager.complete_qr_login."""
-        return await self.auth_manager.complete_qr_login(account_id)
+        """Делегирует в auth_manager.complete_qr_login."""
+        return await auth_manager.complete_qr_login(self, account_id)
 
-    # ── Делегирование в TelegramMessageManager ──────────────────────
+    # ── Делегирование в message_manager ────────────────────────────
 
     async def extract_media(
         self,
         client: TelegramClient,
         message: Any,
     ) -> list[Media]:
-        """Делегирует в TelegramMessageManager.extract_media."""
-        return await self.message_manager.extract_media(client, message)
+        """Делегирует в message_manager.extract_media."""
+        return await message_manager.extract_media(client, message)
 
     async def send_message(self, account_id: uuid.UUID, chat_id: int, text: str) -> None:
-        """Делегирует в TelegramMessageManager.send_message."""
-        await self.message_manager.send_message(account_id, chat_id, text)
+        """Делегирует в message_manager.send_message."""
+        await message_manager.send_message(self, account_id, chat_id, text)
 
     async def get_chats(self, account_id: uuid.UUID, limit: int = 100) -> list[dict[str, Any]]:
-        """Делегирует в TelegramMessageManager.get_chats."""
-        return await self.message_manager.get_chats(account_id, limit)
+        """Делегирует в message_manager.get_chats."""
+        return await message_manager.get_chats(self, account_id, limit)
 
     async def get_messages(
         self,
@@ -151,33 +147,31 @@ class TelegramClientManager:
         limit: int = 50,
         offset_id: int = 0,
     ) -> list[Message]:
-        """Делегирует в TelegramMessageManager.get_messages."""
-        return await self.message_manager.get_messages(
-            account_id, chat_id, last_read_message_id, limit, offset_id,
+        """Делегирует в message_manager.get_messages."""
+        return await message_manager.get_messages(
+            self, account_id, chat_id, last_read_message_id, limit, offset_id,
         )
 
     async def get_me(self, account_id: uuid.UUID) -> dict[str, Any] | None:
-        """Делегирует в TelegramMessageManager.get_me."""
-        return await self.message_manager.get_me(account_id)
+        """Делегирует в message_manager.get_me."""
+        return await message_manager.get_me(self, account_id)
 
-    # ── Делегирование в TelegramSessionManager ──────────────────────
+    # ── Делегирование в session_manager ────────────────────────────
 
     async def connect_account(self, account_id: uuid.UUID) -> None:
-        """Делегирует в TelegramSessionManager.connect_account."""
-        await self.session_manager.connect_account(account_id)
+        """Делегирует в session_manager.connect_account."""
+        await session_manager.connect_account(self, account_id)
 
     async def disconnect_account(self, account_id: uuid.UUID) -> None:
-        """Делегирует в TelegramSessionManager.disconnect_account."""
-        await self.session_manager.disconnect_account(account_id)
+        """Делегирует в session_manager.disconnect_account."""
+        await session_manager.disconnect_account(self, account_id)
 
     async def stop_all(self) -> None:
-        """Делегирует в TelegramSessionManager.stop_all."""
-        await self.session_manager.stop_all()
+        """Делегирует в session_manager.stop_all."""
+        await session_manager.stop_all(self)
 
-    def set_service(self, service: Any) -> None:
-        """Делегирует в TelegramSessionManager.set_service."""
-        self.session_manager.set_service(service)
-
-    def register_message_handler(self, account_id: uuid.UUID, client: TelegramClient) -> None:
-        """Делегирует в TelegramSessionManager.register_message_handler."""
-        self.session_manager.register_message_handler(account_id, client)
+    def register_message_handler(
+        self, account_id: uuid.UUID, client: TelegramClient
+    ) -> None:
+        """Делегирует в session_manager.register_message_handler."""
+        session_manager.register_message_handler(self, account_id, client)

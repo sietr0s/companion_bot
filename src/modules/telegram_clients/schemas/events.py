@@ -4,7 +4,7 @@
 
 import uuid
 
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 from src.bus.schemes import BaseEvent
 from src.core.bus_topics import BusTopics
