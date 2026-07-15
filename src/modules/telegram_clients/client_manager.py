@@ -19,10 +19,10 @@ from typing import Any
 from telethon import TelegramClient
 
 from src.core.config import settings
-from src.modules.telegram_clients.auth_manager import TelegramAuthManager
+from src.modules.telegram_clients.managers.auth_manager import TelegramAuthManager
+from src.modules.telegram_clients.managers.message_manager import TelegramMessageManager
+from src.modules.telegram_clients.managers.session_manager import TelegramSessionManager
 from src.modules.telegram_clients.domain import Media, Message
-from src.modules.telegram_clients.message_manager import TelegramMessageManager
-from src.modules.telegram_clients.session_manager import TelegramSessionManager
 
 logger = logging.getLogger(__name__)
 
