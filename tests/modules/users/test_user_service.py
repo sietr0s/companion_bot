@@ -128,7 +128,7 @@ class TestUserService:
         await service.update_profile(db_session, existing_auth_id, update_data)
 
         assert len(mock_bus.published) == 1
-        assert mock_bus.published[0][0] == "profile.updated"
+        assert mock_bus.published[0][0] == "users.event.profile.updated"
         assert "first_name" in mock_bus.published[0][1]["fields_updated"]
 
     async def test_update_profile_no_changes_no_event(
@@ -206,7 +206,7 @@ class TestUserService:
         await service.create_user_profile(db_session, existing_auth_id, data)
 
         assert len(mock_bus.published) == 1
-        assert mock_bus.published[0][0] == "profile.created"
+        assert mock_bus.published[0][0] == "users.event.profile.created"
         assert mock_bus.published[0][1]["auth_id"] == str(existing_auth_id)
 
     async def test_delete_profile_publishes_event(
@@ -230,5 +230,5 @@ class TestUserService:
         await service.delete_profile(db_session, existing_auth_id)
 
         assert len(mock_bus.published) == 1
-        assert mock_bus.published[0][0] == "profile.deleted"
+        assert mock_bus.published[0][0] == "users.event.profile.deleted"
         assert mock_bus.published[0][1]["auth_id"] == str(existing_auth_id)

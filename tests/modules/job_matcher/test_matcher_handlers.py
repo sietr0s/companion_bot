@@ -6,7 +6,6 @@
 
 from src.bus.in_memory.producer import InMemoryProducer
 from src.modules.job_matcher.handlers import register_handlers
-from src.modules.job_matcher.models import JobOffer, Subscription
 from src.modules.job_matcher.repository import (
     JobOfferRepository,
     SubscriptionRepository,

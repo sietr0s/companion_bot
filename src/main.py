@@ -12,20 +12,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from functools import partial
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
 
-from src.base.model import Base
+from src.bus import get_producer
 from src.bus.in_memory.consumer import InMemoryConsumer
-from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.kafka.consumer import KafkaConsumerRouter
-from src.bus.kafka.producer import KafkaProducerBus
 from src.core.bus_topics import BusTopics
 from src.core.config import settings
-from src.core.database import async_session_factory, engine
+from src.core.database import async_session_factory, init_db
+from src.modules.telegram_clients.dependencies import get_telegram_client_service_factory, get_telegram_client_manager
 
 # Настройка логирования приложения (INFO по умолчанию, переопределяется LOG_LEVEL)
 logging.basicConfig(
@@ -39,10 +36,11 @@ logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
 from src.core.exceptions import AppException
 from src.core.seed import seed_admin
-from src.core.telegram_manager import create_telegram_client_manager
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
-from src.modules.classifier.dependencies import get_classifier_service_factory
+from src.modules.classifier.ai.category import (
+    get_category_classifier,
+)
 from src.modules.classifier.handlers import (
     init_default_categories_on_startup,
 )
@@ -54,13 +52,12 @@ from src.modules.classifier.routers import public_router as classifier_router
 
 # Модуль job_bot — шлюз Telegram
 from src.modules.job_bot.bot import create_bot, create_bot_service, create_dispatcher
-from src.modules.job_matcher.dependencies import get_job_matcher_service_factory
 from src.modules.job_matcher.handlers import (
     register_handlers as register_job_matcher_handlers,
 )
 from src.modules.media.routers import internal_router as media_internal_router
 from src.modules.media.routers import public_router as media_router
-from src.modules.notifications.dependencies import get_notification_service_factory
+from src.modules.media.storage.local import LocalStorage
 from src.modules.notifications.handlers import (
     register_handlers as register_notification_handlers,
 )
@@ -71,49 +68,24 @@ from src.modules.telegram_clients.handlers import (
 )
 from src.modules.telegram_clients.routers import internal_router as tg_internal_router
 from src.modules.telegram_clients.routers import public_router as tg_router
-from src.modules.users.handlers import register_handlers
-from src.modules.media.storage.local import LocalStorage
-from src.modules.telegram_clients.models import TelegramAccount
-from src.modules.telegram_clients.repository import (
-    TelegramAccountRepository,
-    TelegramChatStateRepository,
-    TelegramSettingsRepository,
-)
-from src.modules.telegram_clients.service import TelegramClientService
+from src.modules.users.handlers import register_handlers as register_users_handlers
 from src.modules.users.routers import internal_router as users_internal_router
 from src.modules.users.routers import public_router as users_router
 
 logger = logging.getLogger(__name__)
 
-# Выбор реализации шины сообщений на основе конфигурации.
-if settings.MESSAGE_BUS == "kafka":
-    producer = KafkaProducerBus()
-else:
-    producer = InMemoryProducer()
 
-# TelegramClientManager — singleton для управления Telethon-клиентами.
-# Инициализируется без параметров, сервис устанавливается позже
-client_manager = create_telegram_client_manager()
+client_manager = get_telegram_client_manager()
+telegram_service = get_telegram_client_service_factory()
+producer = get_producer()
 
 # Регистрация обработчиков событий на шину.
-register_handlers(producer)
-# Передаём client_manager явно — он не в DI-контейнере
-register_tg_handlers(producer, client_manager)
+register_users_handlers()
+register_tg_handlers()
+register_notification_handlers()
+register_classifier_handlers()
+register_job_matcher_handlers()
 
-# Регистрация обработчиков notifications
-register_notification_handlers(producer, get_notification_service_factory)
-
-# Регистрация обработчиков classifier (AI-классификация текстов)
-register_classifier_handlers(
-    producer,
-    partial(get_classifier_service_factory, bus=producer),
-)
-
-# Регистрация всех обработчиков job_matcher
-register_job_matcher_handlers(
-    producer,
-    partial(get_job_matcher_service_factory, bus=producer),
-)
 
 # Регистрация DLQ-обработчика (dead-letter queue для сообщений с ошибками)
 @producer.subscribe(BusTopics.DLQ)
@@ -134,6 +106,7 @@ async def handle_dlq(message: dict) -> None:
         message.get("handler"),
     )
 
+
 # Создание консьюмера с реестром подписчиков от продюсера
 if settings.MESSAGE_BUS == "kafka":
     consumer = KafkaConsumerRouter(producer.get_subscribers())
@@ -145,135 +118,67 @@ else:
 async def lifespan(app: FastAPI):
     """
     Жизненный цикл приложения.
-
-    Startup:
-    1. Запуск шины сообщений (продюсер + консьюмер)
-    2. Создание таблиц в БД (при необходимости)
-    3. Подключение Telegram-аккаунтов из БД
-
-    Shutdown:
-    1. Отключение Telegram-клиентов
-    2. Остановка консьюмера
-    3. Остановка продюсера
     """
     # Startup
+    await init_db()
     await producer.start()
     await consumer.start()
 
-    # Создаём таблицы только в разработке (в проде — через Alembic миграции)
-    if settings.CREATE_TABLES_ON_STARTUP:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Таблицы БД созданы (режим разработки)")
-
     # Создаём admin-пользователя при старте
     async with async_session_factory() as session:
-        await seed_admin(session, producer)
+        await seed_admin(session)
 
     # Инициализация категорий по умолчанию
     await init_default_categories_on_startup()
+
+    # Инициализация AI-модели классификатора (загрузка BART)
+    classifier_model = get_category_classifier()
+    await classifier_model.initialize()
 
     # Создаём папку для загрузок если LocalStorage
     if settings.MEDIA_STORAGE_PROVIDER == "local":
         LocalStorage().ensure_base_path()
 
-    # Создаём сервис и устанавливаем в менеджер для обработки входящих сообщений
-    telegram_service = TelegramClientService(
-        repository=TelegramAccountRepository(),
-        message_bus=producer,
-        client_manager=client_manager,
-        settings_repository=TelegramSettingsRepository(),
-        chat_state_repository=TelegramChatStateRepository(),
-    )
-    client_manager.set_service(telegram_service)
-
     # Подключаем все ранее авторизованные Telegram-аккаунты
-    await _restore_tg_sessions()
+    async with async_session_factory() as session:
+        await telegram_service.restore_tg_sessions(session)
 
     # Читаем непрочитанные сообщения для всех аккаунтов
-    await _read_unread_telegram_messages(telegram_service)
+    async with async_session_factory() as session:
+        accounts = await telegram_service.get_active_accounts(session)
+        for account in accounts:
+            await telegram_service.read_unread_messages(session, account.id)
 
-    # Запуск Telegram-бота (если настроен)
-    if settings.TG_BOT_TOKEN:
-        bot = create_bot(settings.TG_BOT_TOKEN)
-        bot_service = create_bot_service(bot)
+    # Запуск Telegram-бота
+    bot = create_bot()
+    bot_service = create_bot_service(bot)
+    dp = create_dispatcher(producer, bot_service)
 
-        # Создание диспетчера и регистрация обработчиков
-        dp = create_dispatcher(producer, bot_service)
-
-        if settings.TG_BOT_MODE == "webhook":
-            # Webhook — регистрируем роут в FastAPI
-            webhook_url = f"{settings.APP_URL}/webhook/bot"
-            await bot.set_webhook(
-                url=webhook_url,
-                secret_token=settings.TG_BOT_WEBHOOK_SECRET,
-            )
-            logger.info("Бот запущен в режиме webhook: %s", webhook_url)
-        else:
-            # Polling — фоновая задача
-            asyncio.create_task(dp.start_polling(bot))
-            logger.info("Бот запущен в режиме polling")
+    if settings.TG_BOT_MODE == "webhook":
+        # Webhook — регистрируем роут в FastAPI
+        webhook_url = f"{settings.APP_URL}/webhook/bot"
+        await bot.set_webhook(
+            url=webhook_url,
+            secret_token=settings.TG_BOT_WEBHOOK_SECRET,
+        )
+        logger.info("Бот запущен в режиме webhook: %s", webhook_url)
+    else:
+        # Polling — фоновая задача
+        asyncio.create_task(dp.start_polling(bot))
+        logger.info("Бот запущен в режиме polling")
 
     logger.info("Приложение запущено, шина: %s", settings.MESSAGE_BUS)
 
     yield
 
     # Shutdown
-    if settings.TG_BOT_TOKEN:
-        await bot.session.close()
-
+    await bot.session.close()
     await client_manager.stop_all()
     await consumer.stop()
     await producer.stop()
     logger.info("Приложение остановлено")
 
 
-async def _restore_tg_sessions() -> None:
-    """Восстановление подключений Telegram-аккаунтов при старте."""
-    async with async_session_factory() as session:
-        stmt = select(TelegramAccount).where(TelegramAccount.is_connected.is_(True))
-        result = await session.execute(stmt)
-        accounts = result.scalars().all()
-
-    for account in accounts:
-        try:
-            await client_manager.connect_account(account.id)
-        except (ConnectionError, TimeoutError) as e:
-            logger.error("Ошибка подключения Telegram для аккаунта %s: %s", account.id, e)
-        except Exception as e:
-            logger.exception(
-                "Неожиданная ошибка при подключении Telegram-аккаунта %s: %s",
-                account.id,
-                e,
-            )
-
-
-async def _read_unread_telegram_messages(telegram_service: TelegramClientService) -> None:
-    """Чтение непрочитанных сообщений для всех подключённых аккаунтов."""
-    async with async_session_factory() as session:
-        # Получаем все подключённые аккаунты
-        stmt = select(TelegramAccount).where(TelegramAccount.is_connected.is_(True))
-        result = await session.execute(stmt)
-        accounts = result.scalars().all()
-
-        if not accounts:
-            logger.info("Нет подключённых Telegram-аккаунтов для чтения сообщений")
-            return
-
-        for account in accounts:
-            count = await telegram_service.read_unread_messages(
-                session=session,
-                account_id=account.id,
-            )
-
-            logger.info(
-                "Аккаунт %s: прочитано %d непрочитанных сообщений",
-                account.id,
-                count,
-            )
-
-
-# Создание FastAPI-приложения
 app = FastAPI(
     title=settings.APP_TITLE,
     debug=settings.DEBUG,
@@ -290,10 +195,6 @@ async def app_exception_handler(request: Request, exc: AppException):
         content={"detail": exc.detail},
     )
 
-
-# Подключение роутеров модулей.
-# Каждый модуль — независимый «микросервис» с собственным префиксом.
-# Public API: /api/v1/public/{module}, Internal API: /internal/{module}
 
 
 @app.get("/health", tags=["Health"])

@@ -10,16 +10,17 @@ import asyncio
 import logging
 import os
 import uuid
+from typing import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from telethon import TelegramClient
 from telethon.events import NewMessage
 
 from src.base.filters import Filter
 from src.base.service import BaseService
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
+from src.core.database import async_session_factory
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
 from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
@@ -27,7 +28,6 @@ from src.modules.telegram_clients.domain import Message as DomainMessage
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
-    TelegramSettings,
 )
 from src.modules.telegram_clients.repository import (
     TelegramAccountRepository,
@@ -50,8 +50,7 @@ from src.modules.telegram_clients.schemas.public import (
 
 logger = logging.getLogger(__name__)
 
-
-class TelegramClientService(BaseService[TelegramAccountRepository]):
+class TelegramAccountService(BaseService[TelegramAccountRepository]):
     """
     Сервис управления Telegram-аккаунтами.
 
@@ -59,12 +58,12 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
     """
 
     def __init__(
-        self,
-        repository: TelegramAccountRepository,
-        message_bus: MessageBus,
-        client_manager: TelegramClientManager,
-        settings_repository: TelegramSettingsRepository,
-        chat_state_repository: TelegramChatStateRepository,
+            self,
+            repository: TelegramAccountRepository,
+            message_bus: MessageBus,
+            client_manager: TelegramClientManager,
+            settings_repository: TelegramSettingsRepository,
+            chat_state_repository: TelegramChatStateRepository,
     ) -> None:
         super().__init__(repository)
         self.message_bus = message_bus
@@ -73,7 +72,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         self.chat_state_repository = chat_state_repository
 
     async def request_code(
-        self, session: AsyncSession, data: dict, auth_id: uuid.UUID
+            self, session: AsyncSession, data: dict
     ) -> AuthStep1Response:
         """
         Шаг 1 авторизации: отправить SMS-код на номер.
@@ -85,8 +84,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         session_path = self.client_manager.get_session_path(account_id)
 
         logger.info(
-            "[tg auth] Запрос кода: auth_id=%s, account_id=%s, phone=%s",
-            auth_id,
+            "[tg auth] Запрос кода: account_id=%s, phone=%s",
             account_id,
             phone,
         )
@@ -95,7 +93,6 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             session,
             {
                 "id": account_id,
-                "auth_id": auth_id,
                 "phone": phone,
                 "session_file": session_path,
                 "is_connected": False,
@@ -114,7 +111,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         return AuthStep1Response(account_id=account_id)
 
     async def verify_code(
-        self, session: AsyncSession, data: dict, auth_id: uuid.UUID
+            self, session: AsyncSession, data: dict
     ) -> AuthStep2Response:
         """
         Шаг 2 авторизации: ввести SMS-код.
@@ -122,7 +119,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         Если аккаунт с 2FA — возвращает статус "2fa_required".
         Иначе — подключает аккаунт и публикует событие.
         """
-        account = await self._get_user_account(session, data["account_id"], auth_id)
+        account = await self._get_account(session, data["account_id"])
 
         status = await self.client_manager.sign_in_with_code(data["account_id"], data["code"])
 
@@ -130,13 +127,11 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             raise HTTPException(status_code=400, detail="Неверный или истёкший код подтверждения")
 
         if status == TgAuthStatus.CONNECTED:
-            # Обновляем данные аккаунта из Telegram
             await self._update_account_info(session, account)
+            self.register_message_handler(account.id)
 
-            # Публикуем событие
             event = TgAccountConnected(
                 account_id=account.id,
-                auth_id=account.auth_id,
                 phone=account.phone,
             )
             await self.message_bus.publish(BusTopics.TG_ACCOUNT_CONNECTED, event.to_bus_dict())
@@ -144,10 +139,10 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         return AuthStep2Response(account_id=data["account_id"], status=status)
 
     async def verify_password(
-        self, session: AsyncSession, data: dict, auth_id: uuid.UUID
+            self, session: AsyncSession, data: dict
     ) -> AuthStep3Response:
         """Шаг 3 авторизации: ввести пароль облачного шифрования (2FA)."""
-        account = await self._get_user_account(session, data["account_id"], auth_id)
+        account = await self._get_account(session, data["account_id"])
 
         status = await self.client_manager.sign_in_with_password(
             data["account_id"], data["password"]
@@ -155,10 +150,10 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         if status == TgAuthStatus.CONNECTED:
             await self._update_account_info(session, account)
+            self.register_message_handler(account.id)
 
             event = TgAccountConnected(
                 account_id=account.id,
-                auth_id=account.auth_id,
                 phone=account.phone,
             )
             await self.message_bus.publish(BusTopics.TG_ACCOUNT_CONNECTED, event.to_bus_dict())
@@ -182,25 +177,27 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             )
 
     async def get_accounts(
-        self,
-        session: AsyncSession,
-        auth_id: uuid.UUID,
-        filters: list[Filter] | None = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> tuple[list[TelegramAccount], int]:
-        """Получить все Telegram-аккаунты пользователя с фильтрацией и пагинацией."""
-        return await self.repository.get_by_auth_id(session, auth_id, filters, skip, limit)
+            self,
+            session: AsyncSession,
+            filters: list[Filter] | None = None,
+            skip: int = 0,
+            limit: int = 100,
+    ) -> tuple[Sequence[TelegramAccount], int]:
+        """Получить все Telegram-аккаунты с фильтрацией и пагинацией."""
+        return await self.repository.get_list(session, filters, skip, limit)
+
+    async def get_active_accounts(
+            self,
+            session: AsyncSession,
+    ) -> list[TelegramAccount]:
+        """Получить активные Telegram-аккаунты."""
+        return await self.repository.get_connected_accounts(session)
 
     async def delete_account(
-        self, session: AsyncSession, account_id: uuid.UUID, auth_id: uuid.UUID
+            self, session: AsyncSession, account_id: uuid.UUID
     ) -> None:
         """Удалить Telegram-аккаунт."""
-        account = await self.repository.get_by_id(session, account_id)
-        if not account:
-            raise NotFoundError(detail="Аккаунт не найден")
-        if account.auth_id != auth_id:
-            raise NotFoundError(detail="Аккаунт не найден")
+        account = await self._get_account(session, account_id)
 
         # Отключаем клиент
         await self.client_manager.disconnect_account(account_id)
@@ -215,32 +212,30 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         # Публикуем событие
         event = TgAccountDisconnected(
             account_id=account.id,
-            auth_id=account.auth_id,
             reason="deleted",
         )
         await self.message_bus.publish(BusTopics.TG_ACCOUNT_DISCONNECTED, event.to_bus_dict())
 
     async def get_chats(
-        self, session: AsyncSession, account_id: uuid.UUID, auth_id: uuid.UUID, limit: int = 100
+            self, session: AsyncSession, account_id: uuid.UUID, limit: int = 100
     ) -> list[dict]:
         """Получить все чаты аккаунта из Telegram API."""
-        account = await self._get_user_account(session, account_id, auth_id)
+        account = await self._get_account(session, account_id)
         if not account.is_connected:
             raise ConflictError(detail="Аккаунт не подключён")
 
         return await self.client_manager.get_chats(account_id, limit)
 
     async def get_messages(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        chat_id: int,
-        auth_id: uuid.UUID,
-        limit: int = 50,
-        offset_id: int = 0,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
+            chat_id: int,
+            limit: int = 50,
+            offset_id: int = 0,
     ) -> list[DomainMessage]:
         """Получить сообщения чата из Telegram API (on-demand)."""
-        account = await self._get_user_account(session, account_id, auth_id)
+        account = await self._get_account(session, account_id)
         if not account.is_connected:
             raise ConflictError(detail="Аккаунт не подключён")
 
@@ -248,23 +243,20 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             account_id, chat_id, limit=limit, offset_id=offset_id
         )
 
-    async def _get_user_account(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        auth_id: uuid.UUID,
+    async def _get_account(
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
     ) -> TelegramAccount:
-        """Получить аккаунт с проверкой принадлежности пользователю."""
+        """Получить аккаунт по ID."""
         account = await self.repository.get_by_id(session, account_id)
-        if not account or account.auth_id != auth_id:
+        if not account:
             raise NotFoundError(detail="Аккаунт не найден")
         return account
 
     # ── QR-авторизация ─────────────────────────────────────────────
 
-    async def start_qr_auth(
-        self, session: AsyncSession, auth_id: uuid.UUID
-    ) -> QrStartResponse:
+    async def start_qr_auth(self, session: AsyncSession) -> QrStartResponse:
         """
         Шаг 1 QR-авторизации: создать QR-сессию.
 
@@ -273,8 +265,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         account_id = uuid.uuid4()
 
         logger.info(
-            "[tg qr auth] Старт QR-авторизации: auth_id=%s, account_id=%s",
-            auth_id,
+            "[tg qr auth] Старт QR-авторизации: account_id=%s",
             account_id,
         )
 
@@ -296,7 +287,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         await self.client_manager.cancel_qr_login(account_id)
 
     async def complete_qr_auth(
-        self, session: AsyncSession, auth_id: uuid.UUID, account_id: uuid.UUID
+            self, session: AsyncSession, account_id: uuid.UUID
     ) -> TelegramAccount:
         """
         Финализировать QR-авторизацию: создать запись в БД и опубликовать событие.
@@ -309,7 +300,6 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             session,
             {
                 "id": account_id,
-                "auth_id": auth_id,
                 "phone": me.get("phone", "") or "",
                 "session_file": session_path,
                 "is_connected": True,
@@ -322,7 +312,6 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         event = TgAccountConnected(
             account_id=account.id,
-            auth_id=account.auth_id,
             phone=account.phone,
         )
         await self.message_bus.publish(BusTopics.TG_ACCOUNT_CONNECTED, event.to_bus_dict())
@@ -335,67 +324,18 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         return account
 
-    # Методы для работы с настройками
-
-    async def get_settings(self, session: AsyncSession, account_id: uuid.UUID) -> TelegramSettings:
-        """Получить или создать настройки по умолчанию для аккаунта."""
-
-        settings = await self.settings_repository.get_by_account_id(session, account_id)
-        if not settings:
-            return await self.create_default_settings(session, account_id)
-        return settings
-
-    async def create_default_settings(
-        self, session: AsyncSession, account_id: uuid.UUID
-    ) -> TelegramSettings:
-        """Создать настройки по умолчанию."""
-
-        default_data = {
-            "account_id": account_id,
-            "read_groups": True,
-            "read_personal": True,
-            "read_channels": True,
-            "whitelist_chat_ids": [],
-        }
-        return await self.settings_repository.create(session, default_data)
-
-    async def update_settings(
-        self, session: AsyncSession, account_id: uuid.UUID, data: dict
-    ) -> TelegramSettings:
-        """Обновить настройки аккаунта."""
-
-        settings = await self.settings_repository.get_by_account_id(session, account_id)
-        if not settings:
-            return await self.create_default_settings(session, account_id)
-
-        update_data = {k: v for k, v in data.items() if v is not None}
-        return await self.settings_repository.update(session, settings, update_data)
-
-    async def delete_settings(self, session: AsyncSession, account_id: uuid.UUID) -> None:
-        """Удалить настройки аккаунта."""
-
-        settings = await self.settings_repository.get_by_account_id(session, account_id)
-        if settings:
-            await self.settings_repository.delete(session, settings.id)
-
-    # Методы для работы с состоянием чтения чатов
 
     async def get_chat_state(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        auth_id: uuid.UUID,
-        chat_id: int,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
+            chat_id: int,
     ) -> TelegramChatState:
         """
         Получить состояние чтения чата.
 
-        Проверяет принадлежность аккаунта пользователю.
         Выбрасывает NotFoundError если состояние не найдено.
         """
-        # Проверяем принадлежность аккаунта пользователю
-        await self._get_user_account(session, account_id, auth_id)
-
         # Получаем состояние
         state = await self.chat_state_repository.get_by_account_and_chat(
             session, account_id, chat_id
@@ -406,48 +346,37 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         return state
 
     async def update_last_read(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        auth_id: uuid.UUID,
-        chat_id: int,
-        message_id: int,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
+            chat_id: int,
+            message_id: int,
     ) -> TelegramChatState:
         """
         Обновить последнее прочитанное сообщение в чате.
 
-        Проверяет принадлежность аккаунта пользователю.
         Использует upsert_last_read из репозитория.
         """
-        # Проверяем принадлежность аккаунта пользователю
-        await self._get_user_account(session, account_id, auth_id)
-
         # Обновляем или создаём состояние
         return await self.chat_state_repository.upsert_last_read(
             session, account_id, chat_id, message_id
         )
 
     async def get_all_chats_state(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        auth_id: uuid.UUID,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
     ) -> list[TelegramChatState]:
         """
         Получить все состояния чтения чатов аккаунта.
-
-        Проверяет принадлежность аккаунта пользователю.
         """
-        # Проверяем принадлежность аккаунта пользователю
-        await self._get_user_account(session, account_id, auth_id)
-
         # Получаем все состояния
         return await self.chat_state_repository.get_all_by_account(session, account_id)
 
     async def read_unread_messages(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
     ) -> int:
         """
         Прочитать непрочитанные сообщения для аккаунта.
@@ -512,11 +441,11 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         return total_read
 
     async def should_read_message(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-        chat_id: int,
-        chat_type: ChatType,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
+            chat_id: int,
+            chat_type: ChatType,
     ) -> bool:
         """
         Проверить нужно ли читать сообщение из данного чата.
@@ -552,8 +481,8 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
         if settings.whitelist_chat_ids:
             # Если whitelist задан - проверяем наличие chat_id
             return (
-                str(chat_id) in settings.whitelist_chat_ids
-                or chat_id in settings.whitelist_chat_ids
+                    str(chat_id) in settings.whitelist_chat_ids
+                    or chat_id in settings.whitelist_chat_ids
             )
 
         return True  # Если whitelist пустой - читать все чаты разрешённого типа
@@ -567,18 +496,14 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             message_id=msg.message_id,
             sender_id=msg.sender_id,
             text=msg.text,
-            media=[
-                Media(telegram_id=m.telegram_id, type=m.type)
-                for m in msg.media
-            ],
+            media=[Media(telegram_id=m.telegram_id, type=m.type) for m in msg.media],
         )
 
     async def handle_incoming_message(
-        self,
-        session: AsyncSession,
-        client: TelegramClient,
-        account_id: uuid.UUID,
-        event: NewMessage.Event,
+            self,
+            session: AsyncSession,
+            account_id: uuid.UUID,
+            event: NewMessage.Event,
     ) -> None:
         """
         Обработать входящее сообщение.
@@ -591,7 +516,6 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
         Args:
             session: SQLAlchemy async сессия
-            client: Telegram клиент
             account_id: ID аккаунта
             event: Событие NewMessage.Event
         """
@@ -616,6 +540,8 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
             if not should_read:
                 return  # Пропускаем сообщение согласно настройкам
 
+            client = self.client_manager.get_client(account_id)
+
             # Извлекаем медиа из сообщения
             domain_media = await self.client_manager.extract_media(client, event.message)
 
@@ -632,9 +558,7 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
 
             # Маппим в событие шины
             msg_event = self._domain_to_bus_event(domain_msg)
-            await self.message_bus.publish(
-                BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict()
-            )
+            await self.message_bus.publish(BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict())
 
             # Обновляем состояние чтения чата
             await self.chat_state_repository.upsert_last_read(
@@ -664,3 +588,28 @@ class TelegramClientService(BaseService[TelegramAccountRepository]):
                 account_id,
                 e,
             )
+
+    async def restore_tg_sessions(self, session: AsyncSession) -> None:
+        """Восстановление подключений Telegram-аккаунтов при старте."""
+        accounts = await self.repository.get_connected_accounts(session)
+        for account in accounts:
+            status = await self.client_manager.connect_account(account.id)
+            if status:
+                self.register_message_handler(account.id)
+
+    def register_message_handler(self, account_id: uuid.UUID) -> None:
+        """Регистрирует обработчик входящих сообщений для клиента."""
+        client = self.client_manager.get_client(account_id)
+
+        @client.on(NewMessage)
+        async def on_new_message(event) -> None:
+            """
+            Обработать входящее сообщение.
+            """
+
+            async with async_session_factory() as session:
+                await self.handle_incoming_message(
+                    session=session,
+                    account_id=account_id,
+                    event=event,
+                )

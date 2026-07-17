@@ -472,6 +472,7 @@ def get_chat_state_repository() -> TelegramChatStateRepository:
 - [ ] **Step 5: Написать тесты на сервис**
 
 Добавить в `tests/modules/telegram_clients/test_service.py`:
+
 ```python
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -480,7 +481,7 @@ import uuid
 from src.core.exceptions import NotFoundError
 from src.modules.telegram_clients.models import TelegramAccount
 from src.modules.telegram_clients.repository import TelegramChatStateRepository
-from src.modules.telegram_clients.service import TelegramClientService
+from src.modules.telegram_clients.service import TelegramAccountService
 
 
 @pytest.mark.asyncio
@@ -495,11 +496,12 @@ async def test_get_chat_state_not_found(db_session: AsyncSession):
     )
     db_session.add(account)
     await db_session.commit()
-    
+
     repo = TelegramAccountRepository()
     chat_state_repo = TelegramChatStateRepository()
-    service = TelegramClientService(repo, InMemoryProducer(), TelegramClientManager(), chat_state_repository=chat_state_repo)
-    
+    service = TelegramAccountService(repo, InMemoryProducer(), TelegramClientManager(),
+                                     chat_state_repository=chat_state_repo)
+
     with pytest.raises(NotFoundError):
         await service.get_chat_state(db_session, account.id, auth_id, 123456789)
 
@@ -516,16 +518,17 @@ async def test_update_last_read(db_session: AsyncSession):
     )
     db_session.add(account)
     await db_session.commit()
-    
+
     repo = TelegramAccountRepository()
     chat_state_repo = TelegramChatStateRepository()
-    service = TelegramClientService(repo, InMemoryProducer(), TelegramClientManager(), chat_state_repository=chat_state_repo)
-    
+    service = TelegramAccountService(repo, InMemoryProducer(), TelegramClientManager(),
+                                     chat_state_repository=chat_state_repo)
+
     result = await service.update_last_read(db_session, account.id, auth_id, 123456789, 100)
-    
+
     assert result is not None
     assert result.last_read_message_id == 100
-    
+
     # Обновляем ещё раз
     result2 = await service.update_last_read(db_session, account.id, auth_id, 123456789, 200)
     assert result2.last_read_message_id == 200
@@ -543,19 +546,20 @@ async def test_get_all_chats_state(db_session: AsyncSession):
     )
     db_session.add(account)
     await db_session.commit()
-    
+
     repo = TelegramAccountRepository()
     chat_state_repo = TelegramChatStateRepository()
-    service = TelegramClientService(repo, InMemoryProducer(), TelegramClientManager(), chat_state_repository=chat_state_repo)
-    
+    service = TelegramAccountService(repo, InMemoryProducer(), TelegramClientManager(),
+                                     chat_state_repository=chat_state_repo)
+
     # Создаём несколько состояний
     await service.update_last_read(db_session, account.id, auth_id, 111, 10)
     await service.update_last_read(db_session, account.id, auth_id, 222, 20)
     await service.update_last_read(db_session, account.id, auth_id, 333, 30)
-    
+
     # Получаем все
     all_states = await service.get_all_chats_state(db_session, account.id, auth_id)
-    
+
     assert len(all_states) == 3
 ```
 

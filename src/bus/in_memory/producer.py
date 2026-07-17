@@ -28,17 +28,22 @@ class InMemoryProducer:
 
     Сохраняет реестр подписчиков, который разделяется
     с InMemoryConsumer для консистентности.
+
+    Ограничивает количество конкурентных задач через Semaphore,
+    чтобы избежать перегрузки event loop при пиковых нагрузках.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_concurrent: int = 100) -> None:
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
+        self._semaphore = asyncio.Semaphore(max_concurrent)
 
     async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
         """
         Вызывает все обработчики, подписанные на топик.
 
         Если запущен event loop — асинхронные обработчики
-        планируются через create_task. Иначе — вызываются напрямую.
+        планируются через create_task с ограничением через Semaphore.
+        Иначе — вызываются напрямую.
         Ошибки обрабатываются через safe_handle — бизнес-исключения
         публикуются в DLQ, остальные логируются.
 
@@ -51,19 +56,25 @@ class InMemoryProducer:
             if asyncio.iscoroutinefunction(handler):
                 try:
                     loop = asyncio.get_running_loop()
-                    task = loop.create_task(safe_handle(handler, topic, message))
+                    task = loop.create_task(
+                        self._run_with_semaphore(handler, topic, message)
+                    )
                     tasks.append(task)
                 except RuntimeError:
-                    # Нет запущенного event loop — вызываем синхронно
-                    logger.warning(
-                        "Нет запущенного event loop для асинхронного обработчика %s",
-                        handler.__name__,
-                    )
+                    # Нет запущенного event loop — вызываем напрямую
+                    await safe_handle(handler, topic, message)
             else:
                 handler(message)
 
         if await_handlers and tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _run_with_semaphore(
+        self, handler: Callable, topic: str, message: dict[str, Any]
+    ) -> None:
+        """Запустить обработчик под семафором."""
+        async with self._semaphore:
+            await safe_handle(handler, topic, message)
 
     def subscribe(self, topic: str) -> Callable:
         """

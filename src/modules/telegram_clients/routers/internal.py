@@ -12,7 +12,7 @@ from src.modules.telegram_clients.schemas.internal.settings import (
     TelegramSettingsRead,
     TelegramSettingsUpdate,
 )
-from src.modules.telegram_clients.service import TelegramClientService
+from src.modules.telegram_clients.services import TelegramAccountService, TelegramSettingsService
 
 router = APIRouter()
 
@@ -23,12 +23,12 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 async def get_settings(
-    account_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
     """Получить настройки Telegram-аккаунта."""
-    settings = await service.get_settings(session, account_id)
+    settings = await service.get_by_id(session, account_id)
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -38,18 +38,14 @@ async def get_settings(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_settings(
-    account_id: uuid.UUID,
-    data: TelegramSettingsCreate,
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        data: TelegramSettingsCreate,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
     """Создать настройки Telegram-аккаунта."""
-    settings = await service.create_default_settings(session, account_id)
-    # Если переданы кастомные значения - обновляем
-    if data.model_dump(exclude_unset=True):
-        settings = await service.update_settings(
-            session, account_id, data.model_dump(exclude_unset=True)
-        )
+    await service.create_default_settings(session, account_id)
+    settings = await service.update(session, account_id, data.model_dump(exclude_unset=True))
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -59,13 +55,13 @@ async def create_settings(
     status_code=status.HTTP_200_OK,
 )
 async def update_settings(
-    account_id: uuid.UUID,
-    data: TelegramSettingsUpdate,
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        data: TelegramSettingsUpdate,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
     """Обновить настройки Telegram-аккаунта."""
-    settings = await service.update_settings(
+    settings = await service.update(
         session, account_id, data.model_dump(exclude_unset=True)
     )
     return TelegramSettingsRead.model_validate(settings)
@@ -76,9 +72,9 @@ async def update_settings(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_settings(
-    account_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> None:
     """Удалить настройки Telegram-аккаунта."""
-    await service.delete_settings(session, account_id)
+    await service.delete(session, account_id)

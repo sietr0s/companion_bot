@@ -1,9 +1,11 @@
 """
 E2E тесты ms_starter — вспомогательные утилиты.
 """
+
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
+
 from telethon import TelegramClient
 from telethon.tl.types import Dialog
 
@@ -11,17 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 async def wait_for_event(
-    bus_collector: Any,
-    topic: str,
-    timeout: float = 5.0,
-    poll_interval: float = 0.1
-) -> Optional[Dict[str, Any]]:
+    bus_collector: Any, topic: str, timeout: float = 5.0, poll_interval: float = 0.1
+) -> dict[str, Any] | None:
     """
     Ждать события из шины с таймаутом.
 
     Args:
         bus_collector: InMemoryProducer или другой collector
-        topic: Название топика (например, "tg.message.received")
+        topic: Название топика (например, "telegram_clients.event.message.received")
         timeout: Таймаут в секундах
         poll_interval: Интервал опроса в секундах
 
@@ -33,7 +32,7 @@ async def wait_for_event(
 
     while (loop.time() - start_time) < timeout:
         # Проверить историю событий (если есть)
-        if hasattr(bus_collector, 'events'):
+        if hasattr(bus_collector, "events"):
             for event in bus_collector.events:
                 if event.get("topic") == topic:
                     return event
@@ -43,10 +42,7 @@ async def wait_for_event(
     return None
 
 
-async def _get_bot_dialog(
-    telethon_client: TelegramClient,
-    bot_username: str
-) -> Optional[Dialog]:
+async def _get_bot_dialog(telethon_client: TelegramClient, bot_username: str) -> Dialog | None:
     """
     Внутренняя функция: найти диалог с ботом.
 
@@ -59,11 +55,11 @@ async def _get_bot_dialog(
     """
     try:
         dialog = await telethon_client.get_dialogs()
-        
+
         for d in dialog:
-            if hasattr(d, 'user') and d.user.username == bot_username:
+            if hasattr(d, "user") and d.user.username == bot_username:
                 return d
-        
+
         logger.warning("Диалог с ботом @%s не найден", bot_username)
         return None
     except Exception as e:
@@ -74,8 +70,8 @@ async def _get_bot_dialog(
 async def assert_bot_response(
     telethon_client: TelegramClient,
     bot_username: str,
-    expected_text: Optional[str] = None,
-    timeout: float = 5.0
+    expected_text: str | None = None,
+    timeout: float = 5.0,
 ) -> bool:
     """
     Проверить ответ от бота через Telethon.
@@ -90,13 +86,13 @@ async def assert_bot_response(
         True если ответ получен и совпадает
     """
     bot_dialog = await _get_bot_dialog(telethon_client, bot_username)
-    
+
     if not bot_dialog:
         return False
 
     try:
         messages = await telethon_client.get_messages(bot_dialog, limit=1)
-        
+
         if not messages:
             return False
 
@@ -112,9 +108,8 @@ async def assert_bot_response(
 
 
 async def get_last_message_from_bot(
-    telethon_client: TelegramClient,
-    bot_username: str
-) -> Optional[str]:
+    telethon_client: TelegramClient, bot_username: str
+) -> str | None:
     """
     Получить последнее сообщение от бота.
 
@@ -126,13 +121,13 @@ async def get_last_message_from_bot(
         Текст сообщения или None
     """
     bot_dialog = await _get_bot_dialog(telethon_client, bot_username)
-    
+
     if not bot_dialog:
         return None
 
     try:
         messages = await telethon_client.get_messages(bot_dialog, limit=1)
-        
+
         if not messages:
             return None
 

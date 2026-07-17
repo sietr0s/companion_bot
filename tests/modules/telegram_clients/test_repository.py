@@ -13,7 +13,6 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
 )
 
-
 # --- Фикстуры ---
 
 

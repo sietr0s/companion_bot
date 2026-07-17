@@ -3,9 +3,11 @@
 import logging
 import uuid
 
+from src.bus import get_producer
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
 from src.core.database import async_session_factory
+from src.modules.classifier.dependencies import get_classifier_service_factory
 from src.modules.classifier.service import ClassifierService
 
 logger = logging.getLogger(__name__)
@@ -30,15 +32,13 @@ async def init_default_categories_on_startup() -> None:
         await service.init_default_categories(session)
 
 
-def register_handlers(
-    bus: MessageBus,
-    service_factory,
-) -> None:
+def register_handlers() -> None:
     """
     Регистрация обработчиков событий на шину.
 
     service_factory — async callable, возвращающий кортеж (session, ClassifierService).
     """
+    bus = get_producer()
 
     @bus.subscribe(BusTopics.TEXT_CLASSIFY_REQUEST)
     async def handle_classify_request(message: dict) -> None:
@@ -53,8 +53,8 @@ def register_handlers(
         request_id = uuid.UUID(request_id_str)
 
         # Получаем сессию и сервис
+        service: ClassifierService = get_classifier_service_factory()
         async with async_session_factory() as session:
-            service: ClassifierService = service_factory(session)
             result = await service.process_classify_request(
                 session=session,
                 request_id=request_id,

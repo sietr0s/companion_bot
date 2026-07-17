@@ -6,9 +6,12 @@
 избегаем разбросанных os.getenv() по коду.
 """
 
+import logging
 from urllib.parse import quote
 
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -32,8 +35,8 @@ class Settings(BaseSettings):
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
-    # JWT
-    JWT_SECRET_KEY: str = "super-secret-key-change-in-production"
+    # JWT — обязательное поле, без дефолта
+    JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 
@@ -90,9 +93,13 @@ class Settings(BaseSettings):
     TG_BOT_WEBHOOK_SECRET: str = ""
     APP_URL: str = "http://localhost:8000"  # для webhook
 
-    # Admin (seed-пользователь)
-    ADMIN_EMAIL: str = "admin@example.com"
-    ADMIN_PASSWORD: str = "admin123"
+    # Classifier (AI-классификация)
+    CLASSIFIER_MODEL_NAME: str = "facebook/bart-large-mnli"
+    CLASSIFIER_DEVICE: int = -1  # -1 = CPU, 0 = GPU
+
+    # Admin (seed-пользователь) — обязательные поля, без дефолтов
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
     ADMIN_FIRST_NAME: str = "Admin"
     ADMIN_LAST_NAME: str = ""
 
@@ -101,7 +108,6 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
-
 
 # Глобальный экземпляр настроек — импортируется во всех модулях
 settings = Settings()

@@ -20,7 +20,6 @@ from src.bus.in_memory.producer import InMemoryProducer
 from src.core.bus_topics import BusTopics
 from src.modules.classifier.repository import CategoryRepository, ClassificationLogRepository
 from src.modules.classifier.service import ClassifierService
-from src.modules.job_matcher.models import JobOffer
 from src.modules.job_matcher.repository import JobOfferRepository
 from src.modules.job_matcher.service import JobMatcherService
 from tests.conftest import MockBus

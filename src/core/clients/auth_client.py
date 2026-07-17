@@ -6,11 +6,10 @@ Session создаётся и закрывается внутри каждого
 """
 
 import logging
+import secrets
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.core.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +59,22 @@ class AuthClient:
             Исключения пробрасываются наверх (NotFoundError, ConflictError и т.д.).
         """
         service = self._get_service()
+        # Генерируем надёжный пароль, если не передан
+        if password is None:
+            password = secrets.token_urlsafe(32)
         data: dict = {
             "identifier": identifier,
             "identifier_type": identifier_type,
-            "password": password or "",
+            "password": password,
         }
 
         if session is not None:
             auth_id = await service.register_and_return_id(session, data)
             return auth_id
 
-        async for s in get_session():
+        from src.core.database import async_session_factory
+
+        async with async_session_factory() as s:
             auth_id = await service.register_and_return_id(s, data)
             return auth_id
 
@@ -94,6 +98,8 @@ class AuthClient:
             account = await service.repository.get_by_identifier(session, identifier)
             return account.id if account else None
 
-        async for s in get_session():
+        from src.core.database import async_session_factory
+
+        async with async_session_factory() as s:
             account = await service.repository.get_by_identifier(s, identifier)
             return account.id if account else None

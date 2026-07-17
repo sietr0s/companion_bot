@@ -41,7 +41,7 @@ def get_classifier_service(
     )
 
 
-async def get_classifier_service_factory(
+def get_classifier_service_factory(
     bus: MessageBus | None = None,
 ):
     """
@@ -53,12 +53,10 @@ async def get_classifier_service_factory(
     Args:
         bus: Шина сообщений. Если None, используется шина по умолчанию.
     """
-    async with async_session_factory() as session:
-        service = ClassifierService(
-            repository=CategoryRepository(),
-            log_repository=ClassificationLogRepository(),
-            message_bus=bus,
-            category_classifier=get_category_classifier(),
-            entity_extractor=get_entity_extractor(),
-        )
-        return session, service
+    return ClassifierService(
+        repository=CategoryRepository(),
+        log_repository=ClassificationLogRepository(),
+        message_bus=bus,
+        category_classifier=get_category_classifier(),
+        entity_extractor=get_entity_extractor(),
+    )

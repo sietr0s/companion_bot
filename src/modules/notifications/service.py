@@ -12,7 +12,7 @@ from src.base.filters import Filter
 from src.base.service import BaseService
 from src.core.clients.users_client import UsersClient
 from src.core.exceptions import NotFoundError
-from src.modules.notifications.constants import NotificationChannel, NotificationStatus
+from src.modules.notifications.constants import NotificationStatus
 from src.modules.notifications.models import NotificationLog, NotificationTemplate
 from src.modules.notifications.providers.base import NotificationProvider
 from src.modules.notifications.repository import (

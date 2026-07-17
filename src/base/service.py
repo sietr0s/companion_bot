@@ -8,6 +8,7 @@
 
 from collections.abc import Sequence
 from typing import Any, Generic, TypeVar
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,7 +76,7 @@ class BaseService(Generic[RepositoryType]):
         """
         return await self.repository.create(session, data)
 
-    async def update(self, session: AsyncSession, db_obj: Any, data: dict[str, Any]) -> Any:
+    async def update(self, session: AsyncSession, obj_id: UUID, data: dict[str, Any]) -> Any:
         """
         Обновить сущность.
 
@@ -87,9 +88,10 @@ class BaseService(Generic[RepositoryType]):
         Returns:
             Обновлённая сущность
         """
-        return await self.repository.update(session, db_obj, data)
+        obj = await self.get_by_id(session, obj_id)
+        return await self.repository.update(session, obj, data)
 
-    async def delete(self, session: AsyncSession, db_obj: Any) -> None:
+    async def delete(self, session: AsyncSession, obj_id: UUID) -> None:
         """
         Удалить сущность.
 
@@ -97,4 +99,5 @@ class BaseService(Generic[RepositoryType]):
             session: SQLAlchemy async session
             db_obj: Сущность для удаления
         """
-        return await self.repository.delete(session, db_obj)
+        obj = await self.get_by_id(session, obj_id)
+        return await self.repository.delete(session, obj)

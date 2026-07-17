@@ -13,7 +13,7 @@ import respx
 from httpx import Response
 
 from src.modules.telegram_clients.client_manager import TelegramClientManager
-from src.modules.telegram_clients.service import TelegramClientService
+from src.modules.telegram_clients.service import TelegramAccountService
 
 
 def create_mock_event(chat_id=-1001234567890, sender_id=123456789, is_private=True):
@@ -75,7 +75,7 @@ async def test_on_new_message_with_photo_uploads_to_storage(
 
     # Мокаем should_read_message на TelegramClientService
     with patch.object(
-        TelegramClientService, "should_read_message", new_callable=AsyncMock
+        TelegramAccountService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -89,7 +89,7 @@ async def test_on_new_message_with_photo_uploads_to_storage(
         manager._clients[account_id] = mock_client
 
         # Мокаем сервис — проверяем что handle_incoming_message вызван
-        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service = MagicMock(spec=TelegramAccountService)
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
@@ -136,7 +136,7 @@ async def test_on_new_message_with_media_upload_error(
     mock_client.on = mock_on
 
     with patch.object(
-        TelegramClientService, "should_read_message", new_callable=AsyncMock
+        TelegramAccountService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -149,7 +149,7 @@ async def test_on_new_message_with_media_upload_error(
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
 
-        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service = MagicMock(spec=TelegramAccountService)
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
@@ -190,7 +190,7 @@ async def test_on_new_message_without_media(
     mock_client.on = mock_on
 
     with patch.object(
-        TelegramClientService, "should_read_message", new_callable=AsyncMock
+        TelegramAccountService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -200,7 +200,7 @@ async def test_on_new_message_without_media(
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
 
-        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service = MagicMock(spec=TelegramAccountService)
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 
@@ -255,7 +255,7 @@ async def test_on_new_message_with_video_uploads_to_storage(
     mock_client.on = mock_on
 
     with patch.object(
-        TelegramClientService, "should_read_message", new_callable=AsyncMock
+        TelegramAccountService, "should_read_message", new_callable=AsyncMock
     ) as mock_should_read:
         mock_should_read.return_value = True
 
@@ -268,7 +268,7 @@ async def test_on_new_message_with_video_uploads_to_storage(
         account_id = uuid.UUID("12345678-1234-5678-1234-567812345678")
         manager._clients[account_id] = mock_client
 
-        mock_service = MagicMock(spec=TelegramClientService)
+        mock_service = MagicMock(spec=TelegramAccountService)
         mock_service.handle_incoming_message = AsyncMock()
         manager._service = mock_service
 

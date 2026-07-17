@@ -236,8 +236,11 @@ class TestNotificationService:
 
     @pytest.mark.asyncio
     async def test_send_notification_with_db_template(
-            self, db_session: AsyncSession, service, mock_users_client,
-        ):
+        self,
+        db_session: AsyncSession,
+        service,
+        mock_users_client,
+    ):
         # Создаём шаблон в БД
         await service.create_template(
             db_session,
@@ -265,8 +268,11 @@ class TestNotificationService:
 
     @pytest.mark.asyncio
     async def test_send_notification_no_template(
-            self, db_session: AsyncSession, service, mock_users_client,
-        ):
+        self,
+        db_session: AsyncSession,
+        service,
+        mock_users_client,
+    ):
         auth_id = uuid.uuid4()
         log = await service.send_notification(
             session=db_session,

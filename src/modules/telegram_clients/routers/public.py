@@ -1,7 +1,5 @@
 """
 Публичные роуты модуля Telegram-клиентов.
-
-auth_id извлекается из JWT-токена.
 """
 
 import uuid
@@ -11,12 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.filters import parse_filters
 from src.base.schemas import PaginatedResponse
-from src.core.dependencies import get_current_user, get_db_session
+from src.core.dependencies import get_db_session
 from src.core.exceptions import NotFoundError
-from src.modules.telegram_clients.dependencies import (
-    get_telegram_client_service,
-    get_telegram_settings_service,
-)
+from src.modules.telegram_clients.dependencies import get_telegram_account_service, get_telegram_settings_service
 from src.modules.telegram_clients.schemas.internal.settings import (
     TelegramSettingsCreate,
     TelegramSettingsRead,
@@ -36,7 +31,7 @@ from src.modules.telegram_clients.schemas.public import (
     QrStartResponse,
     QrStatusResponse,
 )
-from src.modules.telegram_clients.service import TelegramClientService
+from src.modules.telegram_clients.services import TelegramAccountService, TelegramSettingsService
 
 router = APIRouter(prefix="/api/v1/public/telegram")
 
@@ -47,13 +42,12 @@ router = APIRouter(prefix="/api/v1/public/telegram")
     summary="Шаг 1: отправить номер телефона",
 )
 async def auth_phone(
-    data: PhoneRequest,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        data: PhoneRequest,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> AuthStep1Response:
     """Отправляет SMS-код на указанный номер телефона."""
-    return await service.request_code(session, data.model_dump(), auth_id)
+    return await service.request_code(session, data.model_dump())
 
 
 @router.post(
@@ -62,13 +56,12 @@ async def auth_phone(
     summary="Шаг 2: ввести SMS-код",
 )
 async def auth_code(
-    data: CodeRequest,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        data: CodeRequest,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> AuthStep2Response:
     """Вводит SMS-код. Если аккаунт с 2FA — возвращает статус 2fa_required."""
-    return await service.verify_code(session, data.model_dump(), auth_id)
+    return await service.verify_code(session, data.model_dump())
 
 
 @router.post(
@@ -77,13 +70,12 @@ async def auth_code(
     summary="Шаг 3: ввести пароль 2FA",
 )
 async def auth_password(
-    data: PasswordRequest,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        data: PasswordRequest,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> AuthStep3Response:
     """Вводит пароль облачного шифрования (2FA)."""
-    return await service.verify_password(session, data.model_dump(), auth_id)
+    return await service.verify_password(session, data.model_dump())
 
 
 # --- QR-авторизация ---
@@ -95,12 +87,11 @@ async def auth_password(
     summary="Запустить QR-авторизацию Telegram",
 )
 async def auth_qr_start(
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> QrStartResponse:
     """Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода."""
-    return await service.start_qr_auth(session, auth_id)
+    return await service.start_qr_auth(session)
 
 
 @router.get(
@@ -109,8 +100,8 @@ async def auth_qr_start(
     summary="Статус QR-авторизации",
 )
 async def auth_qr_status(
-    account_id: uuid.UUID,
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> QrStatusResponse:
     """Возвращает текущий статус QR-сессии: pending, connected, expired или error."""
     return await service.get_qr_status(account_id)
@@ -122,8 +113,8 @@ async def auth_qr_status(
     summary="Отменить QR-авторизацию",
 )
 async def auth_qr_cancel(
-    account_id: uuid.UUID,
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> None:
     """Отменяет QR-сессию и очищает временные данные."""
     await service.cancel_qr_auth(account_id)
@@ -135,13 +126,12 @@ async def auth_qr_cancel(
     summary="Завершить QR-авторизацию",
 )
 async def auth_qr_complete(
-    account_id: uuid.UUID,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> AccountRead:
     """Создаёт запись аккаунта в БД после успешного QR-сканирования."""
-    return await service.complete_qr_auth(session, auth_id, account_id)
+    return await service.complete_qr_auth(session, account_id)
 
 
 # --- Управление аккаунтами ---
@@ -153,17 +143,16 @@ async def auth_qr_complete(
     summary="Список Telegram-аккаунтов",
 )
 async def get_accounts(
-    filters: list[str] = Query(default_factory=list, description="field+operator+value"),
-    page: int = Query(default=1, ge=1),
-    limit: int = Query(default=100, ge=1, le=500),
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        filters: list[str] = Query(default_factory=list, description="field+operator+value"),
+        page: int = Query(default=1, ge=1),
+        limit: int = Query(default=100, ge=1, le=500),
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> PaginatedResponse:
-    """Возвращает все Telegram-аккаунты текущего пользователя с фильтрацией и пагинацией."""
+    """Возвращает все Telegram-аккаунты с фильтрацией и пагинацией."""
     parsed = parse_filters(filters)
     skip = (page - 1) * limit
-    accounts, total = await service.get_accounts(session, auth_id, parsed, skip, limit)
+    accounts, total = await service.get_accounts(session, parsed, skip, limit)
     return PaginatedResponse.from_list(accounts, total, page=page, page_size=limit)
 
 
@@ -173,14 +162,13 @@ async def get_accounts(
     summary="Детальный просмотр Telegram-аккаунта",
 )
 async def get_account(
-    account_id: uuid.UUID,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> AccountRead:
     """Получить детализацию Telegram-аккаунта по ID."""
     account = await service.get_by_id(session, account_id)
-    if not account or account.auth_id != auth_id:
+    if not account:
         raise NotFoundError(detail="Telegram-аккаунт не найден")
     return account
 
@@ -191,13 +179,12 @@ async def get_account(
     summary="Удалить Telegram-аккаунт",
 )
 async def delete_account(
-    account_id: uuid.UUID,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> None:
     """Удаляет Telegram-аккаунт, отключает клиент, удаляет сессию."""
-    await service.delete_account(session, account_id, auth_id)
+    await service.delete_account(session, account_id)
 
 
 # --- Чаты и сообщения ---
@@ -209,14 +196,13 @@ async def delete_account(
     summary="Список чатов аккаунта",
 )
 async def get_chats(
-    account_id: uuid.UUID,
-    limit: int = Query(default=100, ge=1, le=500),
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        limit: int = Query(default=100, ge=1, le=500),
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> list[ChatRead]:
     """Возвращает все чаты указанного Telegram-аккаунта."""
-    return await service.get_chats(session, account_id, auth_id, limit=limit)
+    return await service.get_chats(session, account_id, limit=limit)
 
 
 @router.get(
@@ -225,17 +211,16 @@ async def get_chats(
     summary="Сообщения чата",
 )
 async def get_messages(
-    account_id: uuid.UUID,
-    chat_id: int,
-    limit: int = Query(default=50, ge=1, le=200),
-    offset_id: int = Query(default=0, ge=0),
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_client_service),
+        account_id: uuid.UUID,
+        chat_id: int,
+        limit: int = Query(default=50, ge=1, le=200),
+        offset_id: int = Query(default=0, ge=0),
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> list[MessageRead]:
     """Возвращает сообщения указанного чата (on-demand из Telegram API)."""
     domain_messages = await service.get_messages(
-        session, account_id, chat_id, auth_id, limit=limit, offset_id=offset_id
+        session, account_id, chat_id, limit=limit, offset_id=offset_id
     )
     return [
         MessageRead(
@@ -262,18 +247,12 @@ async def get_messages(
     summary="Настройки чтения аккаунта",
 )
 async def get_settings(
-    account_id: uuid.UUID,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
-    """Получить настройки чтения для своего Telegram-аккаунта."""
-    # Проверяем принадлежность аккаунта
-    account = await service.repository.get_by_id(session, account_id)
-    if not account or account.auth_id != auth_id:
-        raise NotFoundError(detail="Telegram-аккаунт не найден")
-
-    settings = await service.get_settings(session, account_id)
+    """Получить настройки чтения для Telegram-аккаунта."""
+    settings = await service.get_by_id(session, account_id)
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -284,24 +263,14 @@ async def get_settings(
     summary="Создать настройки чтения аккаунта",
 )
 async def create_settings(
-    account_id: uuid.UUID,
-    data: TelegramSettingsCreate,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        data: TelegramSettingsCreate,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
-    """Создать настройки чтения для своего Telegram-аккаунта."""
-    # Проверяем принадлежность аккаунта
-    account = await service.repository.get_by_id(session, account_id)
-    if not account or account.auth_id != auth_id:
-        raise NotFoundError(detail="Telegram-аккаунт не найден")
-
-    settings = await service.create_default_settings(session, account_id)
-    # Если переданы кастомные значения - обновляем
-    if data.model_dump(exclude_unset=True):
-        settings = await service.update_settings(
-            session, account_id, data.model_dump(exclude_unset=True)
-        )
+    """Создать настройки чтения для Telegram-аккаунта."""
+    await service.create_default_settings(session, account_id)
+    settings = await service.update(session, account_id, data.model_dump(exclude_unset=True))
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -311,19 +280,13 @@ async def create_settings(
     summary="Обновить настройки чтения аккаунта",
 )
 async def update_settings(
-    account_id: uuid.UUID,
-    data: TelegramSettingsUpdate,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        data: TelegramSettingsUpdate,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
-    """Обновить настройки чтения для своего Telegram-аккаунта."""
-    # Проверяем принадлежность аккаунта
-    account = await service.repository.get_by_id(session, account_id)
-    if not account or account.auth_id != auth_id:
-        raise NotFoundError(detail="Telegram-аккаунт не найден")
-
-    settings = await service.update_settings(
+    """Обновить настройки чтения для Telegram-аккаунта."""
+    settings = await service.update(
         session, account_id, data.model_dump(exclude_unset=True)
     )
     return TelegramSettingsRead.model_validate(settings)
@@ -335,15 +298,9 @@ async def update_settings(
     summary="Удалить настройки чтения аккаунта",
 )
 async def delete_settings(
-    account_id: uuid.UUID,
-    auth_id: uuid.UUID = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-    service: TelegramClientService = Depends(get_telegram_settings_service),
+        account_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db_session),
+        service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> None:
-    """Удалить настройки чтения для своего Telegram-аккаунта."""
-    # Проверяем принадлежность аккаунта
-    account = await service.repository.get_by_id(session, account_id)
-    if not account or account.auth_id != auth_id:
-        raise NotFoundError(detail="Telegram-аккаунт не найден")
-
-    await service.delete_settings(session, account_id)
+    """Удалить настройки чтения для Telegram-аккаунта."""
+    await service.delete(session, account_id)

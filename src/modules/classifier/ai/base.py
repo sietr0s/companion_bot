@@ -32,6 +32,10 @@ class EntityResult:
 class CategoryClassifier(Protocol):
     """Протокол классификатора категорий."""
 
+    async def initialize(self):
+        """Инициализация классификатора."""
+        ...
+
     async def classify(self, text: str, labels: list[dict]) -> ClassifyResult:
         """
         Классифицировать текст по категориям.

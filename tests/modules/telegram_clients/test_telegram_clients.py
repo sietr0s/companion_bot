@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.modules.telegram_clients.service import TelegramAccountService
 
 from src.bus.in_memory.producer import InMemoryProducer
 from src.core.bus_topics import BusTopics
@@ -29,7 +30,6 @@ from src.modules.telegram_clients.schemas.public import (
     CodeRequest,
     PasswordRequest,
 )
-from src.modules.telegram_clients.service import TelegramClientService
 
 # --- Фикстуры ---
 
@@ -66,8 +66,8 @@ def tg_service(
     client_manager: TelegramClientManager,
     settings_repository: TelegramSettingsRepository,
     chat_state_repository: TelegramChatStateRepository,
-) -> TelegramClientService:
-    return TelegramClientService(
+) -> TelegramAccountService:
+    return TelegramAccountService(
         repository=tg_repository,
         message_bus=message_bus,
         client_manager=client_manager,
@@ -77,47 +77,12 @@ def tg_service(
 
 
 @pytest.fixture
-async def existing_auth_id(db_session: AsyncSession) -> uuid.UUID:
-    """Создаёт AuthAccount и возвращает его ID."""
-    from src.modules.auth.repository import AuthRepository
-
-    repo = AuthRepository()
-    account = await repo.create(
-        db_session,
-        {
-            "identifier": "tg_test@test.com",
-            "identifier_type": "email",
-            "hashed_password": "hashed",
-        },
-    )
-    return account.id
-
-
-@pytest.fixture
-async def other_auth_id(db_session: AsyncSession) -> uuid.UUID:
-    """Создаёт второй AuthAccount (чужой пользователь)."""
-    from src.modules.auth.repository import AuthRepository
-
-    repo = AuthRepository()
-    account = await repo.create(
-        db_session,
-        {
-            "identifier": "other_tg@test.com",
-            "identifier_type": "email",
-            "hashed_password": "hashed",
-        },
-    )
-    return account.id
-
-
-@pytest.fixture
-async def tg_account(db_session: AsyncSession, existing_auth_id: uuid.UUID) -> TelegramAccount:
+async def tg_account(db_session: AsyncSession) -> TelegramAccount:
     """Создаёт тестовый TelegramAccount в БД."""
     repo = TelegramAccountRepository()
     account = await repo.create(
         db_session,
         {
-            "auth_id": existing_auth_id,
             "phone": "+79001234567",
             "session_file": "/tmp/test_session",
             "is_connected": False,
@@ -127,15 +92,12 @@ async def tg_account(db_session: AsyncSession, existing_auth_id: uuid.UUID) -> T
 
 
 @pytest.fixture
-async def connected_tg_account(
-    db_session: AsyncSession, existing_auth_id: uuid.UUID
-) -> TelegramAccount:
+async def connected_tg_account(db_session: AsyncSession) -> TelegramAccount:
     """Создаёт подключённый TelegramAccount в БД."""
     repo = TelegramAccountRepository()
     account = await repo.create(
         db_session,
         {
-            "auth_id": existing_auth_id,
             "phone": "+79009999999",
             "session_file": "/tmp/test_connected_session",
             "is_connected": True,
@@ -152,47 +114,15 @@ async def connected_tg_account(
 class TestTelegramAccountRepository:
     """Тесты репозитория Telegram-аккаунтов."""
 
-    async def test_get_by_auth_id(
-        self,
-        db_session: AsyncSession,
-        tg_repository: TelegramAccountRepository,
-        existing_auth_id: uuid.UUID,
-    ):
-        """Поиск аккаунтов по auth_id."""
-        await tg_repository.create(
-            db_session,
-            {
-                "auth_id": existing_auth_id,
-                "phone": "+79001111111",
-                "session_file": "/tmp/s1",
-            },
-        )
-        results, total = await tg_repository.get_by_auth_id(db_session, existing_auth_id)
-        assert len(results) == 1
-        assert results[0].phone == "+79001111111"
-        assert total == 1
-
-    async def test_get_by_auth_id_empty(
-        self,
-        db_session: AsyncSession,
-        tg_repository: TelegramAccountRepository,
-    ):
-        """Пустой результат при поиске несуществующего auth_id."""
-        results, total = await tg_repository.get_by_auth_id(db_session, uuid.uuid4())
-        assert len(results) == 0
-        assert total == 0
-
     async def test_get_connected_accounts(
         self,
         db_session: AsyncSession,
         tg_repository: TelegramAccountRepository,
-        existing_auth_id: uuid.UUID,
     ):
-        """Поолько подключённые аккаунты."""
+        """Только подключённые аккаунты."""
         await tg_repository.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79002222222",
                 "session_file": "/tmp/s2",
                 "is_connected": True,
@@ -201,7 +131,6 @@ class TestTelegramAccountRepository:
         await tg_repository.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79003333333",
                 "session_file": "/tmp/s3",
                 "is_connected": False,
@@ -221,44 +150,21 @@ class TestTelegramClientServiceGetAccounts:
     async def test_get_accounts(
         self,
         db_session: AsyncSession,
-        tg_service: TelegramClientService,
-        existing_auth_id: uuid.UUID,
+        tg_service: TelegramAccountService,
     ):
-        """Возвращает аккаунты текущего пользователя."""
+        """Возвращает все аккаунты."""
         repo = TelegramAccountRepository()
         await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79004444444",
                 "session_file": "/tmp/s4",
             },
         )
-        accounts, total = await tg_service.get_accounts(db_session, existing_auth_id)
+        accounts, total = await tg_service.get_accounts(db_session)
         assert len(accounts) == 1
         assert accounts[0].phone == "+79004444444"
         assert total == 1
-
-    async def test_get_accounts_other_user_empty(
-        self,
-        db_session: AsyncSession,
-        tg_service: TelegramClientService,
-        existing_auth_id: uuid.UUID,
-        other_auth_id: uuid.UUID,
-    ):
-        """Не возвращает аккаунты другого пользователя."""
-        repo = TelegramAccountRepository()
-        await repo.create(
-            db_session,
-            {
-                "auth_id": existing_auth_id,
-                "phone": "+79005555555",
-                "session_file": "/tmp/s5",
-            },
-        )
-        accounts, total = await tg_service.get_accounts(db_session, other_auth_id)
-        assert len(accounts) == 0
-        assert total == 0
 
 
 class TestTelegramClientServiceDeleteAccount:
@@ -267,40 +173,26 @@ class TestTelegramClientServiceDeleteAccount:
     async def test_delete_account(
         self,
         db_session: AsyncSession,
-        tg_service: TelegramClientService,
+        tg_service: TelegramAccountService,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Успешное удаление аккаунта."""
-        await tg_service.delete_account(db_session, tg_account.id, existing_auth_id)
+        await tg_service.delete_account(db_session, tg_account.id)
         found = await tg_service.repository.get_by_id(db_session, tg_account.id)
         assert found is None
 
     async def test_delete_account_not_found(
         self,
         db_session: AsyncSession,
-        tg_service: TelegramClientService,
-        existing_auth_id: uuid.UUID,
+        tg_service: TelegramAccountService,
     ):
         """Удаление несуществующего аккаунта — NotFoundError."""
         with pytest.raises(NotFoundError):
-            await tg_service.delete_account(db_session, uuid.uuid4(), existing_auth_id)
-
-    async def test_delete_account_wrong_user(
-        self,
-        db_session: AsyncSession,
-        tg_service: TelegramClientService,
-        tg_account: TelegramAccount,
-        other_auth_id: uuid.UUID,
-    ):
-        """Удаление чужого аккаунта — NotFoundError."""
-        with pytest.raises(NotFoundError):
-            await tg_service.delete_account(db_session, tg_account.id, other_auth_id)
+            await tg_service.delete_account(db_session, uuid.uuid4())
 
     async def test_delete_account_publishes_event(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """При удалении публикуется событие tg.account.disconnected."""
         published = []
@@ -313,7 +205,7 @@ class TestTelegramClientServiceDeleteAccount:
         manager = TelegramClientManager()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=MockBus(),
             client_manager=manager,
@@ -324,13 +216,12 @@ class TestTelegramClientServiceDeleteAccount:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79006666666",
                 "session_file": "/tmp/s6",
             },
         )
 
-        await service.delete_account(db_session, account.id, existing_auth_id)
+        await service.delete_account(db_session, account.id)
 
         assert len(published) == 1
         assert published[0][0] == BusTopics.TG_ACCOUNT_DISCONNECTED
@@ -343,59 +234,10 @@ class TestTelegramClientServiceDeleteAccount:
 class TestTelegramClientServiceAuth:
     """Тесты авторизации с моком ClientManager."""
 
-    async def test_verify_code_wrong_user(
-        self,
-        db_session: AsyncSession,
-        tg_account: TelegramAccount,
-        other_auth_id: uuid.UUID,
-    ):
-        """Ввод кода для чужого аккаунта — NotFoundError."""
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        data = CodeRequest(account_id=tg_account.id, code="12345")
-        with pytest.raises(NotFoundError):
-            await service.verify_code(db_session, data.model_dump(), other_auth_id)
-
-    async def test_verify_password_wrong_user(
-        self,
-        db_session: AsyncSession,
-        tg_account: TelegramAccount,
-        other_auth_id: uuid.UUID,
-    ):
-        """Ввод 2FA пароля для чужого аккаунта — NotFoundError."""
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        data = PasswordRequest(account_id=tg_account.id, password="pass")
-        with pytest.raises(NotFoundError):
-            await service.verify_password(db_session, data.model_dump(), other_auth_id)
-
     async def test_verify_code_connected_publishes_event(
         self,
         db_session: AsyncSession,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """При успешном входе по коду публикуется событие tg.account.connected."""
         published = []
@@ -419,7 +261,7 @@ class TestTelegramClientServiceAuth:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=MockBus(),
             client_manager=manager,
@@ -428,7 +270,7 @@ class TestTelegramClientServiceAuth:
         )
 
         data = CodeRequest(account_id=tg_account.id, code="12345")
-        result = await service.verify_code(db_session, data.model_dump(), existing_auth_id)
+        result = await service.verify_code(db_session, data.model_dump())
 
         assert result.status == "connected"
         assert len(published) == 1
@@ -438,7 +280,6 @@ class TestTelegramClientServiceAuth:
         self,
         db_session: AsyncSession,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Если аккаунт с 2FA — возвращается статус 2fa_required."""
         bus = InMemoryProducer()
@@ -448,7 +289,7 @@ class TestTelegramClientServiceAuth:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -457,7 +298,7 @@ class TestTelegramClientServiceAuth:
         )
 
         data = CodeRequest(account_id=tg_account.id, code="12345")
-        result = await service.verify_code(db_session, data.model_dump(), existing_auth_id)
+        result = await service.verify_code(db_session, data.model_dump())
 
         assert result.status == "2fa_required"
 
@@ -465,7 +306,6 @@ class TestTelegramClientServiceAuth:
         self,
         db_session: AsyncSession,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Успешный вход по 2FA паролю."""
         published = []
@@ -488,7 +328,7 @@ class TestTelegramClientServiceAuth:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=MockBus(),
             client_manager=manager,
@@ -497,7 +337,7 @@ class TestTelegramClientServiceAuth:
         )
 
         data = PasswordRequest(account_id=tg_account.id, password="cloudpass")
-        result = await service.verify_password(db_session, data.model_dump(), existing_auth_id)
+        result = await service.verify_password(db_session, data.model_dump())
 
         assert result.status == "connected"
         assert len(published) == 1
@@ -510,34 +350,10 @@ class TestTelegramClientServiceAuth:
 class TestTelegramClientServiceChatsMessages:
     """Тесты получения чатов и сообщений."""
 
-    async def test_get_chats_wrong_user(
-        self,
-        db_session: AsyncSession,
-        connected_tg_account: TelegramAccount,
-        other_auth_id: uuid.UUID,
-    ):
-        """Получение чатов чужого аккаунта — NotFoundError."""
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        with pytest.raises(NotFoundError):
-            await service.get_chats(db_session, connected_tg_account.id, other_auth_id)
-
     async def test_get_chats_not_connected(
         self,
         db_session: AsyncSession,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Получение чатов отключённого аккаунта — ConflictError."""
         bus = InMemoryProducer()
@@ -545,7 +361,7 @@ class TestTelegramClientServiceChatsMessages:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -554,13 +370,12 @@ class TestTelegramClientServiceChatsMessages:
         )
 
         with pytest.raises(ConflictError):
-            await service.get_chats(db_session, tg_account.id, existing_auth_id)
+            await service.get_chats(db_session, tg_account.id)
 
     async def test_get_messages_not_connected(
         self,
         db_session: AsyncSession,
         tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Получение сообщений отключённого аккаунта — ConflictError."""
         bus = InMemoryProducer()
@@ -568,7 +383,7 @@ class TestTelegramClientServiceChatsMessages:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -577,15 +392,12 @@ class TestTelegramClientServiceChatsMessages:
         )
 
         with pytest.raises(ConflictError):
-            await service.get_messages(
-                db_session, tg_account.id, chat_id=123, auth_id=existing_auth_id
-            )
+            await service.get_messages(db_session, tg_account.id, chat_id=123)
 
     async def test_get_chats_success(
         self,
         db_session: AsyncSession,
         connected_tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Успешное получение чатов подключённого аккаунта."""
         bus = InMemoryProducer()
@@ -599,7 +411,7 @@ class TestTelegramClientServiceChatsMessages:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -607,7 +419,7 @@ class TestTelegramClientServiceChatsMessages:
             chat_state_repository=chat_state_repo,
         )
 
-        result = await service.get_chats(db_session, connected_tg_account.id, existing_auth_id)
+        result = await service.get_chats(db_session, connected_tg_account.id)
         assert len(result) == 1
         assert result[0]["name"] == "Chat1"
 
@@ -615,7 +427,6 @@ class TestTelegramClientServiceChatsMessages:
         self,
         db_session: AsyncSession,
         connected_tg_account: TelegramAccount,
-        existing_auth_id: uuid.UUID,
     ):
         """Успешное получение сообщений подключённого аккаунта."""
         bus = InMemoryProducer()
@@ -636,7 +447,7 @@ class TestTelegramClientServiceChatsMessages:
         repo = TelegramAccountRepository()
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -644,9 +455,7 @@ class TestTelegramClientServiceChatsMessages:
             chat_state_repository=chat_state_repo,
         )
 
-        result = await service.get_messages(
-            db_session, connected_tg_account.id, chat_id=1, auth_id=existing_auth_id
-        )
+        result = await service.get_messages(db_session, connected_tg_account.id, chat_id=1)
         assert len(result) == 1
         assert result[0]["text"] == "Hi"
 
@@ -667,7 +476,7 @@ class TestTgEvents:
             media=[{"telegram_id": 123, "type": "photo"}],
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "tg.message.received"
+        assert data["event_name"] == "telegram_clients.event.message.received"
         assert data["chat_id"] == -1001234567890
         assert data["message_id"] == 42
         assert data["text"] == "Привет!"
@@ -677,23 +486,21 @@ class TestTgEvents:
     def test_tg_account_connected_to_bus_dict(self):
         event = TgAccountConnected(
             account_id=uuid.uuid4(),
-            auth_id=uuid.uuid4(),
             phone="+79001234567",
             telegram_id=999888,
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "tg.account.connected"
+        assert data["event_name"] == "telegram_clients.event.account.connected"
         assert data["phone"] == "+79001234567"
         assert data["telegram_id"] == 999888
 
     def test_tg_account_disconnected_to_bus_dict(self):
         event = TgAccountDisconnected(
             account_id=uuid.uuid4(),
-            auth_id=uuid.uuid4(),
             reason="error",
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "tg.account.disconnected"
+        assert data["event_name"] == "telegram_clients.event.account.disconnected"
         assert data["reason"] == "error"
 
 
@@ -764,7 +571,6 @@ class TestTelegramClientServiceChatState:
     async def test_get_chat_state_not_found(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """Получение несуществующего состояния — NotFoundError."""
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
@@ -775,7 +581,7 @@ class TestTelegramClientServiceChatState:
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
 
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -787,7 +593,6 @@ class TestTelegramClientServiceChatState:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79007777777",
                 "session_file": "/tmp/s7",
             },
@@ -795,12 +600,11 @@ class TestTelegramClientServiceChatState:
 
         # Пытаемся получить несуществующее состояние
         with pytest.raises(NotFoundError):
-            await service.get_chat_state(db_session, account.id, existing_auth_id, chat_id=123)
+            await service.get_chat_state(db_session, account.id, chat_id=123)
 
     async def test_update_last_read_create_and_update(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """Создание и обновление состояния чтения."""
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
@@ -811,7 +615,7 @@ class TestTelegramClientServiceChatState:
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
 
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -823,7 +627,6 @@ class TestTelegramClientServiceChatState:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79008888888",
                 "session_file": "/tmp/s8",
             },
@@ -833,7 +636,7 @@ class TestTelegramClientServiceChatState:
         chat_id = 456
         message_id = 100
         state = await service.update_last_read(
-            db_session, account.id, existing_auth_id, chat_id, message_id
+            db_session, account.id, chat_id, message_id
         )
 
         assert state.account_id == account.id
@@ -843,7 +646,7 @@ class TestTelegramClientServiceChatState:
         # Обновляем состояние
         new_message_id = 200
         updated_state = await service.update_last_read(
-            db_session, account.id, existing_auth_id, chat_id, new_message_id
+            db_session, account.id, chat_id, new_message_id
         )
 
         assert updated_state.account_id == account.id
@@ -853,7 +656,6 @@ class TestTelegramClientServiceChatState:
     async def test_update_last_read_multiple_chats(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """Обновление состояния для нескольких чатов."""
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
@@ -864,7 +666,7 @@ class TestTelegramClientServiceChatState:
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
 
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -876,19 +678,18 @@ class TestTelegramClientServiceChatState:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79009999999",
                 "session_file": "/tmp/s9",
             },
         )
 
         # Обновляем состояния для разных чатов
-        await service.update_last_read(db_session, account.id, existing_auth_id, 1, 10)
-        await service.update_last_read(db_session, account.id, existing_auth_id, 2, 20)
-        await service.update_last_read(db_session, account.id, existing_auth_id, 3, 30)
+        await service.update_last_read(db_session, account.id, 1, 10)
+        await service.update_last_read(db_session, account.id, 2, 20)
+        await service.update_last_read(db_session, account.id, 3, 30)
 
         # Получаем все состояния
-        all_states = await service.get_all_chats_state(db_session, account.id, existing_auth_id)
+        all_states = await service.get_all_chats_state(db_session, account.id)
 
         assert len(all_states) == 3
         chat_ids = {state.chat_id for state in all_states}
@@ -897,7 +698,6 @@ class TestTelegramClientServiceChatState:
     async def test_get_all_chats_state(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """Получение всех состояний чтения аккаунта."""
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
@@ -908,7 +708,7 @@ class TestTelegramClientServiceChatState:
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
 
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -920,145 +720,24 @@ class TestTelegramClientServiceChatState:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79001112222",
                 "session_file": "/tmp/s10",
             },
         )
 
         # Создаём несколько состояний
-        await service.update_last_read(db_session, account.id, existing_auth_id, 100, 1)
-        await service.update_last_read(db_session, account.id, existing_auth_id, 101, 2)
+        await service.update_last_read(db_session, account.id, 100, 1)
+        await service.update_last_read(db_session, account.id, 101, 2)
 
         # Получаем все состояния
-        states = await service.get_all_chats_state(db_session, account.id, existing_auth_id)
+        states = await service.get_all_chats_state(db_session, account.id)
 
         assert len(states) == 2
         assert all(state.account_id == account.id for state in states)
 
-    async def test_get_chat_state_wrong_user(
-        self,
-        db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
-        other_auth_id: uuid.UUID,
-    ):
-        """Получение состояния чужого аккаунта — NotFoundError."""
-        from src.modules.telegram_clients.repository import TelegramChatStateRepository
-
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        # Создаём аккаунт для existing_auth_id
-        account = await repo.create(
-            db_session,
-            {
-                "auth_id": existing_auth_id,
-                "phone": "+79003334444",
-                "session_file": "/tmp/s11",
-            },
-        )
-
-        # Создаём состояние
-        await service.update_last_read(db_session, account.id, existing_auth_id, 200, 50)
-
-        # Пытаемся получить состояние от имени other_auth_id
-        with pytest.raises(NotFoundError):
-            await service.get_chat_state(db_session, account.id, other_auth_id, chat_id=200)
-
-    async def test_update_last_read_wrong_user(
-        self,
-        db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
-        other_auth_id: uuid.UUID,
-    ):
-        """Обновление состояния чужого аккаунта — NotFoundError."""
-        from src.modules.telegram_clients.repository import TelegramChatStateRepository
-
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        # Создаём аккаунт для existing_auth_id
-        account = await repo.create(
-            db_session,
-            {
-                "auth_id": existing_auth_id,
-                "phone": "+79005556666",
-                "session_file": "/tmp/s12",
-            },
-        )
-
-        # Пытаемся обновить состояние от имени other_auth_id
-        with pytest.raises(NotFoundError):
-            await service.update_last_read(
-                db_session, account.id, other_auth_id, chat_id=300, message_id=100
-            )
-
-    async def test_get_all_chats_state_wrong_user(
-        self,
-        db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
-        other_auth_id: uuid.UUID,
-    ):
-        """Получение всех состояний чужого аккаунта — NotFoundError."""
-        from src.modules.telegram_clients.repository import TelegramChatStateRepository
-
-        bus = InMemoryProducer()
-        manager = TelegramClientManager()
-        repo = TelegramAccountRepository()
-        settings_repo = TelegramSettingsRepository()
-        chat_state_repo = TelegramChatStateRepository()
-
-        service = TelegramClientService(
-            repository=repo,
-            message_bus=bus,
-            client_manager=manager,
-            settings_repository=settings_repo,
-            chat_state_repository=chat_state_repo,
-        )
-
-        # Создаём аккаунт для existing_auth_id
-        account = await repo.create(
-            db_session,
-            {
-                "auth_id": existing_auth_id,
-                "phone": "+79007778888",
-                "session_file": "/tmp/s13",
-            },
-        )
-
-        # Создаём состояние
-        await service.update_last_read(db_session, account.id, existing_auth_id, 400, 150)
-
-        # Пытаемся получить все состояния от имени other_auth_id
-        with pytest.raises(NotFoundError):
-            await service.get_all_chats_state(db_session, account.id, other_auth_id)
-
     async def test_get_chat_state_not_connected_account(
         self,
         db_session: AsyncSession,
-        existing_auth_id: uuid.UUID,
     ):
         """Получение состояния для неподключенного аккаунта — работает нормально."""
         from src.modules.telegram_clients.repository import TelegramChatStateRepository
@@ -1069,7 +748,7 @@ class TestTelegramClientServiceChatState:
         settings_repo = TelegramSettingsRepository()
         chat_state_repo = TelegramChatStateRepository()
 
-        service = TelegramClientService(
+        service = TelegramAccountService(
             repository=repo,
             message_bus=bus,
             client_manager=manager,
@@ -1081,7 +760,6 @@ class TestTelegramClientServiceChatState:
         account = await repo.create(
             db_session,
             {
-                "auth_id": existing_auth_id,
                 "phone": "+79009990000",
                 "session_file": "/tmp/s14",
                 "is_connected": False,
@@ -1090,7 +768,7 @@ class TestTelegramClientServiceChatState:
 
         # Создаём состояние
         state = await service.update_last_read(
-            db_session, account.id, existing_auth_id, chat_id=500, message_id=25
+            db_session, account.id, chat_id=500, message_id=25
         )
 
         assert state.account_id == account.id
@@ -1099,7 +777,7 @@ class TestTelegramClientServiceChatState:
 
         # Получаем состояние
         retrieved_state = await service.get_chat_state(
-            db_session, account.id, existing_auth_id, chat_id=500
+            db_session, account.id, chat_id=500
         )
 
         assert retrieved_state.account_id == account.id

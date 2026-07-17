@@ -27,11 +27,6 @@ class TelegramAccount(BaseModel):
         primary_key=True,
         default=uuid.uuid4,
     )
-    # Связь с модулем auth — обычный UUID, без ForeignKey
-    auth_id: Mapped[uuid.UUID] = mapped_column(
-        nullable=False,
-        index=True,
-    )
     telegram_id: Mapped[int | None] = mapped_column(
         BigInteger,
         nullable=True,

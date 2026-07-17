@@ -4,10 +4,9 @@
 
 import uuid
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.base.filters import Filter, apply_filters
 from src.base.repository import BaseRepository
 from src.modules.telegram_clients.models import (
     TelegramAccount,
@@ -21,29 +20,6 @@ class TelegramAccountRepository(BaseRepository[TelegramAccount]):
 
     def __init__(self) -> None:
         super().__init__(TelegramAccount)
-
-    async def get_by_auth_id(
-        self,
-        session: AsyncSession,
-        auth_id: uuid.UUID,
-        filters: list[Filter] | None = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> tuple[list[TelegramAccount], int]:
-        """Получить все Telegram-аккаунты пользователя с фильтрацией и пагинацией."""
-        stmt = select(TelegramAccount).where(TelegramAccount.auth_id == auth_id)
-
-        if filters:
-            stmt = apply_filters(stmt, TelegramAccount, filters)
-
-        # Считаем total
-        count_stmt = select(func.count()).select_from(stmt.subquery())
-        total = (await session.execute(count_stmt)).scalar() or 0
-
-        # Получаем данные
-        stmt = stmt.offset(skip).limit(limit)
-        result = await session.execute(stmt)
-        return list(result.scalars().all()), total
 
     async def get_connected_accounts(self, session: AsyncSession) -> list[TelegramAccount]:
         """Получить все подключённые аккаунты (для загрузки при старте)."""

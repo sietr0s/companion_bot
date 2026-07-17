@@ -10,7 +10,6 @@ class AccountRead(BaseModel):
     """Схема чтения Telegram-аккаунта."""
 
     id: uuid.UUID
-    auth_id: uuid.UUID
     phone: str
     is_connected: bool
     first_name: str | None = None

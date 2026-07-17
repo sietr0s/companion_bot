@@ -14,8 +14,8 @@ async def create_classifier_tables():
     async with test_engine.begin() as conn:
         # Создаём все таблицы classifier
         await conn.run_sync(Base.metadata.create_all)
-        
+
         # Включаем foreign keys для SQLite
         await conn.execute(text("PRAGMA foreign_keys=ON"))
-    
+
     yield

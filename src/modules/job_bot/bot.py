@@ -12,6 +12,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from src.bus.interface import MessageBus
+from src.core.config import settings
 from src.modules.job_bot.handlers import (
     register_incoming_handlers,
     register_outgoing_handlers,
@@ -21,7 +22,7 @@ from src.modules.job_bot.service import BotService
 logger = logging.getLogger(__name__)
 
 
-def create_bot(token: str) -> Bot:
+def create_bot(token: str = settings.TG_BOT_TOKEN) -> Bot:
     """Создать экземпляр Telegram-бота."""
     return Bot(
         token=token,

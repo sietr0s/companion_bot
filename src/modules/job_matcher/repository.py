@@ -7,11 +7,31 @@ JobOfferRepository — CRUD для предложений о работе.
 
 import uuid
 
-from sqlalchemy import or_, select, cast, String
+from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.repository import BaseRepository
 from src.modules.job_matcher.models import JobOffer, Subscription
+
+
+def _is_postgresql(session: AsyncSession) -> bool:
+    """Проверить, что БД — PostgreSQL (для выбора правильного JSON-оператора)."""
+    return session.bind.dialect.name == "postgresql" if session.bind else False
+
+
+def _json_contains(session: AsyncSession, column, value: str):
+    """
+    JSON contains — портабельно между PostgreSQL и SQLite.
+
+    - PostgreSQL: использует @> (JSONB contains) — точное совпадение
+    - SQLite: cast к String + contains (для тестов)
+    """
+    if _is_postgresql(session):
+        from sqlalchemy import type_coerce
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        return type_coerce(column, JSONB).contains(value)
+    return cast(column, String).contains(f'"{value}"')
 
 
 class SubscriptionRepository(BaseRepository[Subscription]):
@@ -53,11 +73,10 @@ class SubscriptionRepository(BaseRepository[Subscription]):
             category_strs = [str(cat_id) for cat_id in category_ids]
 
             # Строим условие: subscription.category_ids содержит хотя бы один из category_strs
-            # Используем cast к String + contains для портабельности между SQLite и PostgreSQL
-            # В PostgreSQL JSON колонка приводится к тексту, в SQLite — тоже к тексту
-            category_col = cast(Subscription.category_ids, String)
+            # PostgreSQL: @> оператор (JSONB contains) — точное совпадение
+            # SQLite: cast к String + contains (для тестов)
             overlap_conditions = [
-                category_col.contains(f'"{cat_str}"')
+                _json_contains(session, Subscription.category_ids, cat_str)
                 for cat_str in category_strs
             ]
             stmt = stmt.where(
@@ -66,11 +85,10 @@ class SubscriptionRepository(BaseRepository[Subscription]):
             )
 
         if tags:
-            tags_col = cast(Subscription.keywords, String)
             for tag in tags:
                 stmt = stmt.where(
                     Subscription.keywords.isnot(None),
-                    tags_col.contains(f'"{tag}"'),
+                    _json_contains(session, Subscription.keywords, tag),
                 )
         if salary_min is not None:
             stmt = stmt.where(
@@ -81,11 +99,10 @@ class SubscriptionRepository(BaseRepository[Subscription]):
                 (Subscription.min_salary.is_(None)) | (Subscription.min_salary <= salary_max)
             )
         if location:
-            locations_col = cast(Subscription.locations, String)
             stmt = stmt.where(
                 (Subscription.locations.is_(None))
                 | (cast(Subscription.locations, String) == "null")
-                | locations_col.contains(f'"{location}"'),
+                | _json_contains(session, Subscription.locations, location),
             )
 
         result = await session.execute(stmt)

@@ -8,13 +8,14 @@
 
 import logging
 
+from src.bus import get_producer
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
 
 logger = logging.getLogger(__name__)
 
 
-def register_handlers(bus: MessageBus) -> None:
+def register_handlers() -> None:
     """
     Регистрация обработчиков событий на шину.
 
@@ -22,6 +23,7 @@ def register_handlers(bus: MessageBus) -> None:
     подписывается на конкретный топик и реагирует
     на события от других модулей.
     """
+    bus = get_producer()
 
     @bus.subscribe(BusTopics.USER_REGISTERED)
     async def handle_user_registered(message: dict) -> None:

@@ -4,8 +4,6 @@
 Тестирование ORM-моделей: создание, валидация, ограничения БД.
 """
 
-import uuid
-
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +15,6 @@ from src.modules.telegram_clients.models import TelegramAccount, TelegramChatSta
 @pytest.fixture
 async def tg_account(db_session: AsyncSession) -> TelegramAccount:
     """Создаёт тестовый TelegramAccount в БД."""
-    from src.modules.auth.models import Auth
     from src.modules.auth.repository import AuthRepository
 
     # Создаём Auth аккаунт для ForeignKey
@@ -134,7 +131,6 @@ class TestTelegramChatStateUniqueConstraint:
         self, db_session: AsyncSession, tg_account: TelegramAccount
     ):
         """Можно создать состояния с одинаковым chat_id для разных аккаунтов."""
-        from src.modules.auth.models import Auth
         from src.modules.auth.repository import AuthRepository
 
         # Создаём второй Auth аккаунт

@@ -23,7 +23,7 @@ class TestBaseEvent:
         )
         data = event.to_bus_dict()
 
-        assert data["event_name"] == "user.registered"
+        assert data["event_name"] == "auth.event.user.registered"
         assert data["auth_id"] == str(auth_id)
         assert data["identifier"] == "test@test.com"
         assert data["identifier_type"] == "email"
@@ -36,7 +36,7 @@ class TestBaseEvent:
             identifier_type="email",
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "user.logged_in"
+        assert data["event_name"] == "auth.event.user.logged_in"
 
     def test_profile_updated_to_bus_dict(self):
         event = ProfileUpdated(
@@ -45,7 +45,7 @@ class TestBaseEvent:
             fields_updated=["first_name", "bio"],
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "profile.updated"
+        assert data["event_name"] == "users.event.profile.updated"
         assert data["fields_updated"] == ["first_name", "bio"]
 
     def test_profile_created_to_bus_dict(self):
@@ -54,7 +54,7 @@ class TestBaseEvent:
             profile_id=uuid.uuid4(),
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "profile.created"
+        assert data["event_name"] == "users.event.profile.created"
         assert "auth_id" in data
         assert "profile_id" in data
 
@@ -64,7 +64,7 @@ class TestBaseEvent:
             profile_id=uuid.uuid4(),
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "profile.deleted"
+        assert data["event_name"] == "users.event.profile.deleted"
         assert "auth_id" in data
         assert "profile_id" in data
 

@@ -6,7 +6,6 @@ Kafka-реализация продюсера шины сообщений.
 При старте ждёт готовности Kafka с экспоненциальным backoff.
 """
 
-import asyncio
 import json
 import logging
 from collections import defaultdict

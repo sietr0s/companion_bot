@@ -8,7 +8,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.auth.repository import AuthRepository
-from src.modules.job_matcher.models import JobOffer, Subscription
 from src.modules.job_matcher.repository import (
     JobOfferRepository,
     SubscriptionRepository,
@@ -44,7 +43,7 @@ class TestStartCommand:
 
         # Assert — проверяем, что событие опубликовано
         assert len(mock_bus.published) > 0
-        assert mock_bus.published[0][0] == "bot.message.outgoing"
+        assert mock_bus.published[0][0] == "job_bot.command.send_message"
         assert "Добро пожаловать" in mock_bus.published[0][1]["text"]
 
         # Assert — проверяем, что Auth создан
@@ -112,7 +111,7 @@ class TestStartCommand:
         from src.modules.auth.repository import AuthRepository
 
         auth_repo = AuthRepository()
-        account = await auth_repo.create(
+        await auth_repo.create(
             db_session,
             {
                 "identifier": "tg_777777",

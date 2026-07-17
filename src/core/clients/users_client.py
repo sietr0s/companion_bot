@@ -10,7 +10,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_session
+from src.core.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +26,9 @@ class UsersClient:
     @staticmethod
     def _get_service():
         """Получить экземпляр UserService через прямое инстанцирование."""
-        from src.modules.users.repository import UserRepository, TelegramRepository
-        from src.modules.users.service import UserService
         from src.bus.providers import get_message_bus
+        from src.modules.users.repository import TelegramRepository, UserRepository
+        from src.modules.users.service import UserService
 
         return UserService(
             repository=UserRepository(),
@@ -43,6 +43,9 @@ class UsersClient:
         """
         Резолвить email по auth_id через прямой вызов сервиса.
 
+        Email хранится в модуле auth (Auth.identifier).
+        Используем AuthRepository напрямую для поиска.
+
         Args:
             auth_id: Идентификатор пользователя из модуля auth.
 
@@ -52,10 +55,12 @@ class UsersClient:
         Raises:
             Исключения пробрасываются наверх (NotFoundError, SQLAlchemyError и т.д.).
         """
-        service = self._get_service()
-        async for session in get_session():
-            profile = await service.get_profile(session, auth_id)
-            return getattr(profile, "email", None) if profile else None
+        from src.modules.auth.repository import AuthRepository
+
+        repo = AuthRepository()
+        async with async_session_factory() as session:
+            account = await repo.get_by_id(session, auth_id)
+            return account.identifier if account else None
 
     async def get_profile(self, auth_id: uuid.UUID):
         """
@@ -71,7 +76,7 @@ class UsersClient:
             Исключения пробрасываются наверх (NotFoundError, SQLAlchemyError и т.д.).
         """
         service = self._get_service()
-        async for session in get_session():
+        async with async_session_factory() as session:
             return await service.get_profile(session, auth_id)
 
     async def create_profile(
@@ -101,6 +106,6 @@ class UsersClient:
             )
             return True
 
-        async for s in get_session():
+        async with async_session_factory() as s:
             await service.create_user_profile(s, auth_id, {"first_name": first_name})
             return True

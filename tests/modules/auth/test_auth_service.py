@@ -171,7 +171,7 @@ class TestAuthService:
         await service.register(db_session, data)
 
         assert len(mock_bus.published) == 1
-        assert mock_bus.published[0][0] == "user.registered"
+        assert mock_bus.published[0][0] == "auth.event.user.registered"
         assert mock_bus.published[0][1]["identifier"] == "event@test.com"
         assert mock_bus.published[0][1]["identifier_type"] == "email"
 
@@ -261,7 +261,7 @@ class TestAuthService:
         await service.login(db_session, login_data)
 
         # Второе событие — user.logged_in
-        assert mock_bus.published[1][0] == "user.logged_in"
+        assert mock_bus.published[1][0] == "auth.event.user.logged_in"
         assert mock_bus.published[1][1]["identifier"] == "logevent@test.com"
         assert mock_bus.published[1][1]["identifier_type"] == "email"
 

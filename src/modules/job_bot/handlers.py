@@ -18,8 +18,8 @@ from aiogram.types import Message
 
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
+from src.modules.job_bot.dependencies import get_bot_service
 from src.modules.job_bot.schemas.events import BotMessageIncoming
-from src.modules.job_bot.service import BotService
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ def register_incoming_handlers(bus: MessageBus) -> Router:
     return router
 
 
-def register_outgoing_handlers(bus: MessageBus, bot_service: BotService) -> None:
+def register_outgoing_handlers(bus: MessageBus) -> None:
     """
     Регистрация обработчиков шины для исходящих сообщений.
 
@@ -91,7 +91,9 @@ def register_outgoing_handlers(bus: MessageBus, bot_service: BotService) -> None
             logger.warning("Неполные данные для отправки: %s", message)
             return
 
-        await bot_service.send_message(
+        service = get_bot_service()
+
+        await service.send_message(
             chat_id=int(chat_id),
             text=text,
             keyboard=keyboard,

@@ -12,6 +12,7 @@ Kafka-реализация консьюмера шины сообщений.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from collections.abc import Callable
@@ -31,7 +32,13 @@ class KafkaConsumerRouter:
 
     Получает реестр подписчиков от продюсера и подписывается
     на соответствующие топики Kafka.
+
+    При ошибках подключения выполняет exponential backoff
+    с лимитом retry (MAX_RETRIES), после чего завершает работу
+    для возможности перезапуска контейнера.
     """
+
+    MAX_RETRIES = 10
 
     def __init__(self, subscribers: dict[str, list[Callable]]) -> None:
         self._subscribers = subscribers
@@ -75,16 +82,31 @@ class KafkaConsumerRouter:
         """Цикл чтения с exponential backoff при ошибках подключения к Kafka."""
         retry_delay = 1
         max_delay = 60
-        while True:
+        retries = 0
+        while retries < self.MAX_RETRIES:
             try:
                 await self._consume()
             except asyncio.CancelledError:
                 logger.info("KafkaConsumerRouter: задача отменена, останавливаем retry")
                 raise
             except Exception:
+                retries += 1
+                remaining = self.MAX_RETRIES - retries
                 logger.exception(
-                    "KafkaConsumerRouter: ошибка, перезапуск через %ds", retry_delay
+                    "KafkaConsumerRouter: ошибка (попытка %d/%d), "
+                    "перезапуск через %ds, осталось %d попыток",
+                    retries,
+                    self.MAX_RETRIES,
+                    retry_delay,
+                    remaining,
                 )
+                if retries >= self.MAX_RETRIES:
+                    logger.critical(
+                        "KafkaConsumerRouter: исчерпаны все %d попыток. "
+                        "Завершаем работу для перезапуска контейнера.",
+                        self.MAX_RETRIES,
+                    )
+                    return
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, max_delay)
 
@@ -113,10 +135,8 @@ class KafkaConsumerRouter:
         """Остановка консьюмера и фоновой задачи."""
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         if self._consumer:
             await self._consumer.stop()
             logger.info("KafkaConsumerRouter остановлен")

@@ -7,7 +7,8 @@
 
 import asyncio
 import uuid
-from collections.abc import AsyncGenerator
+from collections import defaultdict
+from collections.abc import AsyncGenerator, Callable
 
 import pytest
 import pytest_asyncio
@@ -45,6 +46,8 @@ async def enable_sqlite_foreign_keys():
     async with test_engine.begin() as conn:
         await conn.execute(text("PRAGMA foreign_keys=ON"))
     yield
+
+
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -83,14 +86,37 @@ def message_bus() -> MessageBus:
     return InMemoryProducer()
 
 
-class MockBus:
-    """Заглушка шины сообщений для тестов, собирающая опубликованные события."""
+class MockBus(MessageBus):
+    """Заглушка шины сообщений для тестов, собирающая опубликованные события.
+
+    Реализует полный протокол MessageBus для type-safe использования в тестах.
+    """
 
     def __init__(self) -> None:
         self.published: list[tuple[str, dict]] = []
+        self._subscribers: dict[str, list[Callable]] = defaultdict(list)
 
-    async def publish(self, topic: str, message: dict) -> None:
+    async def publish(self, topic: str, message: dict, await_handlers: bool = False) -> None:
         self.published.append((topic, message))
+
+    def subscribe(self, topic: str) -> Callable:
+        """Декоратор для регистрации обработчика на топик."""
+
+        def decorator(func: Callable) -> Callable:
+            self._subscribers[topic].append(func)
+            return func
+
+        return decorator
+
+    def get_subscribers(self) -> dict[str, list[Callable]]:
+        """Возвращает копию реестра подписчиков."""
+        return dict(self._subscribers)
+
+    async def start(self) -> None:
+        pass
+
+    async def stop(self) -> None:
+        pass
 
 
 @pytest_asyncio.fixture

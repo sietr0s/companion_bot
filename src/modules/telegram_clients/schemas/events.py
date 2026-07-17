@@ -58,7 +58,6 @@ class TgAccountConnected(BaseEvent):
 
     event_name: str = BusTopics.TG_ACCOUNT_CONNECTED
     account_id: uuid.UUID
-    auth_id: uuid.UUID
     phone: str
     telegram_id: int | None = None
 
@@ -68,5 +67,4 @@ class TgAccountDisconnected(BaseEvent):
 
     event_name: str = BusTopics.TG_ACCOUNT_DISCONNECTED
     account_id: uuid.UUID
-    auth_id: uuid.UUID
     reason: str  # "manual", "error", "deleted"

@@ -5,6 +5,9 @@ import logging
 import uuid
 from dataclasses import dataclass
 
+from transformers import pipeline
+
+from src.core.config import settings
 from src.modules.classifier.ai.base import CategoryClassifier, CategoryScore, ClassifyResult
 
 logger = logging.getLogger(__name__)
@@ -21,36 +24,53 @@ class _LabelInfo:
 
 class ZeroShotCategoryClassifier:
     """
-    Zero-shot классификатор на основе facebook/bart-large-mnli.
+    Zero-shot классификатор на основе transformers pipeline.
 
     Использует transformers.pipeline для классификации текста
-    без дополнительного обучения.
+    без дополнительного обучения. Модель инициализируется явно
+    через метод initialize() при старте приложения.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, model_name: str = "facebook/bart-large-mnli", device: int = -1) -> None:
+        """
+        Args:
+            model_name: Название модели HuggingFace.
+            device: Устройство (-1 = CPU, 0 = GPU).
+        """
+        self._model_name = model_name
+        self._device = device
         self._pipeline = None
         self._initialized = False
 
-    def _get_pipeline(self):
-        """Ленивая инициализация pipeline."""
-        if self._pipeline is None:
-            try:
-                from transformers import pipeline
+    async def initialize(self) -> None:
+        """Инициализация pipeline. Вызывается при старте приложения."""
+        try:
 
-                logger.info("Загрузка модели facebook/bart-large-mnli...")
+            logger.info("Загрузка модели %s (device=%s)...", self._model_name, self._device)
+
+            loop = asyncio.get_running_loop()
+
+            def _load() -> None:
                 self._pipeline = pipeline(
                     "zero-shot-classification",
-                    model="facebook/bart-large-mnli",
-                    device=-1,  # CPU
+                    model=self._model_name,
+                    device=self._device,
                 )
-                logger.info("Модель загружена")
-            except ImportError:
-                logger.error("transformers не установлен. Заглушка вместо классификации.")
-                self._initialized = False
-            except Exception as e:
-                logger.exception("Ошибка загрузки модели: %s", e)
-                self._initialized = False
-        return self._pipeline
+
+            await loop.run_in_executor(None, _load)
+            self._initialized = True
+            logger.info("Модель %s загружена", self._model_name)
+        except ImportError:
+            logger.error("transformers не установлен. Классификация недоступна.")
+            self._initialized = False
+        except Exception as e:
+            logger.exception("Ошибка загрузки модели %s: %s", self._model_name, e)
+            self._initialized = False
+
+    @property
+    def is_initialized(self) -> bool:
+        """Флаг: модель загружена."""
+        return self._initialized
 
     async def classify(self, text: str, labels: list[dict]) -> ClassifyResult:
         """
@@ -63,10 +83,8 @@ class ZeroShotCategoryClassifier:
         Returns:
             ClassifyResult со всеми категориями по убыванию confidence.
         """
-        pipeline = self._get_pipeline()
-
         # Если модель не загрузилась — возвращаем пустой результат
-        if pipeline is None:
+        if self._pipeline is None:
             logger.warning("Модель не загружена, возвращаем пустой результат")
             return ClassifyResult(categories=[])
 
@@ -78,7 +96,7 @@ class ZeroShotCategoryClassifier:
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 None,
-                lambda: pipeline(text, label_names, multi_label=False),
+                lambda: self._pipeline(text, label_names, multi_label=False),
             )
 
             # Маппинг результата обратно в CategoryScore
@@ -86,7 +104,7 @@ class ZeroShotCategoryClassifier:
             name_to_label = {label["name"]: label for label in labels}
 
             categories = []
-            for label_name, score in zip(result["labels"], result["scores"]):
+            for label_name, score in zip(result["labels"], result["scores"], strict=True):
                 label_info = name_to_label.get(label_name)
                 if label_info:
                     categories.append(
@@ -105,7 +123,7 @@ class ZeroShotCategoryClassifier:
             return ClassifyResult(categories=[])
 
 
-# Singleton для ленивой инициализации
+# Singleton для явной инициализации
 _classifier_instance: ZeroShotCategoryClassifier | None = None
 
 
@@ -113,5 +131,8 @@ def get_category_classifier() -> CategoryClassifier:
     """Получить singleton экземпляр классификатора."""
     global _classifier_instance
     if _classifier_instance is None:
-        _classifier_instance = ZeroShotCategoryClassifier()
+        _classifier_instance = ZeroShotCategoryClassifier(
+            model_name=settings.CLASSIFIER_MODEL_NAME,
+            device=settings.CLASSIFIER_DEVICE,
+        )
     return _classifier_instance

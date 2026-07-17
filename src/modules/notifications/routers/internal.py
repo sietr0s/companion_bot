@@ -51,7 +51,7 @@ async def send_notification(
 )
 async def render_template_test(
     template_id: uuid.UUID,
-    test_data: dict = {},
+    test_data: dict = None,
     session: AsyncSession = Depends(get_db_session),
     service: NotificationService = Depends(get_notification_service),
 ) -> dict:
@@ -62,6 +62,8 @@ async def render_template_test(
     """
     from src.modules.notifications.template_engine import find_template, render
 
+    if test_data is None:
+        test_data = {}
     template_data = await find_template(session, str(template_id), None)
     if not template_data:
         raise NotFoundError(detail="Шаблон не найден")

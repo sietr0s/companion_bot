@@ -4,13 +4,29 @@
 
 Шина сообщений — механизм взаимодействия между модулями без прямых импортов. Модули публикуют события, другие модули подписываются на них.
 
+### Типы топиков
+
+В проекте используется двухуровневое именование топиков:
+
+| Тип | Суффикс | Кто публикует | Семантика |
+|-----|---------|---------------|-----------|
+| **Event** | `.event.` | **Владелец** модуля (в его домене что-то произошло) | Факт, который другие модули могут слушать |
+| **Command** | `.command.` | **Не владелец** (другой модуль просит что-то сделать) | Запрос на side-effect (отправить сообщение, классифицировать и т.д.) |
+
+**Пример:**
+
+```
+auth.event.user.registered      → Auth сообщает: "пользователь зарегистрировался"
+telegram_clients.command.send_message → JobMatcher просит: "отправь сообщение через Telegram"
+```
+
 ### Интерфейс
 
 Все реализации шины следуют протоколу `MessageBus` (`src/bus/interface.py`):
 
 ```python
 class MessageBus(Protocol):
-    def publish(self, topic: str, message: dict) -> None: ...
+    async def publish(self, topic: str, message: dict, await_handlers: bool = False) -> None: ...
     def subscribe(self, topic: str) -> Callable: ...
     def get_subscribers(self) -> dict[str, list[Callable]]: ...
     async def start(self) -> None: ...
@@ -36,20 +52,37 @@ MESSAGE_BUS=in_memory    # или kafka
 
 Все топики определены в `src/core/bus_topics.py` — **единственная точка истины**. Хардкод строк в коде запрещён.
 
+### Events (публикует владелец модуля)
+
 | Константа | Топик | Модуль-источник | Описание |
 |-----------|-------|-----------------|----------|
-| `BusTopics.USER_REGISTERED` | `user.registered` | auth | Пользователь зарегистрирован |
-| `BusTopics.USER_LOGGED_IN` | `user.logged_in` | auth | Пользователь авторизовался |
-| `BusTopics.PROFILE_CREATED` | `profile.created` | users | Профиль создан |
-| `BusTopics.PROFILE_UPDATED` | `profile.updated` | users | Профиль обновлён |
-| `BusTopics.PROFILE_DELETED` | `profile.deleted` | users | Профиль удалён |
-| `BusTopics.TG_MESSAGE_RECEIVED` | `tg.message.received` | telegram_clients | Входящее сообщение из Telegram |
-| `BusTopics.TG_MESSAGE_SEND` | `tg.message.send` | telegram_clients | Отправить сообщение через аккаунт |
-| `BusTopics.TG_ACCOUNT_CONNECTED` | `tg.account.connected` | telegram_clients | Аккаунт подключён |
-| `BusTopics.TG_ACCOUNT_DISCONNECTED` | `tg.account.disconnected` | telegram_clients | Аккаунт отключён |
-| `BusTopics.NOTIFICATION_SEND` | `notification.send` | notifications | Отправить уведомление |
-| `BusTopics.MEDIA_UPLOADED` | `media.uploaded` | media | Файл загружен |
-| `BusTopics.MEDIA_DELETED` | `media.deleted` | media | Файл удалён |
+| `BusTopics.USER_REGISTERED` | `auth.event.user.registered` | auth | Пользователь зарегистрирован |
+| `BusTopics.USER_LOGGED_IN` | `auth.event.user.logged_in` | auth | Пользователь авторизовался |
+| `BusTopics.USER_DELETED` | `auth.event.user.deleted` | auth | Учётная запись удалена |
+| `BusTopics.PROFILE_CREATED` | `users.event.profile.created` | users | Профиль создан |
+| `BusTopics.PROFILE_UPDATED` | `users.event.profile.updated` | users | Профиль обновлён |
+| `BusTopics.PROFILE_DELETED` | `users.event.profile.deleted` | users | Профиль удалён |
+| `BusTopics.TG_MESSAGE_RECEIVED` | `telegram_clients.event.message.received` | telegram_clients | Входящее сообщение из Telegram |
+| `BusTopics.TG_ACCOUNT_CONNECTED` | `telegram_clients.event.account.connected` | telegram_clients | Аккаунт подключён |
+| `BusTopics.TG_ACCOUNT_DISCONNECTED` | `telegram_clients.event.account.disconnected` | telegram_clients | Аккаунт отключён |
+| `BusTopics.MEDIA_UPLOADED` | `media.event.uploaded` | media | Файл загружен |
+| `BusTopics.MEDIA_DELETED` | `media.event.deleted` | media | Файл удалён |
+| `BusTopics.BOT_MESSAGE_INCOMING` | `job_bot.event.message.incoming` | job_bot | Входящее сообщение от пользователя |
+| `BusTopics.JOB_OFFER_PARSED` | `job_matcher.event.offer.parsed` | job_matcher | Вакансия распарсена |
+| `BusTopics.JOB_OFFER_CLASSIFIED` | `job_matcher.event.offer.classified` | job_matcher | Вакансия классифицирована |
+| `BusTopics.SUBSCRIPTION_CREATED` | `job_matcher.event.subscription.created` | job_matcher | Подписка создана |
+| `BusTopics.SUBSCRIPTION_UPDATED` | `job_matcher.event.subscription.updated` | job_matcher | Подписка обновлена |
+| `BusTopics.SUBSCRIPTION_DELETED` | `job_matcher.event.subscription.deleted` | job_matcher | Подписка удалена |
+| `BusTopics.TEXT_CLASSIFY_COMPLETED` | `classifier.event.classify.completed` | classifier | Классификация завершена |
+
+### Commands (публикует НЕ владелец)
+
+| Константа | Топик | Модуль-источник | Описание |
+|-----------|-------|-----------------|----------|
+| `BusTopics.TG_MESSAGE_SEND` | `telegram_clients.command.send_message` | **любой** модуль | Отправить сообщение через Telegram-аккаунт |
+| `BusTopics.NOTIFICATION_SEND` | `notifications.command.send` | **любой** модуль | Отправить уведомление |
+| `BusTopics.TEXT_CLASSIFY_REQUEST` | `classifier.command.classify` | **любой** модуль | Запросить классификацию текста |
+| `BusTopics.BOT_MESSAGE_OUTGOING` | `job_bot.command.send_message` | **любой** модуль | Отправить сообщение пользователю через бота |
 
 ---
 
@@ -62,58 +95,58 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### UserRegistered
 
-Топик: `user.registered`
+Топик: `auth.event.user.registered`
 Источник: `AuthService.register()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"user.registered"` |
+| event_name | str | `"auth.event.user.registered"` |
 | auth_id | UUID | ID учётной записи |
 | email | str | Email пользователя |
 | timestamp | datetime | Время события |
 
 ### UserLoggedIn
 
-Топик: `user.logged_in`
+Топик: `auth.event.user.logged_in`
 Источник: `AuthService.login()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"user.logged_in"` |
+| event_name | str | `"auth.event.user.logged_in"` |
 | auth_id | UUID | ID учётной записи |
 | email | str | Email пользователя |
 | timestamp | datetime | Время события |
 
 ### UserDeleted
 
-Топик: `user.deleted`
+Топик: `auth.event.user.deleted`
 Источник: `AuthService.delete_account()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"user.deleted"` |
+| event_name | str | `"auth.event.user.deleted"` |
 | auth_id | UUID | ID удалённой учётной записи |
 
 ### ProfileCreated
 
-Топик: `profile.created`
+Топик: `users.event.profile.created`
 Источник: `UserService.create_user_profile()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"profile.created"` |
+| event_name | str | `"users.event.profile.created"` |
 | auth_id | UUID | ID учётной записи |
 | profile_id | UUID | ID профиля |
 | timestamp | datetime | Время события |
 
 ### ProfileUpdated
 
-Топик: `profile.updated`
+Топик: `users.event.profile.updated`
 Источник: `UserService.update_profile()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"profile.updated"` |
+| event_name | str | `"users.event.profile.updated"` |
 | auth_id | UUID | ID учётной записи |
 | profile_id | UUID | ID профиля |
 | fields_updated | list[str] | Список изменённых полей |
@@ -121,24 +154,24 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### ProfileDeleted
 
-Топик: `profile.deleted`
+Топик: `users.event.profile.deleted`
 Источник: `UserService.delete_profile()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"profile.deleted"` |
+| event_name | str | `"users.event.profile.deleted"` |
 | auth_id | UUID | ID учётной записи |
 | profile_id | UUID | ID профиля |
 | timestamp | datetime | Время события |
 
 ### TgMessageReceived
 
-Топик: `tg.message.received`
+Топик: `telegram_clients.event.message.received`
 Источник: `TelegramClientManager` (обработчик `on_new_message`)
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"tg.message.received"` |
+| event_name | str | `"telegram_clients.event.message.received"` |
 | account_id | UUID | ID Telegram-аккаунта |
 | chat_id | int | ID чата |
 | message_id | int | ID сообщения |
@@ -149,12 +182,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### TgMessageSend
 
-Топик: `tg.message.send`
+Топик: `telegram_clients.command.send_message`
 Источник: Внешние модули (подписка в handlers.py)
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"tg.message.send"` |
+| event_name | str | `"telegram_clients.command.send_message"` |
 | account_id | UUID | ID Telegram-аккаунта |
 | chat_id | int | ID чата |
 | text | str | Текст сообщения |
@@ -162,12 +195,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### TgAccountConnected
 
-Топик: `tg.account.connected`
+Топик: `telegram_clients.event.account.connected`
 Источник: `TelegramClientService.verify_code()`, `verify_password()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"tg.account.connected"` |
+| event_name | str | `"telegram_clients.event.account.connected"` |
 | account_id | UUID | ID Telegram-аккаунта |
 | auth_id | UUID | ID пользователя |
 | phone | str | Номер телефона |
@@ -176,12 +209,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### TgAccountDisconnected
 
-Топик: `tg.account.disconnected`
+Топик: `telegram_clients.event.account.disconnected`
 Источник: `TelegramClientService.delete_account()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"tg.account.disconnected"` |
+| event_name | str | `"telegram_clients.event.account.disconnected"` |
 | account_id | UUID | ID Telegram-аккаунта |
 | auth_id | UUID | ID пользователя |
 | reason | str | Причина: `"manual"`, `"error"`, `"deleted"` |
@@ -189,12 +222,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### NotificationSend
 
-Топик: `notification.send`
+Топик: `notifications.command.send`
 Источник: Любой модуль (подписка в notifications/handlers.py)
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"notification.send"` |
+| event_name | str | `"notifications.command.send"` |
 | auth_id | UUID | ID пользователя (для резолва email) |
 | template_name | str | Имя Jinja2-шаблона |
 | channel | str | Канал: `email` (default), `sms` (зарезервировано) |
@@ -202,12 +235,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### MediaUploaded
 
-Топик: `media.uploaded`
+Топик: `media.event.uploaded`
 Источник: `MediaService.upload()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"media.uploaded"` |
+| event_name | str | `"media.event.uploaded"` |
 | file_id | UUID | ID загруженного файла |
 | filename | str | Оригинальное имя файла |
 | content_type | str | MIME-тип |
@@ -217,12 +250,12 @@ MESSAGE_BUS=in_memory    # или kafka
 
 ### MediaDeleted
 
-Топик: `media.deleted`
+Топик: `media.event.deleted`
 Источник: `MediaService.delete()`
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| event_name | str | `"media.deleted"` |
+| event_name | str | `"media.event.deleted"` |
 | file_id | UUID | ID удалённого файла |
 | storage_key | str | Ключ в хранилище |
 | timestamp | datetime | Время события |
@@ -232,59 +265,66 @@ MESSAGE_BUS=in_memory    # или kafka
 ## Диаграмма потоков
 
 ```
-┌──────────┐                                                    ┌──────────┐
-│   auth   │                                                    │  users   │
-│  module  │                                                    │  module  │
-├──────────┤                                                    ├──────────┤
-│          │  publish(user.registered)                          │          │
-│ register │ ──────────────────────────────────────────────────▶│ handler  │
-│          │                                                    │          │
-│          │  publish(user.logged_in)                           │          │
-│  login   │ ──────────────────────────────────────────────────▶│ handler  │
-│          │                                                    │          │
-│          │                                                    │          │
-│          │  subscribe(profile.created)                        │  create  │
-│          │ ◀──────────────────────────────────────────────────│          │
-│          │                                                    │          │
-│          │  subscribe(profile.updated)                        │  update  │
-│          │ ◀──────────────────────────────────────────────────│          │
-│          │                                                    │          │
-│          │  subscribe(profile.deleted)                        │  delete  │
-│          │ ◀──────────────────────────────────────────────────│          │
-└──────────┘                     MessageBus                     └──────────┘
+┌──────────┐              ┌──────────┐
+│   auth   │              │  users   │
+│  module  │              │  module  │
+├──────────┤              ├──────────┤
+│          │  event       │          │
+│ register │─────────────▶│ handler  │
+│          │              │          │
+│          │  event       │          │
+│  login   │─────────────▶│ handler  │
+│          │              │          │
+│          │              │          │
+│          │  event       │          │
+│          │◀─────────────│  create  │
+│          │              │          │
+│          │  event       │          │
+│          │◀─────────────│  update  │
+│          │              │          │
+│          │  event       │          │
+│          │◀─────────────│  delete  │
+└──────────┘   MessageBus └──────────┘
 
-┌──────────────────────┐                                        ┌──────────┐
-│  telegram_clients    │                                        │  Любой   │
-│  module              │                                        │  модуль  │
-├──────────────────────┤                                        ├──────────┤
-│                      │  publish(tg.message.received)          │          │
-│  ClientManager       │ ─────────────────────────────────────▶│ handler  │
-│  (on_new_message)    │                                        │          │
-│                      │  publish(tg.account.connected)        │          │
-│  Service             │ ─────────────────────────────────────▶│          │
-│                      │                                        │          │
-│                      │  publish(tg.account.disconnected)     │          │
-│                      │ ─────────────────────────────────────▶│          │
-│                      │                                        │          │
-│                      │  subscribe(tg.message.send)           │  Любой   │
-│  ClientManager       │ ◀─────────────────────────────────────│  модуль  │
-│  (send_message)      │                                        │          │
-└──────────────────────┘                 MessageBus             └──────────┘
+┌──────────────────────┐     ┌──────────┐
+│  telegram_clients    │     │  Любой   │
+│  module              │     │  модуль  │
+├──────────────────────┤     ├──────────┤
+│                      │event │          │
+│  ClientManager       │─────▶│ handler  │
+│  (on_new_message)    │     │          │
+│                      │     │          │
+│  Service             │event │          │
+│                      │─────▶│          │
+│                      │     │          │
+│                      │event │          │
+│                      │─────▶│          │
+│                      │     │          │
+│                      │command│          │
+│  ClientManager       │◀────│  модуль  │
+│  (send_message)      │     │          │
+└──────────────────────┘     └──────────┘
 ```
 
 ---
 
 ## Как добавить новое событие
 
-1. **Добавьте топик** в `src/core/bus_topics.py`:
+1. **Определите тип** — event или command:
+   - Если модуль сообщает о том, что произошло в его домене → **event**
+   - Если другой модуль просит что-то сделать → **command**
+
+2. **Добавьте топик** в `src/core/bus_topics.py`:
 
 ```python
 class BusTopics:
-    # ...
-    MY_EVENT: str = "my_module.my_event"
+    # Для события:
+    MY_EVENT: str = "my_module.event.something_happened"
+    # Для команды:
+    MY_COMMAND: str = "my_module.command.do_something"
 ```
 
-2. **Создайте схему события** в `src/modules/my_module/schemas/events.py`:
+3. **Создайте схему события** в `src/modules/my_module/schemas/events.py`:
 
 ```python
 from src.bus.schemes import BaseEvent
@@ -296,14 +336,14 @@ class MyEvent(BaseEvent):
     entity_id: uuid.UUID
 ```
 
-3. **Публикуйте из сервиса**:
+4. **Публикуйте из сервиса**:
 
 ```python
 event = MyEvent(entity_id=entity.id)
 self.message_bus.publish(BusTopics.MY_EVENT, event.to_bus_dict())
 ```
 
-4. **Подпишите обработчик** в `handlers.py`:
+5. **Подпишите обработчик** в `handlers.py`:
 
 ```python
 @bus.subscribe(BusTopics.MY_EVENT)

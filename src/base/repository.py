@@ -90,10 +90,7 @@ class BaseRepository(Generic[ModelType]):
         Если передана Pydantic-модель — используем model_dump()
         для получения словаря с данными.
         """
-        if isinstance(data, PydanticModel):
-            values = data.model_dump(exclude_unset=True)
-        else:
-            values = data
+        values = data.model_dump(exclude_unset=True) if isinstance(data, PydanticModel) else data
 
         instance = self.model(**values)
         session.add(instance)
@@ -114,10 +111,7 @@ class BaseRepository(Generic[ModelType]):
         exclude_unset=True гарантирует, что None-значения
         не затрут существующие данные.
         """
-        if isinstance(data, PydanticModel):
-            values = data.model_dump(exclude_unset=True)
-        else:
-            values = data
+        values = data.model_dump(exclude_unset=True) if isinstance(data, PydanticModel) else data
 
         for field, value in values.items():
             setattr(db_obj, field, value)

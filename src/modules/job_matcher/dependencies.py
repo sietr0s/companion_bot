@@ -39,7 +39,7 @@ def get_job_matcher_service(
     )
 
 
-async def get_job_matcher_service_factory(
+def get_job_matcher_service_factory(
     bus: MessageBus | None = None,
 ):
     """
@@ -51,10 +51,8 @@ async def get_job_matcher_service_factory(
     Args:
         bus: Шина сообщений. Если None, используется шина по умолчанию.
     """
-    async with async_session_factory() as session:
-        service = JobMatcherService(
-            offer_repo=JobOfferRepository(),
-            sub_repo=SubscriptionRepository(),
-            bus=bus,
-        )
-        return session, service
+    return JobMatcherService(
+        offer_repo=get_job_offer_repository(),
+        sub_repo=get_subscription_repository(),
+        bus=bus,
+    )

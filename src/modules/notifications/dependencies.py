@@ -44,17 +44,15 @@ def get_notification_service(
     )
 
 
-async def get_notification_service_factory():
+def get_notification_service_factory():
     """
     Фабрика (session, service) для обработчиков шины.
 
     Возвращает кортеж (session, NotificationService) для использования
     в обработчиках событий шины.
     """
-    async with async_session_factory() as session:
-        service = NotificationService(
-            template_repo=NotificationTemplateRepository(),
-            log_repo=NotificationLogRepository(),
-            provider=SmtpProvider(),
-        )
-        return session, service
+    return NotificationService(
+        template_repo=NotificationTemplateRepository(),
+        log_repo=NotificationLogRepository(),
+        provider=SmtpProvider(),
+    )

@@ -9,6 +9,7 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.bus import get_producer
 from src.bus.interface import MessageBus
 from src.core.config import settings
 from src.core.exceptions import ConflictError
@@ -18,13 +19,14 @@ from src.modules.auth.service import AuthService
 logger = logging.getLogger(__name__)
 
 
-async def seed_admin(session: AsyncSession, bus: MessageBus) -> None:
+async def seed_admin(session: AsyncSession) -> None:
     """
     Создать admin-пользователя при старте приложения.
 
     Проверяет, существует ли учётная запись с ADMIN_EMAIL.
     Если нет — создаёт через AuthService с ролью admin.
     """
+    bus = get_producer()
     repo = AuthRepository()
     service = AuthService(repository=repo, message_bus=bus)
 
@@ -38,23 +40,16 @@ async def seed_admin(session: AsyncSession, bus: MessageBus) -> None:
         )
         return
 
-    # Создаём admin-учётную запись
-    try:
-        await service.register(
-            session,
-            {
-                "identifier": settings.ADMIN_EMAIL,
-                "identifier_type": "email",
-                "password": settings.ADMIN_PASSWORD,
-                "role": "admin",
-            },
-        )
-        logger.info(
-            "Создан admin-пользователь: %s",
-            settings.ADMIN_EMAIL,
-        )
-    except ConflictError:
-        logger.info(
-            "Admin-пользователь уже существует (конфликт): %s",
-            settings.ADMIN_EMAIL,
-        )
+    await service.register(
+        session,
+        {
+            "identifier": settings.ADMIN_EMAIL,
+            "identifier_type": "email",
+            "password": settings.ADMIN_PASSWORD,
+            "role": "admin",
+        },
+    )
+    logger.info(
+        "Создан admin-пользователь: %s",
+        settings.ADMIN_EMAIL,
+    )

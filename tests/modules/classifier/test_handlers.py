@@ -86,7 +86,7 @@ class TestClassifierHandlers:
         """Обработка запроса с невалидными данными."""
         register_handlers(mock_bus, service_factory)
 
-        handler = mock_bus.get_subscribers()["text.classify.request"][0]
+        handler = mock_bus.get_subscribers()["classifier.command.classify"][0]
 
         # Отправляем неполные данные
         await handler({"source_module": "test"})
@@ -101,7 +101,7 @@ class TestClassifierHandlers:
         """Обработка запроса при отсутствии категорий."""
         register_handlers(mock_bus, service_factory)
 
-        handler = mock_bus.get_subscribers()["text.classify.request"][0]
+        handler = mock_bus.get_subscribers()["classifier.command.classify"][0]
 
         request_id = str(uuid.uuid4())
         await handler(
@@ -156,7 +156,7 @@ class TestClassifierHandlers:
             )
 
         register_handlers(mock_bus, service_factory)
-        handler = mock_bus.get_subscribers()["text.classify.request"][0]
+        handler = mock_bus.get_subscribers()["classifier.command.classify"][0]
 
         request_id = str(uuid.uuid4())
         text = "Разработчик Python, зарплата от 100к"

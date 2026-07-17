@@ -16,16 +16,14 @@ import os
 import uuid
 from typing import Any
 
-from telethon import TelegramClient, events
+from telethon import TelegramClient
 from telethon.errors import (
     PhoneCodeExpiredError,
     PhoneCodeInvalidError,
     SessionPasswordNeededError,
 )
-from telethon.events import NewMessage as NewMessageEvent
 
 from src.core.config import settings
-from src.core.database import async_session_factory
 from src.core.exceptions import NotFoundError
 from src.modules.telegram_clients.constants import QrAuthStatus
 from src.modules.telegram_clients.domain import Media, Message
@@ -168,7 +166,6 @@ class TelegramClientManager:
                 code=code,
                 phone_code_hash=phone_code_hash,
             )
-            self.register_message_handler(account_id, client)
             logger.info("[tg client] sign_in connected: account_id=%s", account_id)
             return "connected"
         except SessionPasswordNeededError:
@@ -192,19 +189,20 @@ class TelegramClientManager:
             raise NotFoundError(detail=f"Клиент для account_id={account_id} не найден")
 
         await client.sign_in(password=password)
-        self.register_message_handler(account_id, client)
         return "connected"
 
     # ── QR-авторизация ─────────────────────────────────────────────
 
     async def _qr_wait_worker(
-        self, account_id: uuid.UUID, client: TelegramClient, qr: Any,
+        self,
+        account_id: uuid.UUID,
+        client: TelegramClient,
+        qr: Any,
     ) -> None:
         """Фоновый worker: ждёт сканирования QR-кода."""
         try:
             await qr.wait()
             self._qr_sessions[account_id] = {"status": QrAuthStatus.CONNECTED}
-            self.register_message_handler(account_id, client)
             logger.info("[tg client] QR login connected: account_id=%s", account_id)
         except TimeoutError:
             self._qr_sessions[account_id] = {
@@ -314,10 +312,12 @@ class TelegramClientManager:
         if telegram_file_id is None:
             return media
 
-        media.append(Media(
-            telegram_id=telegram_file_id,
-            type=media_type,
-        ))
+        media.append(
+            Media(
+                telegram_id=telegram_file_id,
+                type=media_type,
+            )
+        )
 
         return media
 
@@ -403,7 +403,7 @@ class TelegramClientManager:
 
     # ── Управление сессиями ────────────────────────────────────────
 
-    async def connect_account(self, account_id: uuid.UUID) -> None:
+    async def connect_account(self, account_id: uuid.UUID) -> bool:
         """
         Подключить аккаунт по существующей сессии.
 
@@ -416,11 +416,11 @@ class TelegramClientManager:
         if not await client.is_user_authorized():
             await client.disconnect()
             logger.warning("Сессия аккаунта %s не авторизована", account_id)
-            return
+            return False
 
         self.set_client(account_id, client)
-        self.register_message_handler(account_id, client)
         logger.info("Аккаунт %s подключён", account_id)
+        return True
 
     async def disconnect_account(self, account_id: uuid.UUID) -> None:
         """Отключить аккаунт и удалить клиент из памяти."""
@@ -433,30 +433,3 @@ class TelegramClientManager:
         """Отключить все клиенты при остановке приложения."""
         for account_id in list(self.get_all_client_ids()):
             await self.disconnect_account(account_id)
-
-    def register_message_handler(
-        self, account_id: uuid.UUID, client: TelegramClient,
-    ) -> None:
-        """Регистрирует обработчик входящих сообщений для клиента."""
-
-        @client.on(events.NewMessage)
-        async def on_new_message(event: NewMessageEvent) -> None:
-            """
-            Обработать входящее сообщение.
-
-            Делегирует обработку в сервис.
-            """
-            if self.get_service() is None:
-                logger.error("Сервис не установлен для обработки сообщений")
-                return
-
-            async with async_session_factory() as session:
-                service = self.get_service()
-                if service is None:
-                    return
-                await service.handle_incoming_message(
-                    session=session,
-                    client=client,
-                    account_id=account_id,
-                    event=event,
-                )

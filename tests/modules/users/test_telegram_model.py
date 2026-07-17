@@ -61,7 +61,7 @@ class TestTelegramModel:
         telegram2 = Telegram(**telegram_data)
         db_session.add(telegram2)
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             await db_session.commit()
 
     async def test_telegram_optional_fields(self, db_session: AsyncSession):
