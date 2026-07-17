@@ -46,10 +46,10 @@ def create_dispatcher(bus: MessageBus, bot_service: BotService) -> Dispatcher:
     dp = Dispatcher()
 
     # Регистрация обработчиков шины (исходящие сообщения)
-    register_outgoing_handlers(bus, bot_service)
+    register_outgoing_handlers()
 
     # Регистрация aiogram-обработчиков (входящие сообщения)
-    incoming_router = register_incoming_handlers(bus)
+    incoming_router = register_incoming_handlers()
     dp.include_router(incoming_router)
 
     return dp

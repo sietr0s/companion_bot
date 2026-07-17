@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 import uuid
-from typing import Sequence
+from collections.abc import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,7 @@ from src.base.filters import Filter
 from src.base.service import BaseService
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
 from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
@@ -607,7 +607,7 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
             Обработать входящее сообщение.
             """
 
-            async with async_session_factory() as session:
+            async with get_async_session_factory()() as session:
                 await self.handle_incoming_message(
                     session=session,
                     account_id=account_id,

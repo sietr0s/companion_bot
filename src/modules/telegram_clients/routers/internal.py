@@ -6,13 +6,17 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
-from src.modules.telegram_clients.dependencies import get_telegram_settings_service
+from src.modules.telegram_clients.dependencies import (
+    get_telegram_settings_repository,
+    get_telegram_settings_service,
+)
+from src.modules.telegram_clients.repository import TelegramSettingsRepository
 from src.modules.telegram_clients.schemas.internal.settings import (
     TelegramSettingsCreate,
     TelegramSettingsRead,
     TelegramSettingsUpdate,
 )
-from src.modules.telegram_clients.services import TelegramAccountService, TelegramSettingsService
+from src.modules.telegram_clients.services import TelegramSettingsService
 
 router = APIRouter()
 
@@ -25,10 +29,10 @@ router = APIRouter()
 async def get_settings(
         account_id: uuid.UUID,
         session: AsyncSession = Depends(get_db_session),
-        service: TelegramSettingsService = Depends(get_telegram_settings_service),
+        repository: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsRead:
     """Получить настройки Telegram-аккаунта."""
-    settings = await service.get_by_id(session, account_id)
+    settings = await repository.get_by_account_id(session, account_id)
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -42,10 +46,15 @@ async def create_settings(
         data: TelegramSettingsCreate,
         session: AsyncSession = Depends(get_db_session),
         service: TelegramSettingsService = Depends(get_telegram_settings_service),
+        repository: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsRead:
     """Создать настройки Telegram-аккаунта."""
     await service.create_default_settings(session, account_id)
-    settings = await service.update(session, account_id, data.model_dump(exclude_unset=True))
+    settings = await repository.get_by_account_id(session, account_id)
+    if not settings:
+        from src.core.exceptions import NotFoundError
+        raise NotFoundError(detail="Настройки не найдены")
+    settings = await service.update(session, settings.id, data.model_dump(exclude_unset=True))
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -59,10 +68,15 @@ async def update_settings(
         data: TelegramSettingsUpdate,
         session: AsyncSession = Depends(get_db_session),
         service: TelegramSettingsService = Depends(get_telegram_settings_service),
+        repository: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsRead:
     """Обновить настройки Telegram-аккаунта."""
+    settings_obj = await repository.get_by_account_id(session, account_id)
+    if not settings_obj:
+        from src.core.exceptions import NotFoundError
+        raise NotFoundError(detail="Настройки не найдены")
     settings = await service.update(
-        session, account_id, data.model_dump(exclude_unset=True)
+        session, settings_obj.id, data.model_dump(exclude_unset=True)
     )
     return TelegramSettingsRead.model_validate(settings)
 

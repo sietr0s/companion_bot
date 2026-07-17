@@ -10,9 +10,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
-from src.bus.interface import MessageBus
 from src.core.config import settings
-from src.core.exceptions import ConflictError
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.service import AuthService
 

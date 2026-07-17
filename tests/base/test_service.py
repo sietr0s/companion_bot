@@ -63,7 +63,7 @@ class TestBaseService:
         )
         updated = await auth_service.update(
             db_session,
-            account,
+            account.id,
             {
                 "hashed_password": "new",
             },
@@ -80,6 +80,6 @@ class TestBaseService:
                 "hashed_password": "hashed",
             },
         )
-        await auth_service.delete(db_session, account)
+        await auth_service.delete(db_session, account.id)
         found = await auth_service.get_by_id(db_session, account.id)
         assert found is None

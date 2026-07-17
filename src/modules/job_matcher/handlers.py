@@ -11,7 +11,7 @@ import uuid
 
 from src.bus import get_producer
 from src.core.bus_topics import BusTopics
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 from src.modules.job_matcher.dependencies import get_job_matcher_service_factory
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ def register_handlers() -> None:
 
         service = get_job_matcher_service_factory(bus=bus)
 
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             job_offer = await service.save_job_offer(
                 session=session,
                 text=text,
@@ -63,7 +63,7 @@ def register_handlers() -> None:
 
         service = get_job_matcher_service_factory(bus=bus)
 
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             if command == "/start":
                 await service.handle_start(session=session, chat_id=chat_id)
             elif command == "/subscribe":
@@ -100,7 +100,7 @@ def register_handlers() -> None:
 
         service = get_job_matcher_service_factory(bus=bus)
 
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             # 1. Обновляем категории у вакансии
             await service.update_job_offer_categories(
                 session=session,
@@ -108,7 +108,7 @@ def register_handlers() -> None:
                 category_ids=category_ids,
             )
 
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             # 2. Ищем подходящие подписки и отправляем уведомления
             await service.handle_offer_classified(
                 session=session,

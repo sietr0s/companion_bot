@@ -30,11 +30,11 @@ class AuthClient:
         """Получить экземпляр AuthService."""
         if self._service is not None:
             return self._service
-        from src.bus.providers import get_message_bus
+        from src.bus import get_producer
         from src.modules.auth.repository import AuthRepository
         from src.modules.auth.service import AuthService
 
-        return AuthService(repository=AuthRepository(), message_bus=get_message_bus())
+        return AuthService(repository=AuthRepository(), message_bus=get_producer())
 
     async def register(
         self,
@@ -72,9 +72,9 @@ class AuthClient:
             auth_id = await service.register_and_return_id(session, data)
             return auth_id
 
-        from src.core.database import async_session_factory
+        from src.core.database import get_async_session_factory
 
-        async with async_session_factory() as s:
+        async with get_async_session_factory()() as s:
             auth_id = await service.register_and_return_id(s, data)
             return auth_id
 
@@ -98,8 +98,8 @@ class AuthClient:
             account = await service.repository.get_by_identifier(session, identifier)
             return account.id if account else None
 
-        from src.core.database import async_session_factory
+        from src.core.database import get_async_session_factory
 
-        async with async_session_factory() as s:
+        async with get_async_session_factory()() as s:
             account = await service.repository.get_by_identifier(s, identifier)
             return account.id if account else None

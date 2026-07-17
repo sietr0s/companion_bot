@@ -1,10 +1,10 @@
 import logging
 
+from src.core.config import settings
+
 from .in_memory import InMemoryProducer
 from .interface import MessageBus
 from .kafka.producer import KafkaProducerBus
-
-from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -102,7 +102,7 @@ async def update_profile_internal(
     profile = await user_service.get_by_id(session, profile_id)
     if not profile:
         raise NotFoundError(detail="Профиль не найден")
-    return await user_service.update(session, profile, data.model_dump(exclude_unset=True))
+    return await user_service.update(session, profile.id, data.model_dump(exclude_unset=True))
 
 
 @router.delete(
@@ -119,7 +119,7 @@ async def delete_profile_internal(
     profile = await user_service.get_by_id(session, profile_id)
     if not profile:
         raise NotFoundError(detail="Профиль не найден")
-    await user_service.delete(session, profile)
+    await user_service.delete(session, profile.id)
 
 
 @router.post(

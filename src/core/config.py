@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
 
     @property
-    def DATABASE_URL(self) -> str:
+    def DATABASE_URL(self) -> str:  # noqa: N802 — property имитирует поле Settings
         """Собирает полный URL для подключения к БД с URL-кодированием пароля."""
         return (
             f"{self.DB_DRIVER}://{self.DB_USER}"

@@ -21,8 +21,35 @@ from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.kafka.consumer import KafkaConsumerRouter
 from src.core.bus_topics import BusTopics
 from src.core.config import settings
-from src.core.database import async_session_factory, init_db
-from src.modules.telegram_clients.dependencies import get_telegram_client_service_factory, get_telegram_client_manager
+from src.core.database import get_async_session_factory, init_db
+from src.core.exceptions import AppException
+from src.core.seed import seed_admin
+from src.modules.auth.routers import internal_router as auth_internal_router
+from src.modules.auth.routers import public_router as auth_router
+from src.modules.classifier.routers import internal_router as classifier_internal_router
+from src.modules.classifier.routers import public_router as classifier_router
+from src.modules.job_bot.bot import create_bot, create_bot_service, create_dispatcher
+from src.modules.job_matcher.handlers import register_handlers as register_job_matcher_handlers
+from src.modules.media.routers import internal_router as media_internal_router
+from src.modules.media.routers import public_router as media_router
+from src.modules.media.storage.local import LocalStorage
+from src.modules.notifications.handlers import register_handlers as register_notification_handlers
+from src.modules.notifications.routers import internal_router as notifications_internal_router
+from src.modules.notifications.routers import public_router as notifications_router
+from src.modules.telegram_clients.dependencies import (
+    get_telegram_client_manager,
+    get_telegram_client_service_factory,
+)
+from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
+from src.modules.telegram_clients.routers import internal_router as tg_internal_router
+from src.modules.telegram_clients.routers import public_router as tg_router
+from src.modules.users.handlers import register_handlers as register_users_handlers
+from src.modules.users.routers import internal_router as users_internal_router
+from src.modules.users.routers import public_router as users_router
+from src.modules.classifier.handlers import register_handlers as register_classifier_handlers
+
+
+logger = logging.getLogger(__name__)
 
 # Настройка логирования приложения (INFO по умолчанию, переопределяется LOG_LEVEL)
 logging.basicConfig(
@@ -34,46 +61,6 @@ logging.basicConfig(
 # Подавление шумных логов внешних библиотек
 logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
-from src.core.exceptions import AppException
-from src.core.seed import seed_admin
-from src.modules.auth.routers import internal_router as auth_internal_router
-from src.modules.auth.routers import public_router as auth_router
-from src.modules.classifier.ai.category import (
-    get_category_classifier,
-)
-from src.modules.classifier.handlers import (
-    init_default_categories_on_startup,
-)
-from src.modules.classifier.handlers import (
-    register_handlers as register_classifier_handlers,
-)
-from src.modules.classifier.routers import internal_router as classifier_internal_router
-from src.modules.classifier.routers import public_router as classifier_router
-
-# Модуль job_bot — шлюз Telegram
-from src.modules.job_bot.bot import create_bot, create_bot_service, create_dispatcher
-from src.modules.job_matcher.handlers import (
-    register_handlers as register_job_matcher_handlers,
-)
-from src.modules.media.routers import internal_router as media_internal_router
-from src.modules.media.routers import public_router as media_router
-from src.modules.media.storage.local import LocalStorage
-from src.modules.notifications.handlers import (
-    register_handlers as register_notification_handlers,
-)
-from src.modules.notifications.routers import internal_router as notifications_internal_router
-from src.modules.notifications.routers import public_router as notifications_router
-from src.modules.telegram_clients.handlers import (
-    register_handlers as register_tg_handlers,
-)
-from src.modules.telegram_clients.routers import internal_router as tg_internal_router
-from src.modules.telegram_clients.routers import public_router as tg_router
-from src.modules.users.handlers import register_handlers as register_users_handlers
-from src.modules.users.routers import internal_router as users_internal_router
-from src.modules.users.routers import public_router as users_router
-
-logger = logging.getLogger(__name__)
-
 
 client_manager = get_telegram_client_manager()
 telegram_service = get_telegram_client_service_factory()
@@ -83,8 +70,8 @@ producer = get_producer()
 register_users_handlers()
 register_tg_handlers()
 register_notification_handlers()
-register_classifier_handlers()
 register_job_matcher_handlers()
+register_classifier_handlers()
 
 
 # Регистрация DLQ-обработчика (dead-letter queue для сообщений с ошибками)
@@ -125,13 +112,15 @@ async def lifespan(app: FastAPI):
     await consumer.start()
 
     # Создаём admin-пользователя при старте
-    async with async_session_factory() as session:
+    async with get_async_session_factory()() as session:
         await seed_admin(session)
 
     # Инициализация категорий по умолчанию
+    from src.modules.classifier.handlers import init_default_categories_on_startup
     await init_default_categories_on_startup()
 
     # Инициализация AI-модели классификатора (загрузка BART)
+    from src.modules.classifier.ai.category import get_category_classifier
     classifier_model = get_category_classifier()
     await classifier_model.initialize()
 
@@ -140,11 +129,11 @@ async def lifespan(app: FastAPI):
         LocalStorage().ensure_base_path()
 
     # Подключаем все ранее авторизованные Telegram-аккаунты
-    async with async_session_factory() as session:
+    async with get_async_session_factory()() as session:
         await telegram_service.restore_tg_sessions(session)
 
     # Читаем непрочитанные сообщения для всех аккаунтов
-    async with async_session_factory() as session:
+    async with get_async_session_factory()() as session:
         accounts = await telegram_service.get_active_accounts(session)
         for account in accounts:
             await telegram_service.read_unread_messages(session, account.id)

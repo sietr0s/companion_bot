@@ -3,8 +3,7 @@
 from fastapi import Depends
 
 from src.bus.interface import MessageBus
-from src.bus.providers import get_message_bus
-from src.core.database import async_session_factory
+from src.bus import get_producer
 from src.modules.classifier.ai.category import get_category_classifier
 from src.modules.classifier.ai.ner import get_entity_extractor
 from src.modules.classifier.repository import (
@@ -27,7 +26,7 @@ def get_classification_log_repository() -> ClassificationLogRepository:
 def get_classifier_service(
     repository: CategoryRepository = Depends(get_category_repository),
     log_repository: ClassificationLogRepository = Depends(get_classification_log_repository),
-    message_bus: MessageBus = Depends(get_message_bus),
+    message_bus: MessageBus = Depends(get_producer),
     category_classifier=Depends(get_category_classifier),
     entity_extractor=Depends(get_entity_extractor),
 ) -> ClassifierService:

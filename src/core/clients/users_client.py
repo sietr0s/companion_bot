@@ -10,7 +10,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,14 @@ class UsersClient:
     @staticmethod
     def _get_service():
         """Получить экземпляр UserService через прямое инстанцирование."""
-        from src.bus.providers import get_message_bus
+        from src.bus import get_producer
         from src.modules.users.repository import TelegramRepository, UserRepository
         from src.modules.users.service import UserService
 
         return UserService(
             repository=UserRepository(),
             telegram_repository=TelegramRepository(),
-            message_bus=get_message_bus(),
+            message_bus=get_producer(),
         )
 
     async def resolve_email_by_auth_id(

@@ -21,18 +21,8 @@ class TestHandlers:
         """
         register_handlers не падает.
         """
-        bus = InMemoryProducer()
-        service = JobMatcherService(
-            offer_repo=JobOfferRepository(),
-            sub_repo=SubscriptionRepository(),
-            bus=MockBus(),
-        )
-
-        async def service_factory():
-            return None, service
-
         # Не должно быть ошибки
-        register_handlers(bus=bus, service_factory=service_factory)
+        register_handlers()
 
     async def test_subscribe_handler_registers(self):
         """
@@ -48,7 +38,7 @@ class TestHandlers:
         async def service_factory():
             return None, service
 
-        register_handlers(bus=bus, service_factory=service_factory)
+        register_handlers()
 
     async def test_offer_handler_registers(self):
         """
@@ -64,4 +54,4 @@ class TestHandlers:
         async def service_factory():
             return None, service
 
-        register_handlers(bus=bus, service_factory=service_factory)
+        register_handlers()

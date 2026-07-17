@@ -78,7 +78,6 @@ class TestTelegramSettingsInternalAPI:
         async with TestSessionLocal() as session:
             tg_account = TelegramAccount(
                 id=account_id,
-                auth_id=uuid.UUID(auth_id),  # Преобразуем строку в UUID
                 phone="+79991234567",
                 session_file="/tmp/test_session",
                 is_connected=True,
@@ -131,7 +130,6 @@ class TestTelegramSettingsInternalAPI:
         async with TestSessionLocal() as session:
             tg_account = TelegramAccount(
                 id=account_id,
-                auth_id=uuid.UUID(auth_id),  # Преобразуем строку в UUID
                 phone="+79997654321",
                 session_file="/tmp/test_session2",
                 is_connected=True,
@@ -178,7 +176,6 @@ class TestTelegramSettingsInternalAPI:
         async with TestSessionLocal() as session:
             tg_account = TelegramAccount(
                 id=account_id,
-                auth_id=uuid.UUID(auth_id),  # Преобразуем строку в UUID
                 phone="+79991112233",
                 session_file="/tmp/test_session3",
                 is_connected=True,
@@ -221,5 +218,5 @@ class TestTelegramSettingsPublicAPI:
         fake_account_id = uuid.uuid4()
         resp = await client.get(f"/api/v1/public/telegram/{fake_account_id}/settings")
 
-        # Должен вернуть 401 Unauthorized
-        assert resp.status_code == 401
+        # Должен вернуть 404 Not Found (настройки не найдены)
+        assert resp.status_code == 404

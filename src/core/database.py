@@ -14,30 +14,40 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from src.core.config import settings
 from src.base.model import Base
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-async_session_factory: callable
+_engine: AsyncEngine | None = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Возвращает фабрику сессий. Должна быть инициализирована через init_db()."""
+    if _async_session_factory is None:
+        raise RuntimeError(
+            "async_session_factory не инициализирована. Вызовите init_db() перед использованием."
+        )
+    return _async_session_factory
 
 
 async def init_db() -> None:
-    engine: AsyncEngine = create_async_engine(
+    global _engine, _async_session_factory
+
+    _engine = create_async_engine(
         settings.DATABASE_URL,
         pool_size=settings.DATABASE_POOL_SIZE,
         echo=settings.DEBUG,
     )
-    global async_session_factory
-    if not async_session_factory:
-        async_session_factory = async_sessionmaker(
-            engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+    _async_session_factory = async_sessionmaker(
+        _engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
     if settings.CREATE_TABLES_ON_STARTUP:
-        async with engine.begin() as conn:
+        async with _engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Таблицы БД созданы")
 
@@ -49,5 +59,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     Используется как зависимость в FastAPI (Depends).
     Сессия автоматически закрывается после завершения запроса.
     """
-    async with async_session_factory() as session:
+    factory = get_async_session_factory()
+    async with factory() as session:
         yield session

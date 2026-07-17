@@ -18,3 +18,5 @@ python-multipart>=0.0.6
 aiosqlite>=0.20.0
 aiogram>=3.5.0
 backoff>=2.2.0
+transformers>=4.40.0
+torch>=2.0.0

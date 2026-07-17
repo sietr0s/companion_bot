@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bus.in_memory.producer import InMemoryProducer
+from src.bus import get_producer
 from src.core.seed import seed_admin
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
@@ -21,8 +21,7 @@ from src.modules.auth.service import AuthService
 @pytest.mark.asyncio
 async def test_seed_admin_creates_admin(db_session: AsyncSession):
     """При первом запуске seed_admin создаёт admin-пользователя."""
-    bus = InMemoryProducer()
-    await seed_admin(db_session, bus)
+    await seed_admin(db_session)
 
     repo = AuthRepository()
     admin = await repo.get_by_identifier(db_session, "admin@example.com")
@@ -35,10 +34,9 @@ async def test_seed_admin_creates_admin(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_seed_admin_idempotent(db_session: AsyncSession):
     """Повторный вызов seed_admin не создаёт дубликат."""
-    bus = InMemoryProducer()
 
     # Первый вызов
-    await seed_admin(db_session, bus)
+    await seed_admin(db_session)
 
     repo = AuthRepository()
     admin = await repo.get_by_identifier(db_session, "admin@example.com")
@@ -48,7 +46,7 @@ async def test_seed_admin_idempotent(db_session: AsyncSession):
     admin_id = admin.id
 
     # Второй вызов — не должен создать дубликат
-    await seed_admin(db_session, bus)
+    await seed_admin(db_session)
 
     # Проверяем, что admin всё ещё один
     stmt = select(func.count()).select_from(Auth).where(Auth.role == "admin")
@@ -66,8 +64,7 @@ async def test_seed_admin_idempotent(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_seed_admin_password_is_hashed(db_session: AsyncSession):
     """Пароль admin сохраняется в хэшированном виде (не plaintext)."""
-    bus = InMemoryProducer()
-    await seed_admin(db_session, bus)
+    await seed_admin(db_session)
 
     repo = AuthRepository()
     admin = await repo.get_by_identifier(db_session, "admin@example.com")
@@ -80,11 +77,10 @@ async def test_seed_admin_password_is_hashed(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_seed_admin_can_login(db_session: AsyncSession):
     """Admin может войти с указанным паролем."""
-    bus = InMemoryProducer()
-    await seed_admin(db_session, bus)
+    await seed_admin(db_session)
 
     # Проверяем логин через AuthService
-    service = AuthService(repository=AuthRepository(), message_bus=bus)
+    service = AuthService(repository=AuthRepository(), message_bus=get_producer())
     response = await service.login(
         db_session,
         {"identifier": "admin@example.com", "password": "admin123"},

@@ -7,7 +7,7 @@
 """
 
 
-class AppException(Exception):
+class AppException(Exception):  # noqa: N818 — осознанное имя, используется как AppException в handler'ах
     """Базовое исключение приложения с HTTP-статусом."""
 
     def __init__(self, status_code: int = 500, detail: str = "Внутренняя ошибка сервера"):

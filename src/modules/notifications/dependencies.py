@@ -6,7 +6,6 @@ DI-зависимости модуля notifications.
 
 from fastapi import Depends
 
-from src.core.database import async_session_factory
 from src.modules.notifications.providers.base import NotificationProvider
 from src.modules.notifications.providers.smtp import SmtpProvider
 from src.modules.notifications.repository import (

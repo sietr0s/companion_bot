@@ -55,10 +55,10 @@ class TestUserDependencies:
         repo = get_user_repository()
         bus = MagicMock()
         telegram_repo = MagicMock()
-        service = get_user_service(repo=repo, bus=bus, telegram_repo=telegram_repo)
+        service = get_user_service(repo=repo, telegram_repo=telegram_repo)
         assert service is not None
         assert service.repository is repo
-        assert service.message_bus is bus
+        assert service.message_bus is not None
 
 
 class TestMediaDependencies:

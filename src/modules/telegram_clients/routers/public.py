@@ -11,7 +11,12 @@ from src.base.filters import parse_filters
 from src.base.schemas import PaginatedResponse
 from src.core.dependencies import get_db_session
 from src.core.exceptions import NotFoundError
-from src.modules.telegram_clients.dependencies import get_telegram_account_service, get_telegram_settings_service
+from src.modules.telegram_clients.dependencies import (
+    get_telegram_account_service,
+    get_telegram_settings_repository,
+    get_telegram_settings_service,
+)
+from src.modules.telegram_clients.repository import TelegramSettingsRepository
 from src.modules.telegram_clients.schemas.internal.settings import (
     TelegramSettingsCreate,
     TelegramSettingsRead,
@@ -249,10 +254,12 @@ async def get_messages(
 async def get_settings(
         account_id: uuid.UUID,
         session: AsyncSession = Depends(get_db_session),
-        service: TelegramSettingsService = Depends(get_telegram_settings_service),
+        repository: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsRead:
     """Получить настройки чтения для Telegram-аккаунта."""
-    settings = await service.get_by_id(session, account_id)
+    settings = await repository.get_by_account_id(session, account_id)
+    if not settings:
+        raise NotFoundError(detail="Настройки не найдены")
     return TelegramSettingsRead.model_validate(settings)
 
 

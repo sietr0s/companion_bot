@@ -9,7 +9,6 @@
 import logging
 
 from src.bus import get_producer
-from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
 
 logger = logging.getLogger(__name__)

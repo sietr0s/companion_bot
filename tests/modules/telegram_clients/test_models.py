@@ -30,7 +30,6 @@ async def tg_account(db_session: AsyncSession) -> TelegramAccount:
 
     # Создаём Telegram аккаунт
     tg_account = TelegramAccount(
-        auth_id=auth_account.id,
         phone="+79001234567",
         session_file="/tmp/test_session_state",
         is_connected=True,
@@ -146,7 +145,6 @@ class TestTelegramChatStateUniqueConstraint:
 
         # Создаём второй Telegram аккаунт
         tg_account2 = TelegramAccount(
-            auth_id=auth_account2.id,
             phone="+79009876543",
             session_file="/tmp/test_session_state2",
             is_connected=True,

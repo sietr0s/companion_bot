@@ -4,9 +4,8 @@ import logging
 import uuid
 
 from src.bus import get_producer
-from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 from src.modules.classifier.dependencies import get_classifier_service_factory
 from src.modules.classifier.service import ClassifierService
 
@@ -21,7 +20,7 @@ async def init_default_categories_on_startup() -> None:
     """
     from src.modules.classifier.repository import CategoryRepository
 
-    async with async_session_factory() as session:
+    async with get_async_session_factory()() as session:
         service = ClassifierService(
             repository=CategoryRepository(),
             log_repository=None,
@@ -54,7 +53,7 @@ def register_handlers() -> None:
 
         # Получаем сессию и сервис
         service: ClassifierService = get_classifier_service_factory()
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             result = await service.process_classify_request(
                 session=session,
                 request_id=request_id,

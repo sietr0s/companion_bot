@@ -8,7 +8,7 @@
 import logging
 import uuid
 
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class MediaClient:
     @staticmethod
     def _get_service():
         """Получить экземпляр MediaService через прямое инстанцирование."""
-        from src.bus.providers import get_message_bus
+        from src.bus import get_producer
         from src.modules.media.repository import StoredFileRepository
         from src.modules.media.service import MediaService
         from src.modules.media.storage.local import LocalStorage
@@ -32,7 +32,7 @@ class MediaClient:
         return MediaService(
             repository=StoredFileRepository(),
             storage=LocalStorage(),
-            message_bus=get_message_bus(),
+            message_bus=get_producer(),
         )
 
     async def upload_media_to_storage(
@@ -58,7 +58,7 @@ class MediaClient:
             Исключения пробрасываются наверх (ValueError, SQLAlchemyError и т.д.).
         """
         service = self._get_service()
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             stored_file = await service.upload(
                 session,
                 filename=filename,
@@ -83,7 +83,7 @@ class MediaClient:
         """
         service = self._get_service()
         file_uuid = uuid.UUID(file_id)
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             _, data = await service.download(session, file_uuid)
             return data
 
@@ -102,6 +102,6 @@ class MediaClient:
         """
         service = self._get_service()
         file_uuid = uuid.UUID(file_id)
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             await service.delete(session, file_uuid)
             return True

@@ -9,9 +9,8 @@ import logging
 import uuid
 
 from src.bus import get_producer
-from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
-from src.core.database import async_session_factory
+from src.core.database import get_async_session_factory
 from src.modules.notifications.dependencies import get_notification_service_factory
 
 logger = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ def register_handlers() -> None:
         # Получаем сервис и отправляем
         service = get_notification_service_factory()
 
-        async with async_session_factory() as session:
+        async with get_async_session_factory()() as session:
             await service.send_notification(
                 session=session,
                 auth_id= uuid.UUID(auth_id_str),

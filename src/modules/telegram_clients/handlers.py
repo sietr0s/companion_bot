@@ -10,7 +10,7 @@ import uuid
 
 from src.bus import get_producer
 from src.core.bus_topics import BusTopics
-from src.core.telegram_manager import get_telegram_client_manager
+from src.modules.telegram_clients.dependencies import get_telegram_client_manager
 
 logger = logging.getLogger(__name__)
 

@@ -16,15 +16,15 @@ import logging
 from aiogram import Router
 from aiogram.types import Message
 
+from src.bus import get_producer
 from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
-from src.modules.job_bot.dependencies import get_bot_service
 from src.modules.job_bot.schemas.events import BotMessageIncoming
 
 logger = logging.getLogger(__name__)
 
 
-def register_incoming_handlers(bus: MessageBus) -> Router:
+def register_incoming_handlers() -> Router:
     """
     Регистрация aiogram-обработчиков для входящих сообщений.
 
@@ -34,6 +34,7 @@ def register_incoming_handlers(bus: MessageBus) -> Router:
     Returns:
         Router с зарегистрированными обработчиками.
     """
+    bus = get_producer()
     router = Router()
 
     @router.message()
@@ -69,16 +70,13 @@ def register_incoming_handlers(bus: MessageBus) -> Router:
     return router
 
 
-def register_outgoing_handlers(bus: MessageBus) -> None:
+def register_outgoing_handlers() -> None:
     """
     Регистрация обработчиков шины для исходящих сообщений.
 
     Подписка на bot.message.outgoing — отправка сообщений пользователю через бота.
-
-    Args:
-        bus: Шина сообщений для подписки.
-        bot_service: Сервис для отправки сообщений через Telegram API.
     """
+    bus = get_producer()
 
     @bus.subscribe(BusTopics.BOT_MESSAGE_OUTGOING)
     async def handle_outgoing_message(message: dict) -> None:
@@ -91,6 +89,7 @@ def register_outgoing_handlers(bus: MessageBus) -> None:
             logger.warning("Неполные данные для отправки: %s", message)
             return
 
+        from src.modules.job_bot.dependencies import get_bot_service
         service = get_bot_service()
 
         await service.send_message(

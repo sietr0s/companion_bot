@@ -28,7 +28,6 @@ async def test_account(db_session: AsyncSession) -> TelegramAccount:
     account = await repo.create(
         db_session,
         {
-            "auth_id": uuid.uuid4(),
             "phone": "+79001234567",
             "session_file": "/tmp/test_session",
             "is_connected": True,
@@ -205,7 +204,6 @@ class TestTelegramChatStateRepository:
         other_account = await TelegramAccountRepository().create(
             db_session,
             {
-                "auth_id": uuid.uuid4(),
                 "phone": "+79009998877",
                 "session_file": "/tmp/other_session",
                 "is_connected": True,
