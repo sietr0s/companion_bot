@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.filters import Filter
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import NotFoundError
 from src.modules.media.constants import ERROR_MESSAGES
@@ -23,7 +23,7 @@ from src.modules.media.storage.base import StorageProvider
 from src.modules.media.storage.local import _generate_storage_key
 
 
-class MediaService(BaseService[StoredFileRepository]):
+class MediaService(BaseService[StoredFileRepository, StoredFile]):
     """
     Сервис управления файлами.
 
@@ -34,7 +34,7 @@ class MediaService(BaseService[StoredFileRepository]):
         self,
         repository: StoredFileRepository,
         storage: StorageProvider,
-        message_bus: MessageBus,
+        message_bus: MessageProducer,
     ) -> None:
         super().__init__(repository)
         self.storage = storage
@@ -140,9 +140,10 @@ class MediaService(BaseService[StoredFileRepository]):
         skip: int = 0,
         limit: int = 100,
         filters: list[Filter] | None = None,
+        order_by: str | None = "-created_at",
     ) -> tuple[list[StoredFile], int]:
         """Получить список всех файлов с фильтрацией и пагинацией."""
-        return await self.repository.get_list(session, filters, skip, limit)
+        return await self.repository.get_list(session, filters, skip, limit, order_by)
 
     async def update_file(
         self,

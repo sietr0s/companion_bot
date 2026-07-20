@@ -16,11 +16,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.base.filters import parse_filters
 from src.base.schemas import PaginatedResponse
 from src.core.dependencies import get_db_session
+from src.core.internal_auth import require_internal_service_key
 from src.modules.media.dependencies import get_media_service
 from src.modules.media.schemas.media import FileRead, FileUploadResponse
 from src.modules.media.service import MediaService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/internal/media",
+    tags=["Internal"],
+    dependencies=[Depends(require_internal_service_key)],
+)
+
+FILTER_FIELDS = {
+    "id",
+    "filename",
+    "content_type",
+    "size_bytes",
+    "is_public",
+    "created_at",
+    "updated_at",
+}
 
 
 @router.get(
@@ -32,13 +47,14 @@ async def list_files_internal(
     filters: list[str] = Query(default_factory=list, description="field+operator+value"),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
     session: AsyncSession = Depends(get_db_session),
     service: MediaService = Depends(get_media_service),
 ) -> PaginatedResponse:
     """Получить список всех файлов с фильтрацией и пагинацией (internal)."""
-    parsed = parse_filters(filters)
+    parsed = parse_filters(filters, allowed_fields=FILTER_FIELDS)
     skip = (page - 1) * limit
-    files, total = await service.get_user_files(session, skip, limit, parsed)
+    files, total = await service.get_user_files(session, skip, limit, parsed, order_by)
     return PaginatedResponse.from_list(files, total, page=page, page_size=limit)
 
 

@@ -69,7 +69,7 @@ class AuthRepository(BaseRepository[Auth]):
 **Расположение**: `src/modules/auth/service.py`
 
 ```python
-class AuthService(BaseService[AuthRepository]):
+class AuthService(BaseService[AuthRepository, Auth]):
     """Бизнес-логика авторизации"""
 ```
 
@@ -252,11 +252,11 @@ Content-Type: application/json
 
 | Метод | Путь | Описание | Auth |
 |-------|------|----------|------|
-| `POST` | `/internal/auth/` | Создание аккаунта | ❌ |
-| `GET` | `/internal/auth/{auth_id}` | Получение аккаунта по ID | ❌ |
-| `PATCH` | `/internal/auth/{auth_id}` | Обновление аккаунта | ❌ |
-| `DELETE` | `/internal/auth/{auth_id}` | Удаление аккаунта | ❌ |
-| `POST` | `/internal/auth/verify` | Проверка JWT-токена | ❌ |
+| `POST` | `/internal/auth/` | Создание аккаунта | Service key |
+| `GET` | `/internal/auth/{auth_id}` | Получение аккаунта по ID | Service key |
+| `PATCH` | `/internal/auth/{auth_id}` | Обновление аккаунта | Service key |
+| `DELETE` | `/internal/auth/{auth_id}` | Удаление аккаунта | Service key |
+| `POST` | `/internal/auth/verify` | Проверка JWT-токена | Service key |
 
 #### Пример проверки токена
 
@@ -348,10 +348,9 @@ def get_auth_repository() -> AuthRepository:
 
 def get_auth_service(
     repository: Annotated[AuthRepository, Depends(get_auth_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
 ) -> AuthService:
     """Фабрика сервиса"""
-    return AuthService(repository=repository, message_bus=message_bus)
+    return AuthService(repository=repository, message_bus=get_producer())
 ```
 
 **Использование в роутах:**

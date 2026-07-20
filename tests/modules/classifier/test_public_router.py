@@ -1,8 +1,24 @@
 """Тесты HTTP API модуля classifier."""
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.core.dependencies import get_db_session
+from src.main import app
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def override_db_session(db_session: AsyncSession):
+    """Classifier HTTP tests must use the isolated SQLite session."""
+
+    async def get_test_session():
+        yield db_session
+
+    app.dependency_overrides[get_db_session] = get_test_session
+    yield
+    app.dependency_overrides.pop(get_db_session, None)
 
 
 class TestClassifierPublicRouter:

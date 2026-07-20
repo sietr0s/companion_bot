@@ -76,23 +76,13 @@ class TelegramSettings(BaseModel):
         index=True,
     )
     # Читать группы и каналы
-    read_groups: Mapped[bool] = mapped_column(
+    use_whitelist: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
         nullable=False,
     )
     # Читать личные сообщения
-    read_personal: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-    )
     # Читать каналы
-    read_channels: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-    )
     # Whitelist конкретных chat_id (если пустой — читать все разрешённых типов)
     whitelist_chat_ids: Mapped[list | None] = mapped_column(
         JSON,

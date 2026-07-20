@@ -6,6 +6,7 @@ DI-зависимости модуля notifications.
 
 from fastapi import Depends
 
+from src.bus import get_producer
 from src.modules.notifications.providers.base import NotificationProvider
 from src.modules.notifications.providers.smtp import SmtpProvider
 from src.modules.notifications.repository import (
@@ -40,6 +41,7 @@ def get_notification_service(
         template_repo=template_repo,
         log_repo=log_repo,
         provider=provider,
+        message_bus=get_producer(),
     )
 
 
@@ -54,4 +56,5 @@ def get_notification_service_factory():
         template_repo=NotificationTemplateRepository(),
         log_repo=NotificationLogRepository(),
         provider=SmtpProvider(),
+        message_bus=get_producer(),
     )

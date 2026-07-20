@@ -22,16 +22,25 @@ telegram_clients.command.send_message → JobMatcher просит: "отправ
 
 ### Интерфейс
 
-Все реализации шины следуют протоколу `MessageBus` (`src/bus/interface.py`):
+Публикация и потребление разделены на два протокола (`src/bus/interface.py`):
 
 ```python
-class MessageBus(Protocol):
-    async def publish(self, topic: str, message: dict, await_handlers: bool = False) -> None: ...
+class MessageProducer(Protocol):
+    async def publish(self, topic: str, message: dict) -> None: ...
+    async def start(self) -> None: ...
+    async def stop(self) -> None: ...
+
+
+class MessageConsumer(Protocol):
     def subscribe(self, topic: str) -> Callable: ...
     def get_subscribers(self) -> dict[str, list[Callable]]: ...
     async def start(self) -> None: ...
     async def stop(self) -> None: ...
 ```
+
+Producer только отправляет сообщения. Consumer владеет подписками, слушает
+транспорт и вызывает обработчики. В in-memory режиме их связывает общая
+`InMemoryTransport` с `asyncio.Queue`.
 
 ### Реализации
 
@@ -39,6 +48,9 @@ class MessageBus(Protocol):
 |------------|-------------------|----------|
 | `InMemoryProducer` + `InMemoryConsumer` | Монолит (по умолчанию) | Обработчики вызываются в том же процессе |
 | `KafkaProducerBus` + `KafkaConsumerRouter` | Микросервисы | Сообщения через Kafka-брокер |
+
+При разрыве соединения `KafkaConsumerRouter` закрывает неисправный consumer,
+создаёт новый с теми же топиками и повторяет подключение с exponential backoff.
 
 Переключение — одна переменная в `.env`:
 
@@ -75,6 +87,25 @@ MESSAGE_BUS=in_memory    # или kafka
 | `BusTopics.SUBSCRIPTION_DELETED` | `job_matcher.event.subscription.deleted` | job_matcher | Подписка удалена |
 | `BusTopics.TEXT_CLASSIFY_COMPLETED` | `classifier.event.classify.completed` | classifier | Классификация завершена |
 
+#### BotMessageIncoming
+
+Топик: `job_bot.event.message.incoming`. Источник: `job_bot`.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `chat_id` | int | ID чата, куда бот отправляет ответ |
+| `text` | str | Текст входящего сообщения |
+| `command` | str \| null | Команда без суффикса имени бота, например `/start` |
+| `callback_data` | str \| null | Данные нажатой inline-кнопки |
+| `message_id` | int \| null | ID сообщения с inline-клавиатурой; заполняется для callback |
+| `user.telegram_id` | int | Обязательный ID автора в Telegram; используется как идентификатор Auth |
+| `user.username` | str \| null | Username автора |
+| `user.first_name` | str | Имя автора |
+| `user.last_name` | str \| null | Фамилия автора |
+
+`chat_id` и `user.telegram_id` имеют разное назначение и могут различаться в групповых чатах.
+Событие без объекта `user` не соответствует контракту и не обрабатывается.
+
 ### Commands (публикует НЕ владелец)
 
 | Константа | Топик | Модуль-источник | Описание |
@@ -83,6 +114,7 @@ MESSAGE_BUS=in_memory    # или kafka
 | `BusTopics.NOTIFICATION_SEND` | `notifications.command.send` | **любой** модуль | Отправить уведомление |
 | `BusTopics.TEXT_CLASSIFY_REQUEST` | `classifier.command.classify` | **любой** модуль | Запросить классификацию текста |
 | `BusTopics.BOT_MESSAGE_OUTGOING` | `job_bot.command.send_message` | **любой** модуль | Отправить сообщение пользователю через бота |
+| `BusTopics.BOT_MESSAGE_EDIT` | `job_bot.command.edit_message` | **любой** модуль | Заменить текст и клавиатуру сообщения бота |
 
 ---
 
@@ -175,10 +207,21 @@ MESSAGE_BUS=in_memory    # или kafka
 | account_id | UUID | ID Telegram-аккаунта |
 | chat_id | int | ID чата |
 | message_id | int | ID сообщения |
-| sender_id | int \| null | ID отправителя |
+| sender | object | Автор сообщения: `sender_id`, `username`, `first_name`, `last_name` |
 | text | str \| null | Текст сообщения |
 | media | list[dict] | Массив media: `[{"type": "photo", "id": "file_id"}]` |
 | timestamp | datetime | Время события |
+
+Пример `sender`:
+
+```json
+{
+  "sender_id": 123456789,
+  "username": "vacancy_author",
+  "first_name": "Иван",
+  "last_name": "Иванов"
+}
+```
 
 ### TgMessageSend
 
@@ -228,9 +271,9 @@ MESSAGE_BUS=in_memory    # или kafka
 | Поле | Тип | Описание |
 |------|-----|----------|
 | event_name | str | `"notifications.command.send"` |
-| auth_id | UUID | ID пользователя (для резолва email) |
+| auth_id | UUID | ID пользователя для резолва email или Telegram chat ID |
 | template_name | str | Имя Jinja2-шаблона |
-| channel | str | Канал: `email` (default), `sms` (зарезервировано) |
+| channel | str | Канал: `email` (default), `telegram`; `sms` зарезервирован |
 | body | dict | Переменные для подстановки в шаблон |
 
 ### MediaUploaded
@@ -284,7 +327,7 @@ MESSAGE_BUS=in_memory    # или kafka
 │          │              │          │
 │          │  event       │          │
 │          │◀─────────────│  delete  │
-└──────────┘   MessageBus └──────────┘
+└──────────┘ Producer/Consumer └──────────┘
 
 ┌──────────────────────┐     ┌──────────┐
 │  telegram_clients    │     │  Любой   │
@@ -340,13 +383,18 @@ class MyEvent(BaseEvent):
 
 ```python
 event = MyEvent(entity_id=entity.id)
-self.message_bus.publish(BusTopics.MY_EVENT, event.to_bus_dict())
+await self.message_bus.publish(BusTopics.MY_EVENT, event.to_bus_dict())
 ```
 
 5. **Подпишите обработчик** в `handlers.py`:
 
 ```python
-@bus.subscribe(BusTopics.MY_EVENT)
+from src.bus import get_consumer
+
+consumer = get_consumer()
+
+
+@consumer.subscribe(BusTopics.MY_EVENT)
 async def handle_my_event(message: dict) -> None:
     logger.info("Событие: %s", message.get("entity_id"))
 ```

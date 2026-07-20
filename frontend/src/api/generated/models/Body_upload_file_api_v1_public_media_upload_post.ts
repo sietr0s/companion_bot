@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export type Body_upload_file_api_v1_public_media_upload_post = {
-    file: Blob;
+    file: string;
     is_public?: boolean;
 };
 

@@ -16,6 +16,7 @@ class TestConfig:
         """Дефолтные значения корректны."""
         s = Settings(
             JWT_SECRET_KEY="test",
+            INTERNAL_SERVICE_KEY="internal-test-key",
             DATABASE_URL="sqlite+aiosqlite:///test.db",
         )
         assert s.JWT_ALGORITHM == "HS256"
@@ -33,6 +34,7 @@ class TestConfig:
         try:
             s = Settings(
                 JWT_SECRET_KEY="test",
+                INTERNAL_SERVICE_KEY="internal-test-key",
                 DATABASE_URL="sqlite+aiosqlite:///test.db",
             )
             assert s.DEBUG is True

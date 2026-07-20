@@ -72,4 +72,5 @@ dmypy.json
 
 # ruff
 .ruff_cache/
+.cache/
 /frontend/node_modules/

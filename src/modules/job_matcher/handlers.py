@@ -9,28 +9,39 @@
 import logging
 import uuid
 
-from src.bus import get_producer
+from src.bus import get_consumer
+from src.bus.interface import MessageConsumer
 from src.core.bus_topics import BusTopics
-from src.core.database import get_async_session_factory
-from src.modules.job_matcher.dependencies import get_job_matcher_service_factory
+from src.core.database import create_async_session
+from src.modules.job_bot.schemas.events import BotMessageIncoming
+from src.modules.job_matcher.constants import (
+    SUBSCRIBE_CATEGORY_CALLBACK_PREFIX,
+    SUBSCRIBE_PAGE_CALLBACK_PREFIX,
+    SUBSCRIBE_PAGE_NOOP_CALLBACK,
+)
+from src.modules.job_matcher.dependencies import (
+    get_job_matcher_user_service_factory,
+    get_job_offer_service_factory,
+    get_subscription_service_factory,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def register_handlers() -> None:
+def register_handlers(
+    consumer: MessageConsumer | None = None,
+) -> None:
     """
     Регистрация всех обработчиков событий модуля job_matcher.
-
-    service_factory — async callable, возвращающий (session, JobMatcherService).
 
     Обработчики:
     - TG_MESSAGE_RECEIVED — сохранение вакансий и отправка на классификацию
     - BOT_MESSAGE_INCOMING — диспатч команд /start и /subscribe
     - JOB_OFFER_CLASSIFIED — обновление категорий и поиск подходящих подписок
     """
-    bus = get_producer()
+    consumer = consumer or get_consumer()
 
-    @bus.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
+    @consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
     async def handle_incoming_telegram_message(message: dict) -> None:
         """Обработчик: сохранить вакансию и отправить на классификацию."""
         text = message.get("text", "")
@@ -38,13 +49,15 @@ def register_handlers() -> None:
             logger.warning("Пустое сообщение от Telegram: %s", message)
             return
 
-        service = get_job_matcher_service_factory(bus=bus)
+        service = get_job_offer_service_factory()
 
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             job_offer = await service.save_job_offer(
                 session=session,
                 text=text,
                 chat_id=message.get("chat_id", 0),
+                message_id=message.get("message_id", 0),
+                sender=message["sender"],
             )
 
         await service.send_for_classification(
@@ -52,24 +65,80 @@ def register_handlers() -> None:
             text=text,
         )
 
-    @bus.subscribe(BusTopics.BOT_MESSAGE_INCOMING)
+    @consumer.subscribe(BusTopics.BOT_MESSAGE_INCOMING)
     async def handle_bot_command(message: dict) -> None:
         """Обработчик: диспатч команд /start и /subscribe."""
-        chat_id = message.get("chat_id")
-        command = message.get("command")
+        event = BotMessageIncoming.model_validate(message)
 
-        if not chat_id:
-            return
+        subscription_service = get_subscription_service_factory()
+        user_service = get_job_matcher_user_service_factory()
 
-        service = get_job_matcher_service_factory(bus=bus)
+        async with create_async_session() as session:
+            if event.callback_data == SUBSCRIBE_PAGE_NOOP_CALLBACK:
+                return
+            if event.callback_data and event.callback_data.startswith(
+                SUBSCRIBE_PAGE_CALLBACK_PREFIX
+            ):
+                if event.message_id is None:
+                    logger.warning("Callback пагинации не содержит message_id")
+                    return
+                try:
+                    page = int(
+                        event.callback_data.removeprefix(
+                            SUBSCRIBE_PAGE_CALLBACK_PREFIX
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Некорректный callback страницы категорий: %s",
+                        event.callback_data,
+                    )
+                    return
+                await subscription_service.handle_subscription_page(
+                    session=session,
+                    chat_id=event.chat_id,
+                    message_id=event.message_id,
+                    page=page,
+                )
+            elif event.callback_data and event.callback_data.startswith(
+                SUBSCRIBE_CATEGORY_CALLBACK_PREFIX
+            ):
+                if event.message_id is None:
+                    logger.warning("Callback выбора категории не содержит message_id")
+                    return
+                try:
+                    category_id = uuid.UUID(
+                        event.callback_data.removeprefix(
+                            SUBSCRIBE_CATEGORY_CALLBACK_PREFIX
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Некорректный callback выбора категории: %s",
+                        event.callback_data,
+                    )
+                    return
+                await subscription_service.handle_category_subscription(
+                    session=session,
+                    chat_id=event.chat_id,
+                    telegram_id=event.user.telegram_id,
+                    message_id=event.message_id,
+                    category_id=category_id,
+                )
+            elif event.command == "/start":
+                await user_service.handle_start(
+                    session=session,
+                    chat_id=event.chat_id,
+                    telegram_user=event.user,
+                )
+            elif event.command == "/subscribe":
+                await subscription_service.handle_subscribe(
+                    session=session,
+                    chat_id=event.chat_id,
+                    telegram_id=event.user.telegram_id,
+                )
 
-        async with get_async_session_factory()() as session:
-            if command == "/start":
-                await service.handle_start(session=session, chat_id=chat_id)
-            elif command == "/subscribe":
-                await service.handle_subscribe(session=session, chat_id=chat_id)
-
-    @bus.subscribe(BusTopics.JOB_OFFER_CLASSIFIED)
+    @consumer.subscribe(BusTopics.JOB_OFFER_CLASSIFIED)
     async def handle_job_offer_classified(message: dict) -> None:
         """
         Обработчик: обновить category_ids и найти подходящие подписки.
@@ -77,7 +146,6 @@ def register_handlers() -> None:
         message: {
             "request_id": str (UUID),
             "category_ids": list[uuid.UUID],
-            "title": str,
             "tags": list[str],
             "salary_from": int,
             "salary_to": int,
@@ -98,9 +166,9 @@ def register_handlers() -> None:
             logger.warning("Некорректный request_id: %s", request_id)
             return
 
-        service = get_job_matcher_service_factory(bus=bus)
+        service = get_job_offer_service_factory()
 
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             # 1. Обновляем категории у вакансии
             await service.update_job_offer_categories(
                 session=session,
@@ -108,11 +176,11 @@ def register_handlers() -> None:
                 category_ids=category_ids,
             )
 
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             # 2. Ищем подходящие подписки и отправляем уведомления
             await service.handle_offer_classified(
                 session=session,
-                title=message.get("title", ""),
+                job_offer_id=job_offer_id,
                 category_ids=category_ids,
                 tags=message.get("tags", []),
                 salary_from=message.get("salary_from"),

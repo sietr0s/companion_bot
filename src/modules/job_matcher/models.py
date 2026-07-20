@@ -7,7 +7,7 @@ JobOffer — предложение о работе (спарсено из Teleg
 
 import uuid
 
-from sqlalchemy import Boolean, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON, Uuid
 
@@ -111,6 +111,26 @@ class JobOffer(BaseModel):
     source_message_id: Mapped[int] = mapped_column(
         nullable=False,
         comment="ID сообщения в группе",
+    )
+    telegram_sender_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+        comment="Telegram ID автора вакансии",
+    )
+    telegram_username: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Username автора вакансии в Telegram",
+    )
+    telegram_first_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Имя автора вакансии в Telegram",
+    )
+    telegram_last_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Фамилия автора вакансии в Telegram",
     )
     category_ids: Mapped[list[uuid.UUID] | None] = mapped_column(
         JSON,

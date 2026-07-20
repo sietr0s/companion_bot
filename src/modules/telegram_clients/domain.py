@@ -18,13 +18,22 @@ class Media(BaseModel):
     type: str
 
 
+class Sender(BaseModel):
+    """Автор сообщения Telegram."""
+
+    sender_id: int | None = None
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
 class Message(BaseModel):
     """Доменная модель сообщения Telegram."""
 
     account_id: uuid.UUID
     chat_id: int
     message_id: int
-    sender_id: int | None = None
+    sender: Sender
     text: str | None = None
     media: list[Media] = []
     date: datetime | None = None

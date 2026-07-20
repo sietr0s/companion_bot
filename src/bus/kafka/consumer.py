@@ -15,12 +15,14 @@ import asyncio
 import contextlib
 import json
 import logging
+from collections import defaultdict
 from collections.abc import Callable
 
 import backoff
 from aiokafka import AIOKafkaConsumer
 
 from src.bus.error_handler import safe_handle
+from src.bus.interface import MessageProducer
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,7 +32,7 @@ class KafkaConsumerRouter:
     """
     Kafka-консьюмер: слушает топики и вызывает обработчики.
 
-    Получает реестр подписчиков от продюсера и подписывается
+    Сам владеет реестром подписчиков и подписывается
     на соответствующие топики Kafka.
 
     При ошибках подключения выполняет exponential backoff
@@ -40,52 +42,74 @@ class KafkaConsumerRouter:
 
     MAX_RETRIES = 10
 
-    def __init__(self, subscribers: dict[str, list[Callable]]) -> None:
-        self._subscribers = subscribers
+    def __init__(self, producer: MessageProducer) -> None:
+        self._producer = producer
+        self._subscribers: dict[str, list[Callable]] = defaultdict(list)
         self._consumer: AIOKafkaConsumer | None = None
         self._task: asyncio.Task | None = None
+        self._topics: tuple[str, ...] = ()
+
+    def subscribe(self, topic: str) -> Callable:
+        """Зарегистрировать обработчик и топик, который будет читать consumer."""
+
+        def decorator(func: Callable) -> Callable:
+            self._subscribers[topic].append(func)
+            logger.info("Зарегистрирован обработчик %s на топик '%s'", func.__name__, topic)
+            return func
+
+        return decorator
+
+    def get_subscribers(self) -> dict[str, list[Callable]]:
+        return dict(self._subscribers)
 
     async def start(self) -> None:
         """Запуск консьюмера: подписка на топики и запуск цикла чтения."""
-        topics = list(self._subscribers.keys())
-        if not topics:
+        self._topics = tuple(self._subscribers)
+        if not self._topics:
             logger.info("Нет топиков для подписки, KafkaConsumerRouter не запускается")
             return
 
-        @backoff.on_exception(
-            backoff.expo,
-            Exception,
-            max_time=60,
-            on_backoff=lambda details: logger.warning(
-                "Kafka недоступен для консьюмера (попытка %d): %s. Повтор через %.1fс...",
-                details["tries"],
-                details["exception"],
-                details["wait"],
-            ),
-        )
-        async def _connect() -> None:
-            nonlocal_consumer = AIOKafkaConsumer(
-                *topics,
-                bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-                group_id=settings.KAFKA_GROUP_ID,
-                value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-            )
-            await nonlocal_consumer.start()
-            self._consumer = nonlocal_consumer
-
-        await _connect()
+        await self._connect_with_backoff()
         # Запускаем цикл чтения с retry в фоновой задаче
         self._task = asyncio.create_task(self._run_with_retry())
-        logger.info("KafkaConsumerRouter запущен, топики: %s", topics)
+        logger.info("KafkaConsumerRouter запущен, топики: %s", self._topics)
+
+    async def _connect(self) -> None:
+        """Создать новый consumer и атомарно заменить им прежний."""
+        consumer = AIOKafkaConsumer(
+            *self._topics,
+            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+            group_id=settings.KAFKA_GROUP_ID,
+            value_deserializer=lambda message: json.loads(message.decode("utf-8")),
+        )
+        try:
+            await consumer.start()
+        except Exception:
+            with contextlib.suppress(Exception):
+                await consumer.stop()
+            raise
+        self._consumer = consumer
+
+    @backoff.on_exception(backoff.expo, Exception, max_time=60)
+    async def _connect_with_backoff(self) -> None:
+        """Подключиться при старте с ограниченным exponential backoff."""
+        await self._connect()
+
+    async def _close_consumer(self) -> None:
+        consumer, self._consumer = self._consumer, None
+        if consumer is not None:
+            with contextlib.suppress(Exception):
+                await consumer.stop()
 
     async def _run_with_retry(self) -> None:
         """Цикл чтения с exponential backoff при ошибках подключения к Kafka."""
         retry_delay = 1
         max_delay = 60
         retries = 0
-        while retries < self.MAX_RETRIES:
+        while True:
             try:
                 await self._consume()
+                raise ConnectionError("Kafka consumer завершил цикл чтения")
             except asyncio.CancelledError:
                 logger.info("KafkaConsumerRouter: задача отменена, останавливаем retry")
                 raise
@@ -106,9 +130,18 @@ class KafkaConsumerRouter:
                         "Завершаем работу для перезапуска контейнера.",
                         self.MAX_RETRIES,
                     )
+                    await self._close_consumer()
                     return
+
+                await self._close_consumer()
                 await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, max_delay)
+                try:
+                    await self._connect()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("KafkaConsumerRouter: переподключение не удалось")
 
     async def _consume(self) -> None:
         """Цикл чтения сообщений из Kafka и вызова обработчиков через safe_handle."""
@@ -120,7 +153,7 @@ class KafkaConsumerRouter:
                 topic = msg.topic
                 handlers = self._subscribers.get(topic, [])
                 for handler in handlers:
-                    await safe_handle(handler, topic, msg.value)
+                    await safe_handle(handler, topic, msg.value, self._producer.publish)
         except asyncio.CancelledError:
             logger.info("KafkaConsumerRouter: задача чтения отменена")
             raise
@@ -137,6 +170,6 @@ class KafkaConsumerRouter:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-        if self._consumer:
-            await self._consumer.stop()
-            logger.info("KafkaConsumerRouter остановлен")
+            self._task = None
+        await self._close_consumer()
+        logger.info("KafkaConsumerRouter остановлен")

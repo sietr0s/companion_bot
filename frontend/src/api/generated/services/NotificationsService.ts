@@ -38,6 +38,7 @@ export class NotificationsService {
      * @param filters field+operator+value
      * @param page
      * @param limit
+     * @param orderBy Поле сортировки; '-' = DESC
      * @returns PaginatedResponse_TemplateRead_ Successful Response
      * @throws ApiError
      */
@@ -45,6 +46,7 @@ export class NotificationsService {
         filters?: Array<string>,
         page: number = 1,
         limit: number = 100,
+        orderBy: string = '-created_at',
     ): CancelablePromise<PaginatedResponse_TemplateRead_> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -53,6 +55,7 @@ export class NotificationsService {
                 'filters': filters,
                 'page': page,
                 'limit': limit,
+                'order_by': orderBy,
             },
             errors: {
                 422: `Validation Error`,
@@ -132,6 +135,7 @@ export class NotificationsService {
      * @param filters field+operator+value
      * @param page
      * @param limit
+     * @param orderBy Поле сортировки; '-' = DESC
      * @returns PaginatedResponse_NotificationLogRead_ Successful Response
      * @throws ApiError
      */
@@ -139,6 +143,7 @@ export class NotificationsService {
         filters?: Array<string>,
         page: number = 1,
         limit: number = 50,
+        orderBy: string = '-created_at',
     ): CancelablePromise<PaginatedResponse_NotificationLogRead_> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -147,6 +152,7 @@ export class NotificationsService {
                 'filters': filters,
                 'page': page,
                 'limit': limit,
+                'order_by': orderBy,
             },
             errors: {
                 422: `Validation Error`,

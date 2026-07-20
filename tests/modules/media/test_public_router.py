@@ -71,6 +71,48 @@ async def auth_headers(test_client_with_db: AsyncClient):
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest_asyncio.fixture
+async def admin_headers() -> dict[str, str]:
+    """JWT администратора для public admin-endpoint'ов."""
+    from src.core.security import create_access_token
+
+    token = create_access_token(str(uuid.uuid4()), "admin")
+    return {"Authorization": f"Bearer {token}"}
+
+
+class TestPublicList:
+    @pytest.mark.asyncio
+    async def test_list_files_requires_admin(
+        self,
+        test_client_with_db: AsyncClient,
+        auth_headers: dict,
+        admin_headers: dict,
+    ) -> None:
+        user_response = await test_client_with_db.get(
+            "/api/v1/public/media/", headers=auth_headers
+        )
+        admin_response = await test_client_with_db.get(
+            "/api/v1/public/media/", headers=admin_headers
+        )
+
+        assert user_response.status_code == 401
+        assert admin_response.status_code == 200
+        assert admin_response.json()["items"] == []
+
+    @pytest.mark.asyncio
+    async def test_list_files_rejects_unknown_order_field(
+        self,
+        test_client_with_db: AsyncClient,
+        admin_headers: dict,
+    ) -> None:
+        response = await test_client_with_db.get(
+            "/api/v1/public/media/?order_by=-unknown",
+            headers=admin_headers,
+        )
+
+        assert response.status_code == 422
+
+
 class TestPublicUpload:
     @pytest.mark.asyncio
     async def test_upload_requires_auth(self, test_client_with_db: AsyncClient):

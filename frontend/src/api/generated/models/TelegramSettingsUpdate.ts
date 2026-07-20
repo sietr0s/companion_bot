@@ -6,9 +6,7 @@
  * Обновление настроек Telegram-аккаунта (internal).
  */
 export type TelegramSettingsUpdate = {
-    read_groups?: (boolean | null);
-    read_personal?: (boolean | null);
-    read_channels?: (boolean | null);
+    use_whitelist?: (boolean | null);
     whitelist_chat_ids?: null;
 };
 

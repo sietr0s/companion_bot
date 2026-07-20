@@ -20,7 +20,7 @@ from src.modules.auth.schemas.public import (
 )
 from src.modules.auth.service import AuthService
 
-router = APIRouter(prefix="/api/v1/public/auth")
+router = APIRouter(prefix="/api/v1/public/auth", tags=["Auth"])
 
 
 @router.post(

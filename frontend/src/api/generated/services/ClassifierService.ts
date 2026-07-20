@@ -10,18 +10,6 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ClassifierService {
     /**
-     * Список категорий
-     * Получить список всех категорий.
-     * @returns CategoryRead Successful Response
-     * @throws ApiError
-     */
-    public static getCategoriesApiV1PublicClassifierCategoriesGet(): CancelablePromise<Array<CategoryRead>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/classifier/categories',
-        });
-    }
-    /**
      * Создать категорию
      * Создать новую категорию для классификации.
      * @param requestBody
@@ -36,6 +24,27 @@ export class ClassifierService {
             url: '/api/v1/public/classifier/categories',
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Список категорий
+     * Получить список всех категорий.
+     * @param orderBy Поле сортировки; '-' = DESC
+     * @returns CategoryRead Successful Response
+     * @throws ApiError
+     */
+    public static getCategoriesApiV1PublicClassifierCategoriesGet(
+        orderBy: string = '-created_at',
+    ): CancelablePromise<Array<CategoryRead>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/classifier/categories',
+            query: {
+                'order_by': orderBy,
+            },
             errors: {
                 422: `Validation Error`,
             },

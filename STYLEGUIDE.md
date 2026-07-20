@@ -291,10 +291,12 @@ modules/users/
 ├── repository.py        # Репозиторий (CRUD + кастомные запросы)
 ├── service.py           # Бизнес-логика (использует репозиторий)
 ├── schemas/
-│   ├── api.py          # Pydantic схемы для API
+│   ├── public/         # Pydantic-схемы публичного API
+│   ├── internal/       # Pydantic-схемы internal API
 │   └── events.py       # Схемы событий шины
-├── router.py           # HTTP роуты (публичные)
-├── internal.py         # HTTP роуты (внутренние для межмодульного)
+├── routers/
+│   ├── public.py       # Владеет /api/v1/public/<module>
+│   └── internal.py     # Владеет /internal/<module>
 └── handlers.py         # Обработчики событий шины
 ```
 
@@ -379,7 +381,7 @@ try:
 **Правильно:**
 ```python
 # ✅ Сервис использует только методы репозитория
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     async def create_profile(self, session: AsyncSession, auth_id: UUID, data: dict):
         # Создание через репозиторий
         profile = await self.repository.create(session, {
@@ -399,7 +401,7 @@ class UserService(BaseService[UserRepository]):
 **Неправильно:**
 ```python
 # ❌ Сервис напрямую работает с сессией
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     async def create_profile(self, session: AsyncSession, auth_id: UUID, data: dict):
         # Прямое создание модели ❌
         profile = User(auth_id=auth_id, **data)
@@ -451,7 +453,7 @@ class JobOfferRepository(BaseRepository[JobOffer]):
         })
 
 # ✅ Используйте в сервисе
-class JobMatcherService(BaseService[JobOfferRepository]):
+class JobOfferService(BaseService[JobOfferRepository, JobOffer]):
     async def save_job_offer(self, session: AsyncSession, text: str, chat_id: int):
         return await self.repository.create_from_telegram(session, text, chat_id)
 ```
@@ -515,12 +517,12 @@ async def create_user(session: AsyncSession = Depends(get_session)):
 
 **Правильно:**
 ```python
-# src/core/dependencies.py
+# src/modules/users/dependencies.py
 def get_user_service(
     repo: UserRepository = Depends(get_user_repository),
-    bus: MessageBus = Depends(get_message_bus),
+    producer: MessageProducer = Depends(get_producer),
 ) -> UserService:
-    return UserService(repository=repo, message_bus=bus)
+    return UserService(repository=repo, message_bus=producer)
 ```
 
 **Неправильно:**
@@ -657,8 +659,8 @@ class AuthService:
 **Правильно (подписка):**
 ```python
 # src/modules/users/handlers.py
-def register_handlers(bus: MessageBus):
-    @bus.subscribe(BusTopics.USER_REGISTERED)
+def register_handlers(consumer: MessageConsumer):
+    @consumer.subscribe(BusTopics.USER_REGISTERED)
     async def handle_user_registered(message: dict):
         logger.info("Новый пользователь: auth_id=%s", message.get("auth_id"))
         # Создать профиль пользователя
@@ -698,7 +700,7 @@ await auth_service.register(...)  # ❌
 
 ```python
 # src/modules/users/service.py
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     async def get_profile(self, session: AsyncSession, auth_id: UUID):
         """Получить профиль по auth_id. Raise NotFoundError если не найден."""
         profile = await self.repository.get_by_auth_id(session, auth_id)
@@ -758,8 +760,8 @@ src/core/dependencies.py                   ❌ — только общие
 **Правильно:** `src/modules/auth/dependencies.py`
 ```python
 from fastapi import Depends
-from src.bus.interface import MessageBus
-from src.bus.providers import get_message_bus
+from src.bus import get_producer
+from src.bus.interface import MessageProducer
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.service import AuthService
 
@@ -770,7 +772,7 @@ def get_auth_repository() -> AuthRepository:
 
 def get_auth_service(
     repo: AuthRepository = Depends(get_auth_repository),
-    bus: MessageBus = Depends(get_message_bus),
+    bus: MessageProducer = Depends(get_producer),
 ) -> AuthService:
     return AuthService(repository=repo, message_bus=bus)
 ```

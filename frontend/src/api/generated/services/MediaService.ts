@@ -5,10 +5,41 @@
 import type { Body_upload_file_api_v1_public_media_upload_post } from '../models/Body_upload_file_api_v1_public_media_upload_post';
 import type { FileRead } from '../models/FileRead';
 import type { FileUploadResponse } from '../models/FileUploadResponse';
+import type { PaginatedResponse_FileRead_ } from '../models/PaginatedResponse_FileRead_';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class MediaService {
+    /**
+     * Получить файлы для администратора
+     * Вернуть список файлов авторизованному администратору.
+     * @param filters field+operator+value
+     * @param page
+     * @param limit
+     * @param orderBy Поле сортировки; '-' = DESC
+     * @returns PaginatedResponse_FileRead_ Successful Response
+     * @throws ApiError
+     */
+    public static listFilesAdminApiV1PublicMediaGet(
+        filters?: Array<string>,
+        page: number = 1,
+        limit: number = 100,
+        orderBy: string = '-created_at',
+    ): CancelablePromise<PaginatedResponse_FileRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/media/',
+            query: {
+                'filters': filters,
+                'page': page,
+                'limit': limit,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
     /**
      * Загрузить файл
      * Загрузить файл (требует JWT).

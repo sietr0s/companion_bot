@@ -2,7 +2,6 @@
 Тесты репозитория TelegramChatStateRepository.
 """
 
-import uuid
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession

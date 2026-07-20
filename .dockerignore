@@ -22,6 +22,7 @@ wheels/
 
 # Virtual environments
 venv/
+.venv/
 ENV/
 env/
 
@@ -34,6 +35,7 @@ env/
 
 # Testing
 .pytest_cache/
+.cache/
 .coverage
 htmlcov/
 *.cover
@@ -53,7 +55,6 @@ docker-compose*.yml
 docs/
 
 # Local env
-.env
 .env.local
 .env.*.local
 

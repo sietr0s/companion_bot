@@ -5,10 +5,12 @@
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import InvalidFilterError
 from src.modules.auth.repository import AuthRepository
 from src.modules.users.repository import UserRepository
 
@@ -95,6 +97,76 @@ class TestBaseRepository:
             )
         results = await repo.get_all(db_session, skip=0, limit=3)
         assert len(results) == 3
+
+    async def test_get_list_orders_newest_first_by_default(
+        self,
+        db_session: AsyncSession,
+        repo: AuthRepository,
+    ):
+        """По умолчанию новые записи возвращаются первыми."""
+        now = datetime.now(UTC)
+        older = await repo.create(
+            db_session,
+            {
+                "identifier": "older@test.com",
+                "identifier_type": "email",
+                "hashed_password": "hashed",
+                "created_at": now - timedelta(days=1),
+            },
+        )
+        newer = await repo.create(
+            db_session,
+            {
+                "identifier": "newer@test.com",
+                "identifier_type": "email",
+                "hashed_password": "hashed",
+                "created_at": now,
+            },
+        )
+
+        items, total = await repo.get_list(db_session)
+
+        assert total == 2
+        assert [item.id for item in items] == [newer.id, older.id]
+
+    async def test_get_list_supports_ascending_order(
+        self,
+        db_session: AsyncSession,
+        repo: AuthRepository,
+    ):
+        """Поле без '-' сортирует по возрастанию."""
+        now = datetime.now(UTC)
+        older = await repo.create(
+            db_session,
+            {
+                "identifier": "asc-older@test.com",
+                "identifier_type": "email",
+                "hashed_password": "hashed",
+                "created_at": now - timedelta(days=1),
+            },
+        )
+        newer = await repo.create(
+            db_session,
+            {
+                "identifier": "asc-newer@test.com",
+                "identifier_type": "email",
+                "hashed_password": "hashed",
+                "created_at": now,
+            },
+        )
+
+        items, _ = await repo.get_list(db_session, order_by="created_at")
+
+        assert [item.id for item in items] == [older.id, newer.id]
+
+    async def test_get_list_rejects_unknown_order_field(
+        self,
+        db_session: AsyncSession,
+        repo: AuthRepository,
+    ):
+        """Произвольное имя поля не попадает в SQL."""
+        with pytest.raises(InvalidFilterError):
+            await repo.get_list(db_session, order_by="-unknown")
 
     async def test_update(self, db_session: AsyncSession, repo: AuthRepository):
         """Обновление полей сущности."""

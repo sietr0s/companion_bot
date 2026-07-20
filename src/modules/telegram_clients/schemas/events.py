@@ -16,6 +16,15 @@ class Media(BaseModel):
     media_id: uuid.UUID | None = None
 
 
+class Sender(BaseModel):
+    """Автор входящего Telegram-сообщения."""
+
+    sender_id: int | None = None
+    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
 class TgMessageReceived(BaseEvent):
     """
     Событие: входящее сообщение из Telegram.
@@ -33,7 +42,7 @@ class TgMessageReceived(BaseEvent):
     account_id: uuid.UUID
     chat_id: int
     message_id: int
-    sender_id: int | None = None
+    sender: Sender
     text: str | None = None
     media: list[Media] = Field(default_factory=list)
 

@@ -111,7 +111,7 @@ class TelegramRepository(BaseRepository[Telegram]):
 **Расположение**: `src/modules/users/service.py`
 
 ```python
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     """Бизнес-логика управления профилями"""
 ```
 
@@ -312,12 +312,12 @@ Authorization: Bearer <token>
 
 | Метод | Путь | Описание | Auth |
 |-------|------|----------|------|
-| `GET` | `/internal/users/` | Список с фильтрацией | ❌ |
-| `POST` | `/internal/users/` | Создание профиля | ❌ |
-| `GET` | `/internal/users/{profile_id}` | Профиль по ID | ❌ |
-| `PATCH` | `/internal/users/{profile_id}` | Обновление профиля | ❌ |
-| `DELETE` | `/internal/users/{profile_id}` | Удаление профиля | ❌ |
-| `POST` | `/internal/users/{profile_id}/telegram` | Создание Telegram | ❌ |
+| `GET` | `/internal/users/` | Список с фильтрацией | Service key |
+| `POST` | `/internal/users/` | Создание профиля | Service key |
+| `GET` | `/internal/users/{profile_id}` | Профиль по ID | Service key |
+| `PATCH` | `/internal/users/{profile_id}` | Обновление профиля | Service key |
+| `DELETE` | `/internal/users/{profile_id}` | Удаление профиля | Service key |
+| `POST` | `/internal/users/{profile_id}/telegram` | Создание Telegram | Service key |
 
 ## События шины
 
@@ -422,7 +422,6 @@ def get_telegram_repository() -> TelegramRepository:
 def get_user_service(
     user_repo: Annotated[UserRepository, Depends(get_user_repository)],
     telegram_repo: Annotated[TelegramRepository, Depends(get_telegram_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
 ) -> UserService:
     """
     Фабрика сервиса
@@ -432,7 +431,7 @@ def get_user_service(
     return UserService(
         repository=user_repo,
         telegram_repository=telegram_repo,
-        message_bus=message_bus,
+        message_bus=get_producer(),
     )
 ```
 

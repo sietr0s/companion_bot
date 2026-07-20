@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.clients.users_client import UsersClient
-from src.modules.users.repository import UserRepository
+from src.modules.users.repository import TelegramRepository, UserRepository
 
 
 class TestUsersClient:
@@ -23,6 +23,9 @@ class TestUsersClient:
         result = await client.create_profile(
             auth_id=existing_auth_id,
             first_name="Тестовый",
+            last_name="Пользователь",
+            telegram_id=123456,
+            telegram_username="test_user",
             session=db_session,
         )
         assert result is True
@@ -31,6 +34,21 @@ class TestUsersClient:
         profile = await repo.get_by_auth_id(db_session, existing_auth_id)
         assert profile is not None
         assert profile.first_name == "Тестовый"
+        assert profile.last_name == "Пользователь"
+
+        telegram = await TelegramRepository().get_by_auth_id(db_session, existing_auth_id)
+        assert telegram is not None
+        assert telegram.telegram_id == "123456"
+        assert telegram.telegram_username == "test_user"
+        assert telegram.telegram_first_name == "Тестовый"
+        assert telegram.telegram_last_name == "Пользователь"
+        assert (
+            await client.resolve_telegram_id_by_auth_id(
+                existing_auth_id,
+                session=db_session,
+            )
+            == 123456
+        )
 
     async def test_get_profile_with_session(
         self, db_session: AsyncSession, existing_auth_id: uuid.UUID
@@ -43,12 +61,10 @@ class TestUsersClient:
         await client.create_profile(
             auth_id=existing_auth_id,
             first_name="Профиль",
+            telegram_id=123457,
             session=db_session,
         )
 
-        # get_profile использует свою сессию — создаём профиль
-        # напрямую через репозиторий
-        repo = UserRepository()
-        profile = await repo.get_by_auth_id(db_session, existing_auth_id)
+        profile = await client.get_profile(existing_auth_id, session=db_session)
         assert profile is not None
         assert profile.first_name == "Профиль"

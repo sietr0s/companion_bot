@@ -92,7 +92,7 @@ async def send_offer(
 ### Входящие сообщения (aiogram handlers)
 
 ```python
-def register_incoming_handlers(bus: MessageBus) -> Router:
+def register_incoming_handlers(producer: MessageProducer) -> Router:
     """
     Регистрация aiogram-обработчиков для входящих сообщений.
 
@@ -113,8 +113,14 @@ def register_incoming_handlers(bus: MessageBus) -> Router:
             chat_id=message.chat.id,
             text=message.text or "",
             command=command,
+            user=TelegramUserInfo(
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            ),
         )
-        await bus.publish(BusTopics.BOT_MESSAGE_INCOMING, event.to_bus_dict())
+        await producer.publish(BusTopics.BOT_MESSAGE_INCOMING, event.to_bus_dict())
 
     return router
 ```
@@ -122,14 +128,17 @@ def register_incoming_handlers(bus: MessageBus) -> Router:
 ### Исходящие сообщения (шина)
 
 ```python
-def register_outgoing_handlers(bus: MessageBus, bot_service: BotService) -> None:
+def register_outgoing_handlers(
+    consumer: MessageConsumer,
+    bot_service: BotService,
+) -> None:
     """
     Регистрация обработчиков шины для исходящих сообщений.
 
     Подписка на bot.message.outgoing — отправка через Telegram API.
     """
 
-    @bus.subscribe(BusTopics.BOT_MESSAGE_OUTGOING)
+    @consumer.subscribe(BusTopics.BOT_MESSAGE_OUTGOING)
     async def handle_outgoing_message(message: dict) -> None:
         """Отправить сообщение пользователю через Telegram-бота."""
         chat_id = message.get("chat_id")
@@ -267,17 +276,28 @@ ERROR_INTERNAL = "⚠️ Внутренняя ошибка"
 ```python
 class BotMessageIncoming(BaseEvent):
     """Входящее сообщение от пользователя"""
-    
+
     chat_id: int
     text: str
-    username: str | None
     command: str | None
+    callback_data: str | None
+    message_id: int | None
+    user: TelegramUserInfo
+
+class TelegramUserInfo(BaseModel):
+    telegram_id: int
+    username: str | None
+    first_name: str
+    last_name: str | None
 ```
 
 **Топик**: `bot.message.incoming`
 
 **Когда публикуется:**
 - При получении команды от пользователя
+- При нажатии inline-кнопки (`callback_data`)
+- Для inline-кнопки передаётся `message_id`, чтобы бизнес-модуль мог заменить сообщение
+- Telegram-пользователь обязателен; сообщение без `from_user` не публикуется
 
 **Подписчики:**
 - `job_matcher.handlers` — обработка команд
@@ -301,6 +321,12 @@ class BotMessageOutgoing(BaseEvent):
 
 **Подписчики:**
 - `job_bot.handlers` — отправка через бота
+
+#### BotMessageEdit
+
+Команда `job_bot.command.edit_message` содержит `chat_id`, `message_id`, новый
+`text` и опциональную `keyboard`. Шлюз выполняет её через
+`Bot.edit_message_text`; `keyboard=None` удаляет старую inline-клавиатуру.
 
 ## Запуск бота
 
@@ -379,42 +405,11 @@ async def start_webhook(
 
 **Расположение**: `src/modules/job_bot/dependencies.py`
 
+Job bot не создаёт сервисы `job_matcher` и не импортирует его репозитории.
+Взаимодействие выполняется через события шины. Обработчики `job_matcher`
+получают собственные сервисы из DI-фабрик своего модуля.
+
 ```python
-def get_job_offer_repository() -> JobOfferRepository:
-    """
-    Фабрика репозитория вакансий
-    
-    Обратите внимание: использует репозиторий из job_matcher!
-    Это нарушение изоляции, требует рефакторинга.
-    """
-    from src.modules.job_matcher.repository import JobOfferRepository
-    return JobOfferRepository()
-
-
-def get_subscription_repository() -> SubscriptionRepository:
-    """
-    Фабрика репозитория подписок
-    
-    Обратите внимание: использует репозиторий из job_matcher!
-    """
-    from src.modules.job_matcher.repository import SubscriptionRepository
-    return SubscriptionRepository()
-
-
-def get_job_matcher_service(
-    offer_repo: Annotated[JobOfferRepository, Depends(get_job_offer_repository)],
-    sub_repo: Annotated[SubscriptionRepository, Depends(get_subscription_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
-) -> JobMatcherService:
-    """Фабрика сервиса job_matcher"""
-    from src.modules.job_matcher.service import JobMatcherService
-    return JobMatcherService(
-        repository=offer_repo,
-        subscription_repository=sub_repo,
-        message_bus=message_bus,
-    )
-
-
 def get_bot(token: str = settings.TG_BOT_TOKEN) -> Bot:
     """Фабрика бота"""
     return Bot(token=token)
@@ -432,7 +427,7 @@ def get_bot_service(bot: Annotated[Bot, Depends(get_bot)]) -> BotService:
 | Модуль | Тип | Описание |
 |--------|-----|----------|
 | `bus` | Шина | Публикация/подписка на события |
-| `job_matcher` | Прямые импорты | **Нарушение изоляции!** Репозитории и сервисы |
+| `job_matcher` | События шины | Команды бота и входящие сообщения |
 
 ### Используется
 
@@ -489,19 +484,22 @@ await message_bus.publish(
 
 ```python
 # В job_bot/handlers.py
-@dp.message(Command("start"))
-async def handle_start(message: Message, bus: MessageBus):
-    await bus.publish(
+@router.message(Command("start"))
+async def handle_start(message: Message, producer: MessageProducer):
+    await producer.publish(
         BusTopics.BOT_MESSAGE_INCOMING,
         BotMessageIncoming(
             chat_id=message.chat.id,
             text="/start",
-            username=message.from_user.username,
-            command="start",
+            command="/start",
+            user=TelegramUserInfo(
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            ),
         ).to_bus_dict(),
     )
-    
-    await message.answer("Привет! Я бот для поиска вакансий.")
 ```
 
 ### Отправка вакансии

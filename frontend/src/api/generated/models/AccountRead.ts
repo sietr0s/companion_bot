@@ -7,7 +7,6 @@
  */
 export type AccountRead = {
     id: string;
-    auth_id: string;
     phone: string;
     is_connected: boolean;
     first_name?: (string | null);

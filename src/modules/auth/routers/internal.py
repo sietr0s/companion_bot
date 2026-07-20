@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
+from src.core.internal_auth import require_internal_service_key
 from src.modules.auth.dependencies import get_auth_service
 from src.modules.auth.schemas.internal import (
     AuthCreate,
@@ -22,7 +23,11 @@ from src.modules.auth.schemas.internal import (
 )
 from src.modules.auth.service import AuthService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/internal/auth",
+    tags=["Internal"],
+    dependencies=[Depends(require_internal_service_key)],
+)
 
 
 @router.post(

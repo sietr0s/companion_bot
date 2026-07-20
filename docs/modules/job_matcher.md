@@ -55,6 +55,10 @@ class JobOffer(BaseModel):
     location: str | None          # Локация
     source_chat_id: int           # Источник: chat_id
     source_message_id: int        # Источник: message_id
+    telegram_sender_id: int | None
+    telegram_username: str | None
+    telegram_first_name: str | None
+    telegram_last_name: str | None
     category_ids: list[UUID]      # Категории (JSON)
     created_at: datetime          # Дата создания
 ```
@@ -113,23 +117,27 @@ class JobOfferRepository(BaseRepository[JobOffer]):
         """Поиск вакансии по источнику (chat_id, message_id)"""
 ```
 
-## Сервис
+## Сервисы
 
-### JobMatcherService
+Сервисы расположены в `src/modules/job_matcher/services/` и разделены по ответственности:
 
-**Расположение**: `src/modules/job_matcher/service.py`
+- `JobOfferService` — сохранение, классификация и рассылка вакансий;
+- `SubscriptionService` — чтение подписок, пагинация и выбор категорий;
+- `JobMatcherUserService` — регистрация через `/start` и каскадное удаление subscription, user и auth.
 
-```python
-class JobMatcherService(BaseService[JobOfferRepository]):
-    """Бизнес-логика подбора вакансий"""
-```
+Общего монолитного фасада нет: handlers и routers получают только необходимый сервис.
 
 ### Методы
 
 #### save_job_offer
 ```python
 async def save_job_offer(
-    self, session: AsyncSession, text: str, chat_id: int, message_id: int
+    self,
+    session: AsyncSession,
+    text: str,
+    chat_id: int,
+    message_id: int,
+    sender: dict,
 ) -> JobOffer:
     """
     Сохранение вакансии из Telegram-сообщения
@@ -181,12 +189,17 @@ async def update_job_offer_categories(
 #### handle_start
 ```python
 async def handle_start(
-    self, session: AsyncSession, chat_id: int
+    self,
+    session: AsyncSession,
+    chat_id: int,
+    telegram_user: TelegramUserInfo,
 ) -> None:
     """
     Обработка команды /start
     
-    - Регистрирует пользователя через AuthClient
+    - Регистрирует Auth по telegram_user.telegram_id
+    - Создаёт User с именем и фамилией
+    - Создаёт и привязывает Telegram-профиль
     - Отправляет приветственное сообщение
     
     Raises:
@@ -197,16 +210,17 @@ async def handle_start(
 #### handle_subscribe
 ```python
 async def handle_subscribe(
-    self, session: AsyncSession, chat_id: int, data: SubscriptionCreate
-) -> Subscription:
+    self,
+    session: AsyncSession,
+    chat_id: int,
+    telegram_id: int,
+) -> None:
     """
     Обработка команды /subscribe
     
-    - Создаёт подписку
-    - Отправляет подтверждение
-    
-    Raises:
-        ConflictError: Если подписка уже существует
+    - Получает страницу активных категорий classifier (по 5 элементов)
+    - Отправляет inline-клавиатуру выбора с кнопками «Назад» и «Вперёд»
+    - Не создаёт подписку до выбора пользователем
     """
 ```
 
@@ -255,7 +269,9 @@ async def handle_start(message: dict):
     Обработка команды /start
     
     - Проверяет команду
-    - Регистрирует пользователя через AuthClient
+    - Валидирует обязательный объект user
+    - Регистрирует Auth по user.telegram_id
+    - Заполняет User и связанный Telegram-профиль
     - Отправляет приветствие
     """
 ```
@@ -267,8 +283,11 @@ async def handle_subscribe(message: dict):
     """
     Обработка команды /subscribe
     
-    - Создаёт подписку
-    - Отправляет подтверждение
+    - Отправляет по 5 активных категорий, номер страницы и навигацию
+    - По callback `subscribe_page:<page>` заменяет клавиатуру в том же сообщении
+    - По callback `subscribe_category:<category_id>` создаёт или обновляет подписку
+    - После выбора заменяет исходное сообщение подтверждением без клавиатуры
+    - Повторный выбор категории не создаёт дубликат
     """
 ```
 
@@ -289,19 +308,24 @@ async def handle_job_offer_classified(message: dict):
 
 ### Подписки (входящие)
 
-#### tg.message.received
+#### telegram_clients.event.message.received
 ```python
 # Данные события:
 {
   "account_id": "UUID",
   "chat_id": 123456789,
   "message_id": 123,
-  "text": "Вакансия: Python разработчик...",
-  "chat_type": "CHANNEL"
+  "sender": {
+    "sender_id": 987654321,
+    "username": "vacancy_author",
+    "first_name": "Иван",
+    "last_name": "Иванов"
+  },
+  "text": "Вакансия: Python разработчик..."
 }
 ```
 
-**Топик**: `tg.message.received`
+**Топик**: `telegram_clients.event.message.received`
 
 **От кого**: `telegram_clients`
 
@@ -425,37 +449,14 @@ def get_subscription_repository() -> SubscriptionRepository:
     return SubscriptionRepository()
 
 
-def get_job_matcher_service(
-    offer_repo: Annotated[JobOfferRepository, Depends(get_job_offer_repository)],
-    sub_repo: Annotated[SubscriptionRepository, Depends(get_subscription_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
-) -> JobMatcherService:
-    """Фабрика сервиса"""
-    return JobMatcherService(
-        repository=offer_repo,
-        subscription_repository=sub_repo,
-        message_bus=message_bus,
-    )
+def get_job_offer_service(...) -> JobOfferService: ...
+def get_subscription_service(...) -> SubscriptionService: ...
+def get_job_matcher_user_service(...) -> JobMatcherUserService: ...
 
-
-def get_job_matcher_service_factory(
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
-) -> Callable[[AsyncSession], JobMatcherService]:
-    """
-    Фабрика сервисов для обработчиков шины
-    
-    Возвращает функцию, которая создаёт сервис с сессией
-    """
-    def factory(session: AsyncSession) -> JobMatcherService:
-        offer_repo = JobOfferRepository()
-        sub_repo = SubscriptionRepository()
-        return JobMatcherService(
-            repository=offer_repo,
-            subscription_repository=sub_repo,
-            message_bus=message_bus,
-            session=session,
-        )
-    return factory
+# Варианты без FastAPI Depends для обработчиков шины:
+def get_job_offer_service_factory() -> JobOfferService: ...
+def get_subscription_service_factory() -> SubscriptionService: ...
+def get_job_matcher_user_service_factory() -> JobMatcherUserService: ...
 ```
 
 ## Взаимосвязи с другими модулями
@@ -669,12 +670,13 @@ async def handle_job_offer_classified(message: dict):
 
 ```python
 @pytest.fixture
-def job_matcher_service(offer_repo, sub_repo, message_bus):
-    return JobMatcherService(
-        repository=offer_repo,
-        subscription_repository=sub_repo,
-        message_bus=message_bus,
-    )
+def job_offer_service(offer_repo, sub_repo, message_bus):
+    return JobOfferService(offer_repo=offer_repo, sub_repo=sub_repo, bus=message_bus)
+
+
+@pytest.fixture
+def subscription_service(sub_repo, message_bus):
+    return SubscriptionService(repository=sub_repo, bus=message_bus)
 
 
 @pytest.fixture
@@ -725,6 +727,10 @@ def upgrade():
         sa.Column('location', sa.String(), nullable=True),
         sa.Column('source_chat_id', sa.Integer(), nullable=False),
         sa.Column('source_message_id', sa.Integer(), nullable=False),
+        sa.Column('telegram_sender_id', sa.BigInteger(), nullable=True),
+        sa.Column('telegram_username', sa.String(255), nullable=True),
+        sa.Column('telegram_first_name', sa.String(255), nullable=True),
+        sa.Column('telegram_last_name', sa.String(255), nullable=True),
         sa.Column('category_ids', sa.JSON(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('id'),

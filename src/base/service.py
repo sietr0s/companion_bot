@@ -14,13 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.model import BaseModel
 from src.base.repository import BaseRepository
+from src.core.exceptions import NotFoundError
 
 # Тип репозитория, с которым работает сервис
 RepositoryType = TypeVar("RepositoryType", bound=BaseRepository)
 ModelType = TypeVar("ModelType", bound=BaseModel)
 
 
-class BaseService(Generic[RepositoryType]):
+class BaseService(Generic[RepositoryType, ModelType]):
     """
     Дженерик-сервис, проксирующий вызовы к репозиторию.
 
@@ -31,7 +32,11 @@ class BaseService(Generic[RepositoryType]):
     def __init__(self, repository: RepositoryType):
         self.repository = repository
 
-    async def get_by_id(self, session: AsyncSession, entity_id: Any) -> Any | None:
+    async def get_by_id(
+        self,
+        session: AsyncSession,
+        entity_id: UUID,
+    ) -> ModelType | None:
         """
         Получить сущность по ID.
 
@@ -49,7 +54,8 @@ class BaseService(Generic[RepositoryType]):
         session: AsyncSession,
         skip: int = 0,
         limit: int = 100,
-    ) -> Sequence[Any]:
+        order_by: str | None = "-created_at",
+    ) -> Sequence[ModelType]:
         """
         Получить список сущностей.
 
@@ -61,9 +67,13 @@ class BaseService(Generic[RepositoryType]):
         Returns:
             Список сущностей
         """
-        return await self.repository.get_all(session, skip, limit)
+        return await self.repository.get_all(session, skip, limit, order_by)
 
-    async def create(self, session: AsyncSession, data: dict[str, Any]) -> Any:
+    async def create(
+        self,
+        session: AsyncSession,
+        data: dict[str, Any],
+    ) -> ModelType:
         """
         Создать сущность.
 
@@ -76,7 +86,12 @@ class BaseService(Generic[RepositoryType]):
         """
         return await self.repository.create(session, data)
 
-    async def update(self, session: AsyncSession, obj_id: UUID, data: dict[str, Any]) -> Any:
+    async def update(
+        self,
+        session: AsyncSession,
+        obj_id: UUID,
+        data: dict[str, Any],
+    ) -> ModelType:
         """
         Обновить сущность.
 
@@ -89,6 +104,8 @@ class BaseService(Generic[RepositoryType]):
             Обновлённая сущность
         """
         obj = await self.get_by_id(session, obj_id)
+        if obj is None:
+            raise NotFoundError()
         return await self.repository.update(session, obj, data)
 
     async def delete(self, session: AsyncSession, obj_id: UUID) -> None:
@@ -100,4 +117,6 @@ class BaseService(Generic[RepositoryType]):
             db_obj: Сущность для удаления
         """
         obj = await self.get_by_id(session, obj_id)
-        return await self.repository.delete(session, obj)
+        if obj is None:
+            raise NotFoundError()
+        await self.repository.delete(session, obj)

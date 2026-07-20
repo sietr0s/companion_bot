@@ -10,6 +10,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
+from src.bus.interface import MessageProducer
 from src.core.config import settings
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.service import AuthService
@@ -17,14 +18,17 @@ from src.modules.auth.service import AuthService
 logger = logging.getLogger(__name__)
 
 
-async def seed_admin(session: AsyncSession) -> None:
+async def seed_admin(
+    session: AsyncSession,
+    producer: MessageProducer | None = None,
+) -> None:
     """
     Создать admin-пользователя при старте приложения.
 
     Проверяет, существует ли учётная запись с ADMIN_EMAIL.
     Если нет — создаёт через AuthService с ролью admin.
     """
-    bus = get_producer()
+    bus = producer or get_producer()
     repo = AuthRepository()
     service = AuthService(repository=repo, message_bus=bus)
 

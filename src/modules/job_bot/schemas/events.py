@@ -5,8 +5,19 @@
 Исходящие сообщения → получаются из шины и отправляются через aiogram.
 """
 
+from pydantic import BaseModel, Field
+
 from src.bus.schemes import BaseEvent
 from src.core.bus_topics import BusTopics
+
+
+class TelegramUserInfo(BaseModel):
+    """Данные автора входящего сообщения из Telegram."""
+
+    telegram_id: int
+    username: str | None = None
+    first_name: str
+    last_name: str | None = None
 
 
 class BotMessageIncoming(BaseEvent):
@@ -21,6 +32,9 @@ class BotMessageIncoming(BaseEvent):
     chat_id: int
     text: str
     command: str | None = None
+    callback_data: str | None = None
+    message_id: int | None = None
+    user: TelegramUserInfo
 
 
 class BotMessageOutgoing(BaseEvent):
@@ -34,4 +48,14 @@ class BotMessageOutgoing(BaseEvent):
     event_name: str = BusTopics.BOT_MESSAGE_OUTGOING
     chat_id: int
     text: str
-    keyboard: dict | None = {}
+    keyboard: dict | None = Field(default_factory=dict)
+
+
+class BotMessageEdit(BaseEvent):
+    """Команда Telegram-шлюзу отредактировать ранее отправленное сообщение."""
+
+    event_name: str = BusTopics.BOT_MESSAGE_EDIT
+    chat_id: int
+    message_id: int
+    text: str
+    keyboard: dict | None = None

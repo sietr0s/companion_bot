@@ -4,13 +4,38 @@
 
 import uuid
 
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.job_matcher.models import JobOffer, Subscription
 from src.modules.job_matcher.repository import (
     JobOfferRepository,
     SubscriptionRepository,
+    _json_contains,
 )
+
+
+def test_postgresql_json_contains_casts_json_to_jsonb() -> None:
+    """PostgreSQL must compare JSONB with a JSONB array, not JSON with varchar."""
+
+    class BindStub:
+        dialect = postgresql.dialect()
+
+    class SessionStub:
+        bind = BindStub()
+
+    category_id = str(uuid.uuid4())
+    expression = _json_contains(
+        SessionStub(),
+        Subscription.category_ids,
+        category_id,
+    )
+    compiled = expression.compile(dialect=postgresql.dialect())
+
+    assert "CAST(subscriptions.category_ids AS JSONB)" in str(compiled)
+    assert "@>" in str(compiled)
+    assert "::JSONB" in str(compiled)
+    assert list(compiled.params.values()) == [[category_id]]
 
 
 class TestSubscriptionRepository:
@@ -106,6 +131,29 @@ class TestSubscriptionRepository:
             category_ids=[uuid.UUID(cat_a), uuid.UUID(cat_c)],
         )
         assert len(matching) == 2
+
+    async def test_category_subscription_matches_offer_with_tags(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Отсутствие keywords не блокирует матчинг выбранной категории."""
+        category_id = str(uuid.uuid4())
+        sub = Subscription(
+            auth_id=uuid.uuid4(),
+            is_active=True,
+            category_ids=[category_id],
+            keywords=None,
+        )
+        db_session.add(sub)
+        await db_session.commit()
+
+        matching = await SubscriptionRepository().find_matching(
+            db_session,
+            category_ids=[uuid.UUID(category_id)],
+            tags=["python", "backend"],
+        )
+
+        assert [item.id for item in matching] == [sub.id]
 
     async def test_find_matching_by_salary(self, db_session: AsyncSession):
         """Поиск подходящих подписок по зарплате."""

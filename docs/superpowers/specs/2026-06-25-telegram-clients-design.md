@@ -93,8 +93,8 @@ src/modules/telegram_clients/
 
 | Константа | Топик | Направление | Описание |
 |-----------|-------|-------------|----------|
-| `TG_MESSAGE_RECEIVED` | `tg.message.received` | Out (publish) | Входящее сообщение из Telegram |
-| `TG_MESSAGE_SEND` | `tg.message.send` | In (subscribe) | Отправить сообщение через аккаунт |
+| `TG_MESSAGE_RECEIVED` | `telegram_clients.event.message.received` | Out (publish) | Входящее сообщение из Telegram |
+| `TG_MESSAGE_SEND` | `telegram_clients.command.send_message` | In (subscribe) | Отправить сообщение через аккаунт |
 | `TG_ACCOUNT_CONNECTED` | `tg.account.connected` | Out (publish) | Аккаунт подключён |
 | `TG_ACCOUNT_DISCONNECTED` | `tg.account.disconnected` | Out (publish) | Аккаунт отключён |
 
@@ -103,11 +103,16 @@ src/modules/telegram_clients/
 **TgMessageReceived** (publish):
 ```json
 {
-  "event_name": "tg.message.received",
+  "event_name": "telegram_clients.event.message.received",
   "account_id": "uuid",
   "chat_id": -1001234567890,
   "message_id": 42,
-  "sender_id": 123456789,
+  "sender": {
+    "sender_id": 123456789,
+    "username": "vacancy_author",
+    "first_name": "Иван",
+    "last_name": "Иванов"
+  },
   "text": "Привет!",
   "media": [
     {"type": "photo", "id": "AQADBAAT..."},
@@ -120,7 +125,7 @@ src/modules/telegram_clients/
 **TgMessageSend** (subscribe):
 ```json
 {
-  "event_name": "tg.message.send",
+  "event_name": "telegram_clients.command.send_message",
   "account_id": "uuid",
   "chat_id": -1001234567890,
   "text": "Ответ",

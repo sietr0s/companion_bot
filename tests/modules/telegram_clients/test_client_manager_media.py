@@ -13,9 +13,8 @@ import respx
 from httpx import Response
 from telethon.events.newmessage import NewMessage
 
-from src.modules.telegram_clients.services.account import TelegramAccountService
-
 from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.services.account import TelegramAccountService
 
 
 def create_mock_event(chat_id=-1001234567890, sender_id=123456789, is_private=True):
@@ -38,7 +37,7 @@ def mock_session_factory():
     mock_session.__aexit__ = AsyncMock(return_value=None)
 
     with patch(
-        "src.core.database.get_async_session_factory",
+        "src.core.database.create_async_session",
         return_value=mock_session,
     ):
         yield mock_session

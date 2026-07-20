@@ -3,6 +3,7 @@
 import pytest
 
 from src.base.filters import Filter, FilterOperator, apply_filters, parse_filters
+from src.core.exceptions import InvalidFilterError
 
 
 class TestParseFilters:
@@ -28,13 +29,17 @@ class TestParseFilters:
         result = parse_filters(["email+eq+test+test@test.com"])
         assert result[0].value == "test+test@test.com"
 
-    def test_invalid_filter_skipped(self):
-        result = parse_filters(["invalid", "also+invalid"])
-        assert len(result) == 0
+    def test_invalid_filter_rejected(self):
+        with pytest.raises(InvalidFilterError):
+            parse_filters(["invalid"])
 
-    def test_invalid_operator_skipped(self):
-        result = parse_filters(["email+invalid_op+value"])
-        assert len(result) == 0
+    def test_invalid_operator_rejected(self):
+        with pytest.raises(InvalidFilterError):
+            parse_filters(["email+invalid_op+value"])
+
+    def test_field_outside_whitelist_rejected(self):
+        with pytest.raises(InvalidFilterError):
+            parse_filters(["password+eq+secret"], allowed_fields={"email"})
 
     def test_empty_list(self):
         result = parse_filters([])
@@ -59,24 +64,25 @@ class TestApplyFilters:
         from sqlalchemy import select
 
         stmt = select(model_class)
-        filters = [Filter(field="email", operator=FilterOperator.EQ, value="test@test.com")]
+        filters = [
+            Filter(field="identifier", operator=FilterOperator.EQ, value="test@test.com")
+        ]
         result = apply_filters(stmt, model_class, filters)
         assert result is not None
 
-    def test_unknown_field_skipped(self, model_class):
+    def test_unknown_field_rejected(self, model_class):
         from sqlalchemy import select
 
         stmt = select(model_class)
         filters = [Filter(field="nonexistent", operator=FilterOperator.EQ, value="x")]
-        result = apply_filters(stmt, model_class, filters)
-        # Не падает, просто пропускает
-        assert result is not None
+        with pytest.raises(InvalidFilterError):
+            apply_filters(stmt, model_class, filters)
 
     def test_all_operators(self, model_class):
         from sqlalchemy import select
 
         stmt = select(model_class)
         for op in FilterOperator:
-            filters = [Filter(field="email", operator=op, value="test")]
+            filters = [Filter(field="identifier", operator=op, value="test")]
             result = apply_filters(stmt, model_class, filters)
             assert result is not None

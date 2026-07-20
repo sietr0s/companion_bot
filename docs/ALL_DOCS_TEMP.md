@@ -1455,7 +1455,7 @@ MESSAGE_BUS=in_memory    # или kafka
 | account_id | UUID | ID Telegram-аккаунта |
 | chat_id | int | ID чата |
 | message_id | int | ID сообщения |
-| sender_id | int \| null | ID отправителя |
+| sender | object | Автор сообщения: `sender_id`, `username`, `first_name`, `last_name` |
 | text | str \| null | Текст сообщения |
 | media | list[dict] | Массив media: `[{"type": "photo", "id": "file_id"}]` |
 | timestamp | datetime | Время события |

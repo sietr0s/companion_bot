@@ -14,16 +14,17 @@ import type { PasswordRequest } from '../models/PasswordRequest';
 import type { PhoneRequest } from '../models/PhoneRequest';
 import type { QrStartResponse } from '../models/QrStartResponse';
 import type { QrStatusResponse } from '../models/QrStatusResponse';
+import type { src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead } from '../models/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead';
+import type { src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead } from '../models/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead';
 import type { TelegramSettingsCreate } from '../models/TelegramSettingsCreate';
-import type { TelegramSettingsRead } from '../models/TelegramSettingsRead';
 import type { TelegramSettingsUpdate } from '../models/TelegramSettingsUpdate';
+import type { WhitelistChatCreate } from '../models/WhitelistChatCreate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TelegramClientsService {
     /**
      * Шаг 1: отправить номер телефона
-     * Отправляет SMS-код на указанный номер телефона.
      * @param requestBody
      * @returns AuthStep1Response Successful Response
      * @throws ApiError
@@ -43,7 +44,6 @@ export class TelegramClientsService {
     }
     /**
      * Шаг 2: ввести SMS-код
-     * Вводит SMS-код. Если аккаунт с 2FA — возвращает статус 2fa_required.
      * @param requestBody
      * @returns AuthStep2Response Successful Response
      * @throws ApiError
@@ -63,7 +63,6 @@ export class TelegramClientsService {
     }
     /**
      * Шаг 3: ввести пароль 2FA
-     * Вводит пароль облачного шифрования (2FA).
      * @param requestBody
      * @returns AuthStep3Response Successful Response
      * @throws ApiError
@@ -83,7 +82,6 @@ export class TelegramClientsService {
     }
     /**
      * Запустить QR-авторизацию Telegram
-     * Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода.
      * @returns QrStartResponse Successful Response
      * @throws ApiError
      */
@@ -91,14 +89,10 @@ export class TelegramClientsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/telegram/auth/qr',
-            errors: {
-                422: `Validation Error`,
-            },
         });
     }
     /**
      * Статус QR-авторизации
-     * Возвращает текущий статус QR-сессии: pending, connected, expired или error.
      * @param accountId
      * @returns QrStatusResponse Successful Response
      * @throws ApiError
@@ -119,7 +113,6 @@ export class TelegramClientsService {
     }
     /**
      * Отменить QR-авторизацию
-     * Отменяет QR-сессию и очищает временные данные.
      * @param accountId
      * @returns void
      * @throws ApiError
@@ -140,7 +133,6 @@ export class TelegramClientsService {
     }
     /**
      * Завершить QR-авторизацию
-     * Создаёт запись аккаунта в БД после успешного QR-сканирования.
      * @param accountId
      * @returns AccountRead Successful Response
      * @throws ApiError
@@ -161,10 +153,10 @@ export class TelegramClientsService {
     }
     /**
      * Список Telegram-аккаунтов
-     * Возвращает все Telegram-аккаунты текущего пользователя с фильтрацией и пагинацией.
      * @param filters field+operator+value
      * @param page
      * @param limit
+     * @param orderBy Поле сортировки; '-' = DESC
      * @returns PaginatedResponse_AccountRead_ Successful Response
      * @throws ApiError
      */
@@ -172,6 +164,7 @@ export class TelegramClientsService {
         filters?: Array<string>,
         page: number = 1,
         limit: number = 100,
+        orderBy: string = '-created_at',
     ): CancelablePromise<PaginatedResponse_AccountRead_> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -180,6 +173,7 @@ export class TelegramClientsService {
                 'filters': filters,
                 'page': page,
                 'limit': limit,
+                'order_by': orderBy,
             },
             errors: {
                 422: `Validation Error`,
@@ -187,8 +181,7 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Детальный просмотр Telegram-аккаунта
-     * Получить детализацию Telegram-аккаунта по ID.
+     * Telegram-аккаунт
      * @param accountId
      * @returns AccountRead Successful Response
      * @throws ApiError
@@ -209,7 +202,6 @@ export class TelegramClientsService {
     }
     /**
      * Удалить Telegram-аккаунт
-     * Удаляет Telegram-аккаунт, отключает клиент, удаляет сессию.
      * @param accountId
      * @returns void
      * @throws ApiError
@@ -230,7 +222,6 @@ export class TelegramClientsService {
     }
     /**
      * Список чатов аккаунта
-     * Возвращает все чаты указанного Telegram-аккаунта.
      * @param accountId
      * @param limit
      * @returns ChatRead Successful Response
@@ -256,7 +247,6 @@ export class TelegramClientsService {
     }
     /**
      * Сообщения чата
-     * Возвращает сообщения указанного чата (on-demand из Telegram API).
      * @param accountId
      * @param chatId
      * @param limit
@@ -288,14 +278,13 @@ export class TelegramClientsService {
     }
     /**
      * Настройки чтения аккаунта
-     * Получить настройки чтения для своего Telegram-аккаунта.
      * @param accountId
-     * @returns TelegramSettingsRead Successful Response
+     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static getSettingsApiV1PublicTelegramAccountIdSettingsGet(
         accountId: string,
-    ): CancelablePromise<TelegramSettingsRead> {
+    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -308,17 +297,16 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Создать настройки чтения аккаунта
-     * Создать настройки чтения для своего Telegram-аккаунта.
+     * Создать настройки чтения
      * @param accountId
      * @param requestBody
-     * @returns TelegramSettingsRead Successful Response
+     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static createSettingsApiV1PublicTelegramAccountIdSettingsPost(
         accountId: string,
         requestBody: TelegramSettingsCreate,
-    ): CancelablePromise<TelegramSettingsRead> {
+    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -333,17 +321,16 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Обновить настройки чтения аккаунта
-     * Обновить настройки чтения для своего Telegram-аккаунта.
+     * Обновить настройки чтения
      * @param accountId
      * @param requestBody
-     * @returns TelegramSettingsRead Successful Response
+     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static updateSettingsApiV1PublicTelegramAccountIdSettingsPut(
         accountId: string,
         requestBody: TelegramSettingsUpdate,
-    ): CancelablePromise<TelegramSettingsRead> {
+    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -358,8 +345,7 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Удалить настройки чтения аккаунта
-     * Удалить настройки чтения для своего Telegram-аккаунта.
+     * Удалить настройки чтения
      * @param accountId
      * @returns void
      * @throws ApiError
@@ -372,6 +358,53 @@ export class TelegramClientsService {
             url: '/api/v1/public/telegram/{account_id}/settings',
             path: {
                 'account_id': accountId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Add Chat To Whitelist
+     * @param accountId
+     * @param requestBody
+     * @returns src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead Successful Response
+     * @throws ApiError
+     */
+    public static addChatToWhitelistApiV1PublicTelegramAccountIdWhitelistPost(
+        accountId: string,
+        requestBody: WhitelistChatCreate,
+    ): CancelablePromise<src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/{account_id}/whitelist',
+            path: {
+                'account_id': accountId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Remove Chat From Whitelist
+     * @param accountId
+     * @param chatId
+     * @returns src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead Successful Response
+     * @throws ApiError
+     */
+    public static removeChatFromWhitelistApiV1PublicTelegramAccountIdWhitelistChatIdDelete(
+        accountId: string,
+        chatId: number,
+    ): CancelablePromise<src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/{account_id}/whitelist/{chat_id}',
+            path: {
+                'account_id': accountId,
+                'chat_id': chatId,
             },
             errors: {
                 422: `Validation Error`,

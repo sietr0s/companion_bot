@@ -7,8 +7,7 @@
 
 import asyncio
 import uuid
-from collections import defaultdict
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -21,7 +20,8 @@ from sqlalchemy.ext.asyncio import (
 
 from src.base.model import Base
 from src.bus.in_memory.producer import InMemoryProducer
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
+from src.core.config import settings
 from src.core.security import create_access_token
 from src.main import app
 from src.modules.auth.models import Auth
@@ -81,36 +81,22 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-def message_bus() -> MessageBus:
+def message_bus() -> MessageProducer:
     """In-memory шина для тестов — без внешних зависимостей."""
     return InMemoryProducer()
 
 
-class MockBus(MessageBus):
+class MockBus(MessageProducer):
     """Заглушка шины сообщений для тестов, собирающая опубликованные события.
 
-    Реализует полный протокол MessageBus для type-safe использования в тестах.
+    Реализует протокол MessageProducer для type-safe использования в тестах.
     """
 
     def __init__(self) -> None:
         self.published: list[tuple[str, dict]] = []
-        self._subscribers: dict[str, list[Callable]] = defaultdict(list)
 
-    async def publish(self, topic: str, message: dict, await_handlers: bool = False) -> None:
+    async def publish(self, topic: str, message: dict) -> None:
         self.published.append((topic, message))
-
-    def subscribe(self, topic: str) -> Callable:
-        """Декоратор для регистрации обработчика на топик."""
-
-        def decorator(func: Callable) -> Callable:
-            self._subscribers[topic].append(func)
-            return func
-
-        return decorator
-
-    def get_subscribers(self) -> dict[str, list[Callable]]:
-        """Возвращает копию реестра подписчиков."""
-        return dict(self._subscribers)
 
     async def start(self) -> None:
         pass
@@ -125,7 +111,7 @@ def auth_repository() -> AuthRepository:
 
 
 @pytest_asyncio.fixture
-def auth_service(auth_repository: AuthRepository, message_bus: MessageBus) -> AuthService:
+def auth_service(auth_repository: AuthRepository, message_bus: MessageProducer) -> AuthService:
     return AuthService(repository=auth_repository, message_bus=message_bus)
 
 
@@ -143,7 +129,7 @@ def telegram_repository() -> TelegramAccountRepository:
 def user_service(
     user_repository: UserRepository,
     telegram_repository: TelegramAccountRepository,
-    message_bus: MessageBus,
+    message_bus: MessageProducer,
 ) -> UserService:
     return UserService(
         repository=user_repository,
@@ -209,5 +195,9 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     Использует ASGITransport для прямого вызова FastAPI без сети.
     """
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers={"X-Internal-Service-Key": settings.INTERNAL_SERVICE_KEY},
+    ) as c:
         yield c

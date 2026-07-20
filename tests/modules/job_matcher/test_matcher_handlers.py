@@ -1,17 +1,10 @@
 """
 Тесты обработчиков модуля job_matcher.
 
-Проверяют, что handlers правильно делегируют в JobMatcherService.
+Проверяют регистрацию обработчиков сервисов job_matcher.
 """
 
-from src.bus.in_memory.producer import InMemoryProducer
 from src.modules.job_matcher.handlers import register_handlers
-from src.modules.job_matcher.repository import (
-    JobOfferRepository,
-    SubscriptionRepository,
-)
-from src.modules.job_matcher.service import JobMatcherService
-from tests.conftest import MockBus
 
 
 class TestHandlers:
@@ -28,30 +21,10 @@ class TestHandlers:
         """
         register_handlers не падает.
         """
-        bus = InMemoryProducer()
-        service = JobMatcherService(
-            offer_repo=JobOfferRepository(),
-            sub_repo=SubscriptionRepository(),
-            bus=MockBus(),
-        )
-
-        async def service_factory():
-            return None, service
-
         register_handlers()
 
     async def test_offer_handler_registers(self):
         """
         register_handlers не падает.
         """
-        bus = InMemoryProducer()
-        service = JobMatcherService(
-            offer_repo=JobOfferRepository(),
-            sub_repo=SubscriptionRepository(),
-            bus=MockBus(),
-        )
-
-        async def service_factory():
-            return None, service
-
         register_handlers()

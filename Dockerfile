@@ -21,7 +21,8 @@ COPY . .
 # Переменные окружения
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/app/.cache/huggingface
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

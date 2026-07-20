@@ -64,7 +64,7 @@ class StoredFileRepository(BaseRepository[StoredFile]):
 **Расположение**: `src/modules/media/service.py`
 
 ```python
-class MediaService(BaseService[StoredFileRepository]):
+class MediaService(BaseService[StoredFileRepository, StoredFile]):
     """Бизнес-логика управления файлами"""
 ```
 
@@ -329,11 +329,11 @@ GET /public/media/{file_id}/download
 
 | Метод | Путь | Описание | Auth |
 |-------|------|----------|------|
-| `GET` | `/internal/media/` | Список всех файлов | ❌ |
-| `POST` | `/internal/media/upload` | Загрузка файла (без JWT) | ❌ |
-| `GET` | `/internal/media/{file_id}` | Метаданные любого файла | ❌ |
-| `GET` | `/internal/media/{file_id}/download` | Скачивание любого файла | ❌ |
-| `DELETE` | `/internal/media/{file_id}` | Удаление (без JWT) | ❌ |
+| `GET` | `/internal/media/` | Список всех файлов | Service key |
+| `POST` | `/internal/media/upload` | Загрузка файла | Service key |
+| `GET` | `/internal/media/{file_id}` | Метаданные любого файла | Service key |
+| `GET` | `/internal/media/{file_id}/download` | Скачивание любого файла | Service key |
+| `DELETE` | `/internal/media/{file_id}` | Удаление | Service key |
 
 ## События шины
 
@@ -411,13 +411,12 @@ def get_storage_provider() -> StorageProvider:
 def get_media_service(
     repo: Annotated[StoredFileRepository, Depends(get_stored_file_repository)],
     storage: Annotated[StorageProvider, Depends(get_storage_provider)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
 ) -> MediaService:
     """Фабрика сервиса"""
     return MediaService(
         repository=repo,
         storage_provider=storage,
-        message_bus=message_bus,
+        message_bus=get_producer(),
     )
 ```
 

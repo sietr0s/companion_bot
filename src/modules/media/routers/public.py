@@ -8,17 +8,55 @@ POST /media/upload и DELETE /media/{id} — требуют JWT.
 
 import uuid
 
-from fastapi import APIRouter, Depends, Form, UploadFile, status
+from fastapi import APIRouter, Depends, Form, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.dependencies import get_current_user, get_db_session
+from src.base.filters import parse_filters
+from src.base.schemas import PaginatedResponse
+from src.core.dependencies import get_current_admin, get_current_user, get_db_session
 from src.core.exceptions import NotFoundError
 from src.modules.media.dependencies import get_media_service
 from src.modules.media.schemas.media import FileRead, FileUploadResponse
 from src.modules.media.service import MediaService
 
-router = APIRouter(prefix="/api/v1/public/media")
+router = APIRouter(prefix="/api/v1/public/media", tags=["Media"])
+
+ADMIN_FILTER_FIELDS = {
+    "id",
+    "filename",
+    "content_type",
+    "size_bytes",
+    "is_public",
+    "created_at",
+    "updated_at",
+}
+
+
+@router.get(
+    "/",
+    response_model=PaginatedResponse[FileRead],
+    summary="Получить файлы для администратора",
+)
+async def list_files_admin(
+    filters: list[str] = Query(default_factory=list, description="field+operator+value"),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=100, ge=1, le=500),
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
+    _admin_id: uuid.UUID = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db_session),
+    service: MediaService = Depends(get_media_service),
+) -> PaginatedResponse[FileRead]:
+    """Вернуть список файлов авторизованному администратору."""
+    parsed = parse_filters(filters, allowed_fields=ADMIN_FILTER_FIELDS)
+    files, total = await service.get_user_files(
+        session,
+        skip=(page - 1) * limit,
+        limit=limit,
+        filters=parsed,
+        order_by=order_by,
+    )
+    return PaginatedResponse.from_list(files, total, page=page, page_size=limit)
 
 
 @router.post(

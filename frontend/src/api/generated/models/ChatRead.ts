@@ -10,5 +10,6 @@ export type ChatRead = {
     name?: (string | null);
     chat_type: string;
     username?: (string | null);
+    is_in_whitelist?: boolean;
 };
 

@@ -4,8 +4,12 @@
 Проверяем, что сервис корректно проксирует вызовы к репозиторию.
 """
 
+import uuid
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.exceptions import NotFoundError
 from src.modules.auth.service import AuthService
 
 
@@ -83,3 +87,19 @@ class TestBaseService:
         await auth_service.delete(db_session, account.id)
         found = await auth_service.get_by_id(db_session, account.id)
         assert found is None
+
+    async def test_update_missing_entity_raises_not_found(
+        self,
+        db_session: AsyncSession,
+        auth_service: AuthService,
+    ):
+        with pytest.raises(NotFoundError):
+            await auth_service.update(db_session, uuid.uuid4(), {"hashed_password": "new"})
+
+    async def test_delete_missing_entity_raises_not_found(
+        self,
+        db_session: AsyncSession,
+        auth_service: AuthService,
+    ):
+        with pytest.raises(NotFoundError):
+            await auth_service.delete(db_session, uuid.uuid4())

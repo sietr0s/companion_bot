@@ -89,3 +89,4 @@ def get_users_client():
     from src.core.clients.users_client import UsersClient
 
     return UsersClient()
+

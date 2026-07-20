@@ -35,3 +35,10 @@ class UnauthorizedError(AppException):
 
     def __init__(self, detail: str = "Не авторизован"):
         super().__init__(status_code=401, detail=detail)
+
+
+class InvalidFilterError(AppException):
+    """Некорректный или запрещённый фильтр (422)."""
+
+    def __init__(self, detail: str = "Некорректный фильтр"):
+        super().__init__(status_code=422, detail=detail)

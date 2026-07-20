@@ -8,11 +8,10 @@ import { request as __request } from '../core/request';
 export class HealthService {
     /**
      * Health Check
-     * Health check — без БД, без зависимостей.
-     * @returns any Successful Response
+     * @returns string Successful Response
      * @throws ApiError
      */
-    public static healthCheckHealthGet(): CancelablePromise<any> {
+    public static healthCheckHealthGet(): CancelablePromise<Record<string, string>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/health',

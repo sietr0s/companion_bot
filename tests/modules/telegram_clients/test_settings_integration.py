@@ -13,6 +13,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
+from src.core.config import settings
 from src.main import app
 
 
@@ -40,7 +41,11 @@ async def test_client_with_db() -> AsyncGenerator[AsyncClient, None]:
 
     # Создаём клиент
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers={"X-Internal-Service-Key": settings.INTERNAL_SERVICE_KEY},
+    ) as client:
         yield client
 
     # Очищаем
@@ -87,9 +92,7 @@ class TestTelegramSettingsInternalAPI:
 
         # Создаём настройки
         settings_data = {
-            "read_groups": False,
-            "read_personal": True,
-            "read_channels": False,
+            "use_whitelist": True,
             "whitelist_chat_ids": [123456, 789012],
         }
         create_resp = await client.post(
@@ -98,9 +101,7 @@ class TestTelegramSettingsInternalAPI:
 
         assert create_resp.status_code == 201
         data = create_resp.json()
-        assert data["read_groups"] is False
-        assert data["read_personal"] is True
-        assert data["read_channels"] is False
+        assert data["use_whitelist"] is True
         assert data["whitelist_chat_ids"] == [123456, 789012]
 
         # Очистка
@@ -145,9 +146,7 @@ class TestTelegramSettingsInternalAPI:
         get_resp = await client.get(f"/internal/telegram/{account_id}/settings")
         assert get_resp.status_code == 200
         data = get_resp.json()
-        assert data["read_groups"] is True  # default
-        assert data["read_personal"] is True  # default
-        assert data["read_channels"] is True  # default
+        assert data["use_whitelist"] is True  # default
 
         # Очистка
         await client.delete(f"/internal/auth/{auth_id}")
@@ -186,21 +185,20 @@ class TestTelegramSettingsInternalAPI:
         # Создаём начальные настройки
         await client.post(
             f"/internal/telegram/{account_id}/settings",
-            json={"read_groups": True, "read_personal": True, "read_channels": True},
+            json={"use_whitelist": True},
         )
 
         # Обновляем настройки
-        update_data = {"read_groups": False, "whitelist_chat_ids": [999888]}
+        update_data = {"use_whitelist": False, "whitelist_chat_ids": [999888]}
         update_resp = await client.put(
             f"/internal/telegram/{account_id}/settings", json=update_data
         )
 
         assert update_resp.status_code == 200
         data = update_resp.json()
-        assert data["read_groups"] is False
+        assert data["use_whitelist"] is False
         assert data["whitelist_chat_ids"] == [999888]
         # Остальные поля должны сохраниться
-        assert data["read_personal"] is True
 
         # Очистка
         await client.delete(f"/internal/auth/{auth_id}")

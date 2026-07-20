@@ -7,9 +7,9 @@
 - репликация файлов
 """
 
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageConsumer
 
 
-def register_handlers(bus: MessageBus) -> None:
+def register_handlers(bus: MessageConsumer) -> None:
     """Регистрация обработчиков событий шины для media."""
     # Пока пусто — модуль только публикует события

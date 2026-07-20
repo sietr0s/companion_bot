@@ -74,7 +74,7 @@ async def safe_handle(
             e.status_code,
             msg_preview,
         )
-        if dlq_publisher:
+        if dlq_publisher and topic != DLQ_TOPIC:
             await dlq_publisher(
                 DLQ_TOPIC,
                 {
@@ -95,7 +95,7 @@ async def safe_handle(
             e,
             msg_preview,
         )
-        if dlq_publisher:
+        if dlq_publisher and topic != DLQ_TOPIC:
             await dlq_publisher(
                 DLQ_TOPIC,
                 {
@@ -116,7 +116,7 @@ async def safe_handle(
             e,
             tb,
         )
-        if dlq_publisher:
+        if dlq_publisher and topic != DLQ_TOPIC:
             await dlq_publisher(
                 DLQ_TOPIC,
                 {

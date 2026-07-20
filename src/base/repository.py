@@ -14,7 +14,7 @@ from pydantic import BaseModel as PydanticModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.base.filters import Filter, apply_filters
+from src.base.filters import Filter, apply_filters, apply_ordering
 from src.base.model import BaseModel
 
 # Тип модели, с которой работает репозиторий
@@ -37,10 +37,14 @@ class BaseRepository(Generic[ModelType]):
         return await session.get(self.model, id)
 
     async def get_all(
-        self, session: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = "-created_at",
     ) -> Sequence[ModelType]:
         """Получить список сущностей с пагинацией."""
-        stmt = select(self.model).offset(skip).limit(limit)
+        stmt = apply_ordering(select(self.model), self.model, order_by).offset(skip).limit(limit)
         result = await session.execute(stmt)
         return result.scalars().all()
 
@@ -62,6 +66,7 @@ class BaseRepository(Generic[ModelType]):
         filters: list[Filter] | None = None,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = "-created_at",
     ) -> tuple[Sequence[ModelType], int]:
         """
         Получить список сущностей с фильтрацией и пагинацией.
@@ -78,7 +83,7 @@ class BaseRepository(Generic[ModelType]):
         total = total_result.scalar() or 0
 
         # Потом получаем данные
-        stmt = stmt.offset(skip).limit(limit)
+        stmt = apply_ordering(stmt, self.model, order_by).offset(skip).limit(limit)
         result = await session.execute(stmt)
         return result.scalars().all(), total
 

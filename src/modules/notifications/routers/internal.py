@@ -12,16 +12,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
 from src.core.exceptions import NotFoundError
+from src.core.internal_auth import require_internal_service_key
 from src.modules.notifications.dependencies import get_notification_service
 from src.modules.notifications.schemas.internal import SendNotificationRequest
+from src.modules.notifications.schemas.public import NotificationLogRead
 from src.modules.notifications.service import NotificationService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/internal/notifications",
+    tags=["Internal"],
+    dependencies=[Depends(require_internal_service_key)],
+)
 
 
 @router.post(
     "/send",
-    response_model=SendNotificationRequest,
+    response_model=NotificationLogRead,
     status_code=status.HTTP_201_CREATED,
     summary="[Internal] Отправить уведомление по шаблону",
 )
@@ -51,7 +57,7 @@ async def send_notification(
 )
 async def render_template_test(
     template_id: uuid.UUID,
-    test_data: dict = None,
+    test_data: dict | None = None,
     session: AsyncSession = Depends(get_db_session),
     service: NotificationService = Depends(get_notification_service),
 ) -> dict:

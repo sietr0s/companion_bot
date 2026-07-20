@@ -27,10 +27,12 @@ def _json_contains(session: AsyncSession, column, value: str):
     - SQLite: cast к String + contains (для тестов)
     """
     if _is_postgresql(session):
-        from sqlalchemy import type_coerce
         from sqlalchemy.dialects.postgresql import JSONB
 
-        return type_coerce(column, JSONB).contains(value)
+        # Колонки исторически созданы как JSON, а оператор @> определён для JSONB.
+        # SQL CAST нужен реально, type_coerce меняет лишь представление в SQLAlchemy.
+        # Значения в этих колонках — массивы, поэтому справа также передаём массив.
+        return cast(column, JSONB).contains([value])
     return cast(column, String).contains(f'"{value}"')
 
 
@@ -85,11 +87,14 @@ class SubscriptionRepository(BaseRepository[Subscription]):
             )
 
         if tags:
-            for tag in tags:
-                stmt = stmt.where(
-                    Subscription.keywords.isnot(None),
-                    _json_contains(session, Subscription.keywords, tag),
-                )
+            tag_conditions = [
+                _json_contains(session, Subscription.keywords, tag) for tag in tags
+            ]
+            stmt = stmt.where(
+                Subscription.keywords.is_(None)
+                | (cast(Subscription.keywords, String) == "null")
+                | or_(*tag_conditions)
+            )
         if salary_min is not None:
             stmt = stmt.where(
                 (Subscription.max_salary.is_(None)) | (Subscription.max_salary >= salary_min)

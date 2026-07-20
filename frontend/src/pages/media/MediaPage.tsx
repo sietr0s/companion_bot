@@ -19,7 +19,7 @@ import {
 import type { UploadFile } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageTitle } from '../../components/common/PageTitle';
-import { FileRead, InternalService, MediaService } from '../../api/generated';
+import { FileRead, MediaService } from '../../api/generated';
 import { formatBytes, formatDate } from '../../utils/formatters';
 import { extractErrorMessage } from '../../utils/api';
 
@@ -32,7 +32,7 @@ export function MediaPage() {
 
   const filesQuery = useQuery({
     queryKey: ['media', 'all'],
-    queryFn: () => InternalService.listFilesInternalInternalMediaGet(undefined, 1, 100),
+    queryFn: () => MediaService.listFilesAdminApiV1PublicMediaGet(undefined, 1, 100),
   });
 
   const uploadMutation = useMutation({
@@ -42,7 +42,8 @@ export function MediaPage() {
       }
 
       return MediaService.uploadFileApiV1PublicMediaUploadPost({
-        file: selectedFile,
+        // OpenAPI 3.1 describes UploadFile as a binary string, while fetch expects Blob.
+        file: selectedFile as unknown as string,
         is_public: values.is_public,
       });
     },

@@ -2,10 +2,15 @@
 
 import logging
 import uuid
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 
-from src.bus import get_producer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.bus import configure_bus, get_consumer, get_producer
+from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
-from src.core.database import get_async_session_factory
+from src.core.database import create_async_session
 from src.modules.classifier.dependencies import get_classifier_service_factory
 from src.modules.classifier.service import ClassifierService
 
@@ -20,7 +25,7 @@ async def init_default_categories_on_startup() -> None:
     """
     from src.modules.classifier.repository import CategoryRepository
 
-    async with get_async_session_factory()() as session:
+    async with create_async_session() as session:
         service = ClassifierService(
             repository=CategoryRepository(),
             log_repository=None,
@@ -31,15 +36,28 @@ async def init_default_categories_on_startup() -> None:
         await service.init_default_categories(session)
 
 
-def register_handlers() -> None:
+def register_handlers(
+    consumer: MessageConsumer | None = None,
+    producer: MessageProducer | None = None,
+    session_factory: Callable[[], AbstractAsyncContextManager[AsyncSession]] | None = None,
+) -> None:
     """
     Регистрация обработчиков событий на шину.
 
     service_factory — async callable, возвращающий кортеж (session, ClassifierService).
     """
-    bus = get_producer()
+    consumer = consumer or get_consumer()
+    if producer is None:
+        producer = get_producer()
+    else:
+        configure_bus(producer, consumer)
 
-    @bus.subscribe(BusTopics.TEXT_CLASSIFY_REQUEST)
+    def create_session() -> AbstractAsyncContextManager[AsyncSession]:
+        if session_factory is not None:
+            return session_factory()
+        return create_async_session()
+
+    @consumer.subscribe(BusTopics.TEXT_CLASSIFY_REQUEST)
     async def handle_classify_request(message: dict) -> None:
         """Обработчик: классифицировать текст."""
         request_id_str = message.get("request_id")
@@ -53,7 +71,7 @@ def register_handlers() -> None:
 
         # Получаем сессию и сервис
         service: ClassifierService = get_classifier_service_factory()
-        async with get_async_session_factory()() as session:
+        async with create_session() as session:
             result = await service.process_classify_request(
                 session=session,
                 request_id=request_id,
@@ -62,7 +80,7 @@ def register_handlers() -> None:
 
             # Публикуем событие с результатом классификации
             if result:
-                await bus.publish(
+                await producer.publish(
                     BusTopics.JOB_OFFER_CLASSIFIED,
                     {
                         "request_id": str(request_id),

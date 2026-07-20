@@ -103,7 +103,7 @@ class ClassificationLogRepository(BaseRepository[ClassificationLog]):
 **Расположение**: `src/modules/classifier/service.py`
 
 ```python
-class ClassifierService(BaseService[CategoryRepository]):
+class ClassifierService(BaseService[CategoryRepository, Category]):
     """Бизнес-логика классификации"""
 ```
 
@@ -530,7 +530,7 @@ GET /classifier/categories?limit=50
 
 | Метод | Путь | Описание | Auth |
 |-------|------|----------|------|
-| `GET` | `/internal/classifier/categories` | Список для внутреннего использования | ❌ |
+| `GET` | `/internal/classifier/categories` | Список для внутреннего использования | Service key |
 
 ## DI-зависимости
 
@@ -560,7 +560,6 @@ def get_entity_extractor() -> EntityExtractor:
 def get_classifier_service(
     repo: Annotated[CategoryRepository, Depends(get_category_repository)],
     log_repo: Annotated[ClassificationLogRepository, Depends(get_classification_log_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
     classifier: Annotated[CategoryClassifier, Depends(get_category_classifier)],
     extractor: Annotated[EntityExtractor, Depends(get_entity_extractor)],
 ) -> ClassifierService:
@@ -568,34 +567,21 @@ def get_classifier_service(
     return ClassifierService(
         repository=repo,
         log_repository=log_repo,
-        message_bus=message_bus,
+        message_bus=get_producer(),
         classifier=classifier,
         entity_extractor=extractor,
     )
 
 
-def get_classifier_service_factory(
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
-) -> Callable[[AsyncSession], ClassifierService]:
-    """
-    Фабрика сервисов для обработчиков шины
-    
-    Возвращает функцию, которая создаёт сервис с сессией
-    """
-    def factory(session: AsyncSession) -> ClassifierService:
-        repo = CategoryRepository()
-        log_repo = ClassificationLogRepository()
-        classifier = ZeroShotCategoryClassifier()
-        extractor = RegexEntityExtractor()
-        return ClassifierService(
-            repository=repo,
-            log_repository=log_repo,
-            message_bus=message_bus,
-            classifier=classifier,
-            entity_extractor=extractor,
-            session=session,
-        )
-    return factory
+def get_classifier_service_factory() -> ClassifierService:
+    """Создать сервис для обработчика шины."""
+    return ClassifierService(
+        repository=CategoryRepository(),
+        log_repository=ClassificationLogRepository(),
+        message_bus=get_producer(),
+        category_classifier=get_category_classifier(),
+        entity_extractor=get_entity_extractor(),
+    )
 ```
 
 ## Константы
@@ -689,9 +675,14 @@ CLASSIFIER_DEVICE=-1
 # CLASSIFIER_BATCH_SIZE=4
 CLASSIFIER_BATCH_SIZE=4
 
-# CLASSIFIER_CACHE_DIR=./models
-CLASSIFIER_CACHE_DIR=./models
+# HF_HOME=.cache/huggingface
+# В Docker этот каталог подключён к постоянному volume huggingface_cache
+HF_HOME=.cache/huggingface
 ```
+
+При первом обращении модель скачивается из Hugging Face Hub. При следующих
+запусках она загружается из дискового кэша. Команда `docker compose down -v`
+удаляет именованный volume вместе с кэшем модели.
 
 ## Примеры использования
 

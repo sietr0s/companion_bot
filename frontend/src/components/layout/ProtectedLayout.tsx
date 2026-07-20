@@ -1,15 +1,13 @@
 import { useEffect } from 'react';
 import { Breadcrumb, Button, Layout, Menu, Space, Tag, Typography, message } from 'antd';
 import {
-  AppstoreOutlined,
   BellOutlined,
   DashboardOutlined,
-  DeleteOutlined,
   FileOutlined,
+  FileTextOutlined,
   LogoutOutlined,
   MessageOutlined,
   RobotOutlined,
-  SafetyCertificateOutlined,
   SunOutlined,
   MoonOutlined,
   TeamOutlined,
@@ -43,12 +41,10 @@ export function ProtectedLayout() {
     { key: '/users', icon: <TeamOutlined />, label: 'Users' },
     { key: '/media', icon: <FileOutlined />, label: 'Media' },
     { key: '/telegram', icon: <MessageOutlined />, label: 'Telegram' },
-    { key: '/classifier/categories', icon: <RobotOutlined />, label: 'Classifier' },
+    { key: '/categories', icon: <RobotOutlined />, label: 'Categories' },
     { key: '/notifications/templates', icon: <BellOutlined />, label: 'Templates' },
     { key: '/notifications/history', icon: <BellOutlined />, label: 'History' },
-    { key: '/job-matcher/subscriptions', icon: <AppstoreOutlined />, label: 'Job Matcher' },
-    { key: '/change-password', icon: <SafetyCertificateOutlined />, label: 'Change Password' },
-    { key: '/delete-account', icon: <DeleteOutlined />, label: 'Delete Account' },
+    { key: '/offers', icon: <FileTextOutlined />, label: 'Offers' },
   ];
 
   const selectedKey =
@@ -62,17 +58,13 @@ export function ProtectedLayout() {
     users: 'Users',
     media: 'Media',
     telegram: 'Telegram',
-    classifier: 'Classifier',
     categories: 'Categories',
     notifications: 'Notifications',
     templates: 'Templates',
     history: 'History',
-    'job-matcher': 'Job Matcher',
     chats: 'Chats',
     settings: 'Settings',
-    subscriptions: 'Subscriptions',
-    'change-password': 'Change Password',
-    'delete-account': 'Delete Account',
+    offers: 'Offers',
   };
 
   const breadcrumbs = location.pathname

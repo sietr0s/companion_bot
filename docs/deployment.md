@@ -95,7 +95,9 @@ docker-compose --profile admin up -d
 PGADMIN_PASSWORD=your_secure_password_here
 ```
 
-**Порт pgAdmin:** `5050:80`
+**Порт pgAdmin:** `${PGADMIN_PORT:-5151}:80`. По умолчанию интерфейс доступен
+на [http://localhost:5151](http://localhost:5151). Порт можно изменить через
+`PGADMIN_PORT` в env-файле.
 
 ---
 

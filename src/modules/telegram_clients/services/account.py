@@ -18,13 +18,14 @@ from telethon.events import NewMessage
 
 from src.base.filters import Filter
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
-from src.core.database import get_async_session_factory
+from src.core.database import create_async_session
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
 from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
 from src.modules.telegram_clients.domain import Message as DomainMessage
+from src.modules.telegram_clients.domain import Sender as DomainSender
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
@@ -36,6 +37,7 @@ from src.modules.telegram_clients.repository import (
 )
 from src.modules.telegram_clients.schemas.events import (
     Media,
+    Sender,
     TgAccountConnected,
     TgAccountDisconnected,
     TgMessageReceived,
@@ -50,7 +52,9 @@ from src.modules.telegram_clients.schemas.public import (
 
 logger = logging.getLogger(__name__)
 
-class TelegramAccountService(BaseService[TelegramAccountRepository]):
+class TelegramAccountService(
+    BaseService[TelegramAccountRepository, TelegramAccount]
+):
     """
     Сервис управления Telegram-аккаунтами.
 
@@ -60,7 +64,7 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
     def __init__(
             self,
             repository: TelegramAccountRepository,
-            message_bus: MessageBus,
+            message_bus: MessageProducer,
             client_manager: TelegramClientManager,
             settings_repository: TelegramSettingsRepository,
             chat_state_repository: TelegramChatStateRepository,
@@ -182,9 +186,10 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
             filters: list[Filter] | None = None,
             skip: int = 0,
             limit: int = 100,
+            order_by: str | None = "-created_at",
     ) -> tuple[Sequence[TelegramAccount], int]:
         """Получить все Telegram-аккаунты с фильтрацией и пагинацией."""
-        return await self.repository.get_list(session, filters, skip, limit)
+        return await self.repository.get_list(session, filters, skip, limit, order_by)
 
     async def get_active_accounts(
             self,
@@ -224,7 +229,13 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
         if not account.is_connected:
             raise ConflictError(detail="Аккаунт не подключён")
 
-        return await self.client_manager.get_chats(account_id, limit)
+        chats = await self.client_manager.get_chats(account_id, limit)
+        settings = await self.settings_repository.get_by_account_id(session, account_id)
+        whitelist = {str(value) for value in (settings.whitelist_chat_ids if settings else [])}
+        return [
+            {**chat, "is_in_whitelist": str(chat["id"]) in whitelist}
+            for chat in chats
+        ]
 
     async def get_messages(
             self,
@@ -309,6 +320,10 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
                 "telegram_id": me.get("telegram_id"),
             },
         )
+
+        # QR-клиент уже авторизован и остаётся в реестре ClientManager.
+        # Как и в SMS/2FA-сценарии, сразу подписываем его на новые сообщения.
+        self.register_message_handler(account.id)
 
         event = TgAccountConnected(
             account_id=account.id,
@@ -470,22 +485,9 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
             return True
 
         # Проверка типа чата
-        if chat_type == ChatType.PRIVATE and not settings.read_personal:
-            return False
-        if chat_type in [ChatType.GROUP, ChatType.SUPERGROUP] and not settings.read_groups:
-            return False
-        if chat_type == ChatType.CHANNEL and not settings.read_channels:
-            return False
-
-        # Проверка whitelist
-        if settings.whitelist_chat_ids:
-            # Если whitelist задан - проверяем наличие chat_id
-            return (
-                    str(chat_id) in settings.whitelist_chat_ids
-                    or chat_id in settings.whitelist_chat_ids
-            )
-
-        return True  # Если whitelist пустой - читать все чаты разрешённого типа
+        if not settings.use_whitelist:
+            return True
+        return str(chat_id) in {str(value) for value in (settings.whitelist_chat_ids or [])}
 
     @staticmethod
     def _domain_to_bus_event(msg: DomainMessage) -> TgMessageReceived:
@@ -494,7 +496,7 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
             account_id=msg.account_id,
             chat_id=msg.chat_id,
             message_id=msg.message_id,
-            sender_id=msg.sender_id,
+            sender=Sender.model_validate(msg.sender.model_dump()),
             text=msg.text,
             media=[Media(telegram_id=m.telegram_id, type=m.type) for m in msg.media],
         )
@@ -544,13 +546,19 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
 
             # Извлекаем медиа из сообщения
             domain_media = await self.client_manager.extract_media(client, event.message)
+            telegram_sender = await event.get_sender()
 
             # Создаём доменную модель
             domain_msg = DomainMessage(
                 account_id=account_id,
                 chat_id=event.chat_id,
                 message_id=event.message.id,
-                sender_id=event.sender_id,
+                sender=DomainSender(
+                    sender_id=event.sender_id,
+                    username=getattr(telegram_sender, "username", None),
+                    first_name=getattr(telegram_sender, "first_name", None),
+                    last_name=getattr(telegram_sender, "last_name", None),
+                ),
                 text=event.message.text,
                 media=domain_media,
                 date=event.message.date,
@@ -600,6 +608,8 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
     def register_message_handler(self, account_id: uuid.UUID) -> None:
         """Регистрирует обработчик входящих сообщений для клиента."""
         client = self.client_manager.get_client(account_id)
+        if client is None:
+            raise ConflictError(detail="Telegram-клиент не подключён")
 
         @client.on(NewMessage)
         async def on_new_message(event) -> None:
@@ -607,9 +617,11 @@ class TelegramAccountService(BaseService[TelegramAccountRepository]):
             Обработать входящее сообщение.
             """
 
-            async with get_async_session_factory()() as session:
+            async with create_async_session() as session:
                 await self.handle_incoming_message(
                     session=session,
                     account_id=account_id,
                     event=event,
                 )
+
+        logger.info("Зарегистрирован NewMessage handler: account_id=%s", account_id)

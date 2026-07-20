@@ -9,7 +9,7 @@
 | Принцип | Описание |
 |---------|----------|
 | **Изоляция модулей** | Модули не импортируют друг друга напрямую |
-| **Связь через шину** | Взаимодействие между модулями — только через события (MessageBus) |
+| **Связь через шину** | Асинхронное взаимодействие — через `MessageProducer` / `MessageConsumer` |
 | **Интерфейсы (Protocol)** | Зависимости между модулями — через абстракции, не реализации |
 | **Нет ForeignKey между модулями** | Каждая таблица принадлежит одному модулю, связи — по UUID |
 | **DI-контейнер** | FastAPI Depends для внедрения зависимостей |
@@ -50,9 +50,10 @@ src/
 │   └── bus_topics.py            # BusTopics — реестр всех топиков шины
 │
 ├── bus/                         # Шина сообщений
-│   ├── interface.py             # MessageBus (Protocol) — интерфейс шины
+│   ├── interface.py             # MessageProducer и MessageConsumer (Protocol)
 │   ├── schemes.py               # BaseEvent — базовый класс событий
 │   ├── in_memory/               # In-memory реализация (для монолита)
+│   │   ├── transport.py         # Общая asyncio.Queue
 │   │   ├── producer.py          # InMemoryProducer
 │   │   └── consumer.py          # InMemoryConsumer
 │   └── kafka/                   # Kafka реализация (для микросервисов)
@@ -67,7 +68,7 @@ src/
 │   │   ├── schemas/events.py    # UserRegistered, UserLoggedIn
 │   │   ├── repository.py        # AuthRepository (+ get_by_identifier)
 │   │   ├── service.py           # AuthService (register, login)
-│   │   └── router.py            # POST /auth/register, POST /auth/login
+│   │   └── routers/             # Public и internal API с собственными префиксами
 │   │
 │   └── users/                   # Модуль пользователей
 │       ├── models.py            # User (auth_id, first_name, last_name, avatar_url, bio), Telegram
@@ -77,21 +78,23 @@ src/
 │       ├── repository.py        # UserRepository (+ get_by_auth_id), TelegramRepository
 │       ├── service.py           # UserService (create, get, update, delete)
 │       ├── handlers.py          # Обработчики событий из шины
-│       └── router.py            # POST /users/, GET /users/me, PATCH /users/me, DELETE /users/me
+│       └── routers/             # Public и internal API с собственными префиксами
 │
 │   └── telegram_clients/        # Модуль Telegram-клиентов
 │       ├── models.py            # TelegramAccount (auth_id, phone, session_file, is_connected, ...)
-│       ├── schemas/api.py       # PhoneRequest, CodeRequest, PasswordRequest, AccountRead, ChatRead, MessageRead
+│       ├── schemas/public/      # Публичные Pydantic-схемы
+│       ├── schemas/internal/    # Internal Pydantic-схемы
 │       ├── schemas/events.py    # TgMessageReceived, TgMessageSend, TgAccountConnected, TgAccountDisconnected
 │       ├── repository.py        # TelegramAccountRepository (+ get_by_auth_id, get_connected_accounts)
 │       ├── client_manager.py    # TelegramClientManager — singleton управления Telethon-клиентами
 │       ├── service.py           # TelegramClientService (auth, CRUD, chats, messages)
 │       ├── handlers.py          # Подписка на tg.message.send
-│       └── router.py            # POST /auth/phone, /auth/code, /auth/password, GET /, DELETE /{id}, chats, messages
+│       └── routers/             # Public и internal API Telegram
 │
 │   └── notifications/           # Модуль нотификаций
 │       ├── models.py            # NotificationTemplate, NotificationLog
-│       ├── schemas/api.py       # TemplateCreate, TemplateRead, TemplateUpdate, NotificationLogRead
+│       ├── schemas/public/      # TemplateCreate, TemplateRead, NotificationLogRead
+│       ├── schemas/internal/    # SendNotificationRequest
 │       ├── schemas/events.py    # NotificationSend
 │       ├── repository.py        # NotificationTemplateRepository, NotificationLogRepository
 │       ├── providers/           # Абстракция провайдеров (Protocol + SMTP)
@@ -100,11 +103,11 @@ src/
 │       ├── template_engine.py   # Jinja2 рендеринг (БД → файлы)
 │       ├── service.py           # NotificationService (шаблоны, отправка, история)
 │       ├── handlers.py          # Подписка на notification.send
-│       └── router.py            # CRUD шаблонов, история (admin)
+│       └── routers/             # Public и internal API notifications
 │
 │   └── media/                   # Модуль медиа-файлов
 │       ├── models.py            # StoredFile (id, filename, content_type, size_bytes, storage_key, is_public)
-│       ├── schemas/api.py       # FileRead, FileUploadResponse
+│       ├── schemas/             # HTTP-схемы и события
 │       ├── schemas/events.py    # MediaUploaded, MediaDeleted
 │       ├── repository.py        # StoredFileRepository
 │       ├── storage/             # Абстракция хранилищ (Protocol + LocalStorage)
@@ -117,7 +120,8 @@ src/
 │           ├── public.py        # /media/ (JWT для upload/delete, is_public для GET)
 │           └── internal.py      # /internal/media/ (без JWT, без is_public проверок)
 │
-└── main.py                      # Точка входа: инициализация шины, ClientManager, LocalStorage, lifespan, FastAPI app
+├── core/container.py            # Явный контейнер долгоживущих компонентов
+└── main.py                      # Composition root и фабрика create_app()
 ```
 
 ## Слои внутри модуля
@@ -127,7 +131,7 @@ src/
 ```
 Router (HTTP) → Service (бизнес-логика) → Repository (БД)
      │                  │
-     │                  └──→ MessageBus (события)
+     │                  └──→ MessageProducer (события)
      │
      └──→ Depends (DI-контейнер)
 ```
@@ -142,7 +146,7 @@ Router (HTTP) → Service (бизнес-логика) → Repository (БД)
 
 **Правильно:**
 ```python
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     async def create_profile(self, session: AsyncSession, auth_id: UUID, data: dict):
         # ✅ Создание через репозиторий
         profile = await self.repository.create(session, {"auth_id": auth_id, **data})
@@ -158,7 +162,7 @@ class UserService(BaseService[UserRepository]):
 
 **Неправильно:**
 ```python
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     async def create_profile(self, session: AsyncSession, auth_id: UUID, data: dict):
         # ❌ Прямая работа с сессией
         profile = User(auth_id=auth_id, **data)
@@ -181,10 +185,12 @@ class UserService(BaseService[UserRepository]):
 
 ## Особенность: ClientManager
 
-Модуль `telegram_clients` содержит уникальный компонент — `TelegramClientManager`. Это singleton, который не вписывается в стандартную трёхслойную архитектуру, так как Telethon требует держать подключение открытым для получения входящих сообщений.
+Модуль `telegram_clients` содержит долгоживущий `TelegramClientManager`. Он создаётся контейнером приложения и живёт ровно один lifespan конкретного экземпляра FastAPI. QR-сессии и их фоновые задачи вынесены в `QrAuthManager`.
 
 ```
-TelegramClientManager (singleton)
+ApplicationContainer
+└── TelegramClientManager
+    ├── QrAuthManager
 ├── clients: dict[account_id, TelegramClient]
 ├── on_new_message → publish(TG_MESSAGE_RECEIVED)
 ├── send_message(account_id, chat_id, text)
@@ -222,16 +228,33 @@ stmt = apply_filters(stmt, MyModel, filters)
 
 Операторы: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `ilike`, `in`.
 
+Каждый HTTP-роут передаёт в `parse_filters` явный whitelist полей. Некорректный
+формат, оператор, тип значения или запрещённое поле возвращают HTTP 422.
+
+## Сортировка списков
+
+`BaseRepository.get_list()` и `get_all()` применяют `order_by=-created_at` по
+умолчанию. Формат `field` означает ASC, `-field` — DESC. Имя проверяется по ORM-модели,
+а вторичная сортировка по `id` обеспечивает стабильную пагинацию.
+
+## Фабрика приложения
+
+`create_app()` — composition root. Она создаёт `ApplicationContainer`, регистрирует
+обработчики на принадлежащем ему consumer и подменяет FastAPI-зависимости на
+компоненты этого контейнера. Поэтому экземпляры приложения не делят шину или
+Telegram-клиенты и могут тестироваться изолированно.
+
 ## Внутренние роуты (/internal/)
 
-Роуты с префиксом `/internal/` — для межмодульного взаимодействия. Без JWT-авторизации, доступ ограничен network-level (Docker network, k8s NetworkPolicy).
+Роуты с префиксом `/internal/` — для межмодульного взаимодействия. Они не используют пользовательский JWT, но требуют сервисный ключ в заголовке `X-Internal-Service-Key`. Значение задаётся обязательной переменной `INTERNAL_SERVICE_KEY`; Docker network и k8s NetworkPolicy остаются дополнительными ограничениями.
 
 ## Межмодульное взаимодействие
 
 Модули **не импортируют друг друга напрямую**. Для взаимодействия используются:
 
-1. **Шина событий (MessageBus)** — для асинхронной связи (fire-and-forget)
-2. **HTTP-запросы к `/internal/`** — для синхронных запросов между модулями
+1. **Шина событий** — для асинхронной связи (fire-and-forget)
+2. **Клиенты из `src/core/clients/`** — для синхронных вызовов в монолите
+3. **HTTP к `/internal/`** — внешний контракт для будущего разделения сервисов
 
 **Пример:** Если модулю `notifications` нужно получить файл из модуля `media`:
 
@@ -239,10 +262,10 @@ stmt = apply_filters(stmt, MyModel, filters)
 # НЕПРАВИЛЬНО:
 from src.modules.media.service import MediaService  # прямой импорт запрещён
 
-# ПРАВИЛЬНО:
-async with httpx.AsyncClient() as client:
-    response = await client.get(f"http://localhost:8000/internal/media/{file_id}")
-    file_data = response.json()
+# ПРАВИЛЬНО для текущего монолита:
+from src.core.clients.media_client import MediaClient
+
+file_data = await MediaClient().get_media_file(str(file_id))
 ```
 
 **Пример для notifications модуля:** Резолв email по auth_id через internal API users:
@@ -332,29 +355,22 @@ class UsersClient:
 
 ## Шина сообщений
 
-### Провайдеры (`src/bus/providers.py`)
+### Сборка producer/consumer (`src/bus/__init__.py`)
 
-Отдельный модуль для инициализации шины — **без циклических зависимостей**:
+Один модуль создаёт согласованную пару для выбранного транспорта:
 
 ```python
-# src/bus/providers.py
-from src.bus.interface import MessageBus
-from src.core.config import settings
+from src.bus import get_consumer, get_producer
 
-
-def get_message_bus() -> MessageBus:
-    """Создаёт экземпляр продюсера на основе конфигурации."""
-    if settings.MESSAGE_BUS == "kafka":
-        from src.bus.kafka.producer import KafkaProducerBus
-        return KafkaProducerBus()
-    from src.bus.in_memory.producer import InMemoryProducer
-    return InMemoryProducer()
+producer = get_producer()  # Только publish/start/stop
+consumer = get_consumer()  # subscribe/get_subscribers/start/stop
 ```
 
 **Зачем?**
-- `main.py` и `dependencies.py` используют один провайдер — нет дублирования
-- При переключении с in-memory на Kafka — меняется только `providers.py`
-- Циклические зависимости устранены: `main.py` → `providers.py` → `dependencies.py`
+- producer не знает об обработчиках
+- consumer владеет подписками и диспетчеризацией
+- in-memory пара использует общую очередь, Kafka-пара — общий брокер
+- `main.py` и модульные зависимости получают одну и ту же пару
 
 ## DI-зависимости
 

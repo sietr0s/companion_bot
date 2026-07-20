@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.telegram_clients.services.account import TelegramAccountService
+from telethon.events import NewMessage
 
 from src.bus.in_memory.producer import InMemoryProducer
 from src.core.bus_topics import BusTopics
@@ -22,6 +22,7 @@ from src.modules.telegram_clients.repository import (
     TelegramSettingsRepository,
 )
 from src.modules.telegram_clients.schemas.events import (
+    Sender,
     TgAccountConnected,
     TgAccountDisconnected,
     TgMessageReceived,
@@ -30,6 +31,7 @@ from src.modules.telegram_clients.schemas.public import (
     CodeRequest,
     PasswordRequest,
 )
+from src.modules.telegram_clients.services.account import TelegramAccountService
 
 # --- Фикстуры ---
 
@@ -351,6 +353,47 @@ class TestTelegramClientServiceAuth:
         assert len(published) == 1
         assert published[0][0] == BusTopics.TG_ACCOUNT_CONNECTED
 
+    async def test_complete_qr_auth_registers_new_message_handler(
+        self,
+        db_session: AsyncSession,
+    ):
+        """После QR-входа клиент должен сразу начать слушать новые сообщения."""
+        account_id = uuid.uuid4()
+        published = []
+
+        class MockBus:
+            async def publish(self, topic, message):
+                published.append((topic, message))
+
+        manager = TelegramClientManager()
+        manager.complete_qr_login = AsyncMock(
+            return_value={
+                "first_name": "QR",
+                "last_name": "User",
+                "username": "qr_user",
+                "telegram_id": 123456789,
+            }
+        )
+        manager.get_session_path = MagicMock(return_value="/tmp/qr_session")
+        mock_client = MagicMock()
+        mock_client.on = MagicMock(return_value=lambda handler: handler)
+        manager.set_client(account_id, mock_client)
+
+        service = TelegramAccountService(
+            repository=TelegramAccountRepository(),
+            message_bus=MockBus(),
+            client_manager=manager,
+            settings_repository=TelegramSettingsRepository(),
+            chat_state_repository=TelegramChatStateRepository(),
+        )
+
+        account = await service.complete_qr_auth(db_session, account_id)
+
+        assert account.id == account_id
+        assert account.is_connected is True
+        mock_client.on.assert_called_once_with(NewMessage)
+        assert published[0][0] == BusTopics.TG_ACCOUNT_CONNECTED
+
 
 # --- Тесты сервиса: чаты и сообщения ---
 
@@ -467,6 +510,63 @@ class TestTelegramClientServiceChatsMessages:
         assert len(result) == 1
         assert result[0]["text"] == "Hi"
 
+    async def test_incoming_message_publishes_nested_sender(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+    ):
+        """Telethon sender преобразуется в объект sender события шины."""
+        published = []
+
+        class MockBus:
+            async def publish(self, topic, message):
+                published.append((topic, message))
+
+        manager = TelegramClientManager()
+        manager.get_client = MagicMock(return_value=MagicMock())
+        manager.extract_media = AsyncMock(return_value=[])
+        service = TelegramAccountService(
+            repository=TelegramAccountRepository(),
+            message_bus=MockBus(),
+            client_manager=manager,
+            settings_repository=TelegramSettingsRepository(),
+            chat_state_repository=TelegramChatStateRepository(),
+        )
+        service.should_read_message = AsyncMock(return_value=True)
+
+        event = MagicMock()
+        event.is_private = True
+        event.is_group = False
+        event.is_channel = False
+        event.chat_id = 123
+        event.sender_id = 987654321
+        event.get_sender = AsyncMock(
+            return_value=MagicMock(
+                username="vacancy_author",
+                first_name="Иван",
+                last_name="Иванов",
+            )
+        )
+        event.message.id = 42
+        event.message.text = "Python vacancy"
+        event.message.date = None
+
+        await service.handle_incoming_message(
+            session=db_session,
+            account_id=connected_tg_account.id,
+            event=event,
+        )
+
+        topic, payload = published[0]
+        assert topic == BusTopics.TG_MESSAGE_RECEIVED
+        assert "sender_id" not in payload
+        assert payload["sender"] == {
+            "sender_id": 987654321,
+            "username": "vacancy_author",
+            "first_name": "Иван",
+            "last_name": "Иванов",
+        }
+
 
 # --- Тесты событий ---
 
@@ -479,7 +579,12 @@ class TestTgEvents:
             account_id=uuid.uuid4(),
             chat_id=-1001234567890,
             message_id=42,
-            sender_id=123456,
+            sender=Sender(
+                sender_id=123456,
+                username="vacancy_author",
+                first_name="Иван",
+                last_name="Иванов",
+            ),
             text="Привет!",
             media=[{"telegram_id": 123, "type": "photo"}],
         )
@@ -487,6 +592,13 @@ class TestTgEvents:
         assert data["event_name"] == "telegram_clients.event.message.received"
         assert data["chat_id"] == -1001234567890
         assert data["message_id"] == 42
+        assert "sender_id" not in data
+        assert data["sender"] == {
+            "sender_id": 123456,
+            "username": "vacancy_author",
+            "first_name": "Иван",
+            "last_name": "Иванов",
+        }
         assert data["text"] == "Привет!"
         assert len(data["media"]) == 1
         assert data["media"][0]["type"] == "photo"
@@ -526,8 +638,8 @@ class TestTgHandlers:
         register_handlers()
 
         # Проверяем, что обработчик зарегистрирован
-        from src.bus import get_producer
-        bus = get_producer()
+        from src.bus import get_consumer
+        bus = get_consumer()
         assert BusTopics.TG_MESSAGE_SEND in bus.get_subscribers()
 
     async def test_handle_send_message_missing_fields(self):
@@ -537,8 +649,8 @@ class TestTgHandlers:
         # Регистрация не должна падать
         register_handlers()
 
-        from src.bus import get_producer
-        bus = get_producer()
+        from src.bus import get_consumer
+        bus = get_consumer()
         assert BusTopics.TG_MESSAGE_SEND in bus.get_subscribers()
 
 

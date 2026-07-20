@@ -5,7 +5,7 @@ HTTP API для CRUD категорий.
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_current_admin, get_db_session
@@ -17,7 +17,7 @@ from src.modules.classifier.schemas.public.category import (
 )
 from src.modules.classifier.service import ClassifierService
 
-router = APIRouter(prefix="/api/v1/public/classifier")
+router = APIRouter(prefix="/api/v1/public/classifier", tags=["Classifier"])
 
 
 @router.post(
@@ -42,11 +42,12 @@ async def create_category(
     summary="Список категорий",
 )
 async def get_categories(
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
     session: AsyncSession = Depends(get_db_session),
     service: ClassifierService = Depends(get_classifier_service),
 ) -> list[CategoryRead]:
     """Получить список всех категорий."""
-    categories, _ = await service.get_all_categories(session)
+    categories, _ = await service.get_all_categories(session, order_by=order_by)
     return categories
 
 

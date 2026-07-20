@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
+from src.core.internal_auth import require_internal_service_key
 from src.modules.telegram_clients.dependencies import (
     get_telegram_settings_repository,
     get_telegram_settings_service,
@@ -18,7 +19,11 @@ from src.modules.telegram_clients.schemas.internal.settings import (
 )
 from src.modules.telegram_clients.services import TelegramSettingsService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/internal/telegram",
+    tags=["Internal"],
+    dependencies=[Depends(require_internal_service_key)],
+)
 
 
 @router.get(

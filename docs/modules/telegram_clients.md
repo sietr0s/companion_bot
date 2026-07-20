@@ -110,7 +110,7 @@ class TelegramSettingsRepository(BaseRepository[TelegramSettings]):
 **Расположение**: `src/modules/telegram_clients/service.py`
 
 ```python
-class TelegramClientService(BaseService[TelegramAccountRepository]):
+class TelegramClientService(BaseService[TelegramAccountRepository, TelegramAccount]):
     """Бизнес-логика управления Telegram-аккаунтами"""
 ```
 
@@ -511,13 +511,14 @@ class TgMessageReceived(BaseEvent):
     account_id: UUID
     chat_id: int
     message_id: int
+    sender: Sender
     text: str | None
-    from_id: int | None
-    chat_type: ChatType
-    media: list[MediaItem] | None
+    media: list[Media]
 ```
 
-**Топик**: `tg.message.received`
+`Sender` содержит `sender_id`, `username`, `first_name` и `last_name`.
+
+**Топик**: `telegram_clients.event.message.received`
 
 **Когда публикуется:**
 - При получении нового сообщения из Telegram
@@ -536,7 +537,7 @@ class TgMessageSend(BaseEvent):
     text: str
 ```
 
-**Топик**: `tg.message.send`
+**Топик**: `telegram_clients.command.send_message`
 
 **Когда публикуется:**
 - Для отправки сообщения через Telegram-аккаунт
@@ -681,13 +682,12 @@ def get_client_manager() -> TelegramClientManager:
 
 def get_telegram_client_service(
     repo: Annotated[TelegramAccountRepository, Depends(get_telegram_account_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
     manager: Annotated[TelegramClientManager, Depends(get_client_manager)],
 ) -> TelegramClientService:
     """Фабрика сервиса"""
     return TelegramClientService(
         repository=repo,
-        message_bus=message_bus,
+        message_bus=get_producer(),
         manager=manager,
     )
 
@@ -695,14 +695,13 @@ def get_telegram_client_service(
 def get_telegram_settings_service(
     account_repo: Annotated[TelegramAccountRepository, Depends(get_telegram_account_repository)],
     settings_repo: Annotated[TelegramSettingsRepository, Depends(get_telegram_settings_repository)],
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
     manager: Annotated[TelegramClientManager, Depends(get_client_manager)],
 ) -> TelegramClientService:
     """Фабрика сервиса для работы с настройками"""
     return TelegramClientService(
         repository=account_repo,
         settings_repository=settings_repo,
-        message_bus=message_bus,
+        message_bus=get_producer(),
         manager=manager,
     )
 ```

@@ -1,11 +1,13 @@
 """Тесты обработчиков событий модуля classifier."""
 
 import uuid
+from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.bus import get_consumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.modules.classifier.ai.category import get_category_classifier
 from src.modules.classifier.ai.ner import get_entity_extractor
@@ -70,24 +72,21 @@ class TestClassifierHandlers:
     @pytest.mark.asyncio
     async def test_register_handlers(self):
         """Регистрация обработчиков."""
-        from src.bus import get_producer
-
         register_handlers()
 
         # Проверяем что обработчик зарегистрирован
         from src.core.bus_topics import BusTopics
 
-        bus = get_producer()
+        bus = get_consumer()
         assert BusTopics.TEXT_CLASSIFY_REQUEST in bus.get_subscribers()
 
     @pytest.mark.asyncio
     async def test_handle_classify_request_invalid_data(self):
         """Обработка запроса с невалидными данными."""
-        from src.bus import get_producer
 
         register_handlers()
 
-        bus = get_producer()
+        bus = get_consumer()
         handler = bus.get_subscribers()["classifier.command.classify"][0]
 
         # Отправляем неполные данные
@@ -98,17 +97,16 @@ class TestClassifierHandlers:
 
     @pytest.mark.asyncio
     async def test_handle_classify_request_no_categories(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, mock_bus: MockBus
     ):
         """Обработка запроса при отсутствии категорий."""
-        from src.bus import get_producer
-        from src.core.database import init_db
 
-        await init_db()
-        register_handlers()
+        @asynccontextmanager
+        async def session_factory():
+            yield db_session
 
-        bus = get_producer()
-        handler = bus.get_subscribers()["classifier.command.classify"][0]
+        register_handlers(mock_bus, mock_bus, session_factory)
+        handler = mock_bus.get_subscribers()["classifier.command.classify"][0]
 
         request_id = str(uuid.uuid4())
         await handler(
@@ -119,12 +117,20 @@ class TestClassifierHandlers:
             }
         )
 
-        # Обработчик должен залогировать предупреждение
-        # (проверяем через caplog в pytest)
+        from src.core.bus_topics import BusTopics
+
+        completed = [
+            message
+            for topic, message in mock_bus.published
+            if topic == BusTopics.TEXT_CLASSIFY_COMPLETED
+        ]
+        assert len(completed) == 1
+        assert completed[0]["request_id"] == request_id
+        assert completed[0]["categories"] == []
 
     @pytest.mark.asyncio
     async def test_handle_classify_request_with_categories(
-        self, db_session: AsyncSession
+        self, db_session: AsyncSession, mock_bus: MockBus
     ):
         """Обработка запроса с существующими категориями."""
         # Создаём категорию
@@ -142,9 +148,12 @@ class TestClassifierHandlers:
         )
         await db_session.commit()
 
-        register_handlers()
-        bus = get_producer()
-        handler = bus.get_subscribers()["classifier.command.classify"][0]
+        @asynccontextmanager
+        async def session_factory():
+            yield db_session
+
+        register_handlers(mock_bus, mock_bus, session_factory)
+        handler = mock_bus.get_subscribers()["classifier.command.classify"][0]
 
         request_id = str(uuid.uuid4())
         text = "Разработчик Python, зарплата от 100к"
@@ -184,4 +193,3 @@ class TestClassifierHandlers:
         log = result.scalars().first()
         assert log is not None
         assert log.text_hash
-        assert log.source_module == "test_module"

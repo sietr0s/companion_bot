@@ -1,7 +1,16 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { OpenAPI } from '../api/generated';
 
 const TOKEN_STORAGE_KEY = 'ms_starter_admin_token';
+
+function getStoredToken(): string | null {
+  return typeof window === 'undefined' ? null : window.localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+// Настраиваем сгенерированный клиент до первого React-render. Иначе дочерние
+// query запускаются раньше useEffect AuthProvider и уходят без Authorization.
+OpenAPI.BASE = '';
+OpenAPI.TOKEN = async () => getStoredToken() ?? '';
 
 type AuthContextValue = {
   token: string | null;
@@ -13,26 +22,21 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function useStoredToken(): [string | null, (value: string | null) => void] {
-  const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY));
+  const [token, setTokenState] = useState<string | null>(getStoredToken);
 
-  const setToken = (value: string | null) => {
+  const setToken = useCallback((value: string | null) => {
     setTokenState(value);
     if (value) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, value);
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, value);
     } else {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
-  };
+  }, []);
   return [token, setToken];
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useStoredToken();
-
-  useEffect(() => {
-    OpenAPI.BASE = '';
-    OpenAPI.TOKEN = async () => localStorage.getItem(TOKEN_STORAGE_KEY) ?? '';
-  }, []);
 
   useEffect(() => {
     const handleUnauthorized = () => setToken(null);

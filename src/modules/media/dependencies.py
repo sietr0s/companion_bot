@@ -7,7 +7,6 @@ DI-зависимости модуля media.
 
 from fastapi import Depends
 
-from src.bus.interface import MessageBus
 from src.bus import get_producer
 from src.modules.media.repository import StoredFileRepository
 from src.modules.media.service import MediaService
@@ -29,7 +28,6 @@ def get_storage_provider() -> StorageProvider:
 def get_media_service(
     repo: StoredFileRepository = Depends(get_stored_file_repository),
     storage: StorageProvider = Depends(get_storage_provider),
-    bus: MessageBus = Depends(get_producer),
 ) -> MediaService:
     """Фабрика сервиса media."""
-    return MediaService(repository=repo, storage=storage, message_bus=bus)
+    return MediaService(repository=repo, storage=storage, message_bus=get_producer())

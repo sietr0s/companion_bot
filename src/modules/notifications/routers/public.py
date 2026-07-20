@@ -22,7 +22,26 @@ from src.modules.notifications.schemas.public import (
 )
 from src.modules.notifications.service import NotificationService
 
-router = APIRouter(prefix="/api/v1/public/notifications")
+router = APIRouter(prefix="/api/v1/public/notifications", tags=["Notifications"])
+
+TEMPLATE_FILTER_FIELDS = {
+    "id",
+    "name",
+    "channel",
+    "is_active",
+    "created_at",
+    "updated_at",
+}
+LOG_FILTER_FIELDS = {
+    "id",
+    "auth_id",
+    "channel",
+    "template_name",
+    "recipient",
+    "status",
+    "created_at",
+    "updated_at",
+}
 
 
 # --- Шаблоны ---
@@ -53,14 +72,15 @@ async def get_templates(
     filters: list[str] = Query(default_factory=list, description="field+operator+value"),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
     admin_id: uuid.UUID = Depends(get_current_admin),
     session: AsyncSession = Depends(get_db_session),
     service: NotificationService = Depends(get_notification_service),
 ) -> PaginatedResponse:
     """Получить список шаблонов с фильтрацией и пагинацией."""
-    parsed = parse_filters(filters)
+    parsed = parse_filters(filters, allowed_fields=TEMPLATE_FILTER_FIELDS)
     skip = (page - 1) * limit
-    templates, total = await service.get_templates(session, skip, limit, parsed)
+    templates, total = await service.get_templates(session, skip, limit, parsed, order_by)
     return PaginatedResponse.from_list(templates, total, page=page, page_size=limit)
 
 
@@ -122,14 +142,15 @@ async def get_history(
     filters: list[str] = Query(default_factory=list, description="field+operator+value"),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=50, ge=1, le=200),
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
     admin_id: uuid.UUID = Depends(get_current_admin),
     session: AsyncSession = Depends(get_db_session),
     service: NotificationService = Depends(get_notification_service),
 ) -> PaginatedResponse:
     """Получить историю уведомлений с фильтрацией и пагинацией."""
-    parsed = parse_filters(filters)
+    parsed = parse_filters(filters, allowed_fields=LOG_FILTER_FIELDS)
     skip = (page - 1) * limit
-    logs, total = await service.get_history(session, skip, limit, parsed)
+    logs, total = await service.get_history(session, skip, limit, parsed, order_by)
     return PaginatedResponse.from_list(logs, total, page=page, page_size=limit)
 
 

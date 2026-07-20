@@ -163,6 +163,21 @@ class TestSafeHandle:
         # Не должно быть исключения
         await safe_handle(handler, "test.topic", {})
 
+    async def test_dlq_handler_error_is_not_republished(self):
+        """Ошибка DLQ-обработчика не создаёт бесконечный цикл DLQ."""
+
+        async def handler(message: dict) -> None:
+            raise ValueError("DLQ handler failed")
+
+        dlq_calls = []
+
+        async def dlq_publisher(topic: str, message: dict) -> None:
+            dlq_calls.append((topic, message))
+
+        await safe_handle(handler, DLQ_TOPIC, {}, dlq_publisher)
+
+        assert dlq_calls == []
+
     async def test_handler_without_name(self):
         """Обработчик без __name__ (lambda) не вызывает ошибку."""
 
@@ -221,44 +236,52 @@ class TestWrapHandler:
         assert dlq_calls[0][1]["error_type"] == "NotFoundError"
 
 
-class TestInMemoryProducerWithErrors:
-    """Тесты InMemoryProducer с обработкой ошибок через safe_handle."""
+class TestInMemoryConsumerWithErrors:
+    """Тесты обработки ошибок в InMemoryConsumer."""
 
     async def test_handler_error_does_not_crash_producer(self):
         """Ошибка в одном обработчике не влияет на другие."""
+        from src.bus.in_memory.consumer import InMemoryConsumer
         from src.bus.in_memory.producer import InMemoryProducer
+        from src.bus.in_memory.transport import InMemoryTransport
 
-        bus = InMemoryProducer()
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
         received = []
 
-        @bus.subscribe("test.topic")
+        @consumer.subscribe("test.topic")
         async def failing_handler(message: dict) -> None:
             raise ValueError("Ошибка")
 
-        @bus.subscribe("test.topic")
+        @consumer.subscribe("test.topic")
         async def success_handler(message: dict) -> None:
             received.append(message)
 
-        await bus.publish("test.topic", {"key": "value"})
-        import asyncio
-
-        await asyncio.sleep(0.05)
+        await consumer.start()
+        await producer.publish("test.topic", {"key": "value"})
+        await transport.queue.join()
+        await consumer.stop()
 
         # success_handler должен быть вызван, несмотря на ошибку в failing_handler
         assert len(received) == 1
 
     async def test_app_exception_in_handler_does_not_crash_producer(self):
         """AppException в обработчике не крашит продюсер."""
+        from src.bus.in_memory.consumer import InMemoryConsumer
         from src.bus.in_memory.producer import InMemoryProducer
+        from src.bus.in_memory.transport import InMemoryTransport
 
-        bus = InMemoryProducer()
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
 
-        @bus.subscribe("test.topic")
+        @consumer.subscribe("test.topic")
         async def handler(message: dict) -> None:
             raise NotFoundError(detail="Not found")
 
         # Не должно быть исключения
-        await bus.publish("test.topic", {"id": 1})
-        import asyncio
-
-        await asyncio.sleep(0.05)
+        await consumer.start()
+        await producer.publish("test.topic", {"id": 1})
+        await transport.queue.join()
+        await consumer.stop()

@@ -9,8 +9,6 @@
 - Обработка входящих сообщений
 """
 
-import asyncio
-import contextlib
 import logging
 import os
 import uuid
@@ -25,8 +23,8 @@ from telethon.errors import (
 
 from src.core.config import settings
 from src.core.exceptions import NotFoundError
-from src.modules.telegram_clients.constants import QrAuthStatus
-from src.modules.telegram_clients.domain import Media, Message
+from src.modules.telegram_clients.domain import Media, Message, Sender
+from src.modules.telegram_clients.qr_auth import QrAuthManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,16 +36,22 @@ class TelegramClientManager:
     Хранит:
     - _clients: реестр подключённых TelegramClient
     - _service: сервис для обработки входящих сообщений
-    - _phone_code_hashes, _phones, _qr_sessions, _qr_tasks: данные авторизации
+    - _phone_code_hashes, _phones: данные SMS-авторизации
+    - _qr_auth: отдельный координатор QR-сессий
     """
 
     def __init__(self) -> None:
         self._clients: dict[uuid.UUID, TelegramClient] = {}
         self._phone_code_hashes: dict[uuid.UUID, str] = {}
         self._phones: dict[uuid.UUID, str] = {}
-        self._qr_sessions: dict[uuid.UUID, dict[str, str]] = {}
-        self._qr_tasks: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._service = None
+        self._qr_auth = QrAuthManager(
+            create_client=self.create_client,
+            get_session_path=self.get_session_path,
+            get_client=self.get_client,
+            set_client=self.set_client,
+            remove_client=self.remove_client,
+        )
 
     # ── Управление клиентами ────────────────────────────────────────
 
@@ -193,100 +197,27 @@ class TelegramClientManager:
 
     # ── QR-авторизация ─────────────────────────────────────────────
 
-    async def _qr_wait_worker(
-        self,
-        account_id: uuid.UUID,
-        client: TelegramClient,
-        qr: Any,
-    ) -> None:
-        """Фоновый worker: ждёт сканирования QR-кода."""
-        try:
-            await qr.wait()
-            self._qr_sessions[account_id] = {"status": QrAuthStatus.CONNECTED}
-            logger.info("[tg client] QR login connected: account_id=%s", account_id)
-        except TimeoutError:
-            self._qr_sessions[account_id] = {
-                "status": QrAuthStatus.EXPIRED,
-                "message": "QR-код истёк",
-            }
-            logger.warning("[tg client] QR login expired: account_id=%s", account_id)
-        except Exception as e:
-            self._qr_sessions[account_id] = {
-                "status": QrAuthStatus.ERROR,
-                "message": str(e),
-            }
-            logger.exception("[tg client] QR login error: account_id=%s, %s", account_id, e)
-
     async def start_qr_login(self, account_id: uuid.UUID) -> dict[str, Any]:
         """
         Запустить QR-авторизацию.
 
         Создаёт временный клиент, запускает qr_login() и фоновый worker.
         """
-        session_path = self.get_session_path(account_id)
-        client = self.create_client(session_path)
-        await client.connect()
-
-        qr = await client.qr_login()
-        expires_at: float | None = getattr(qr, "timeout", None)
-
-        self.set_client(account_id, client)
-        self._qr_sessions[account_id] = {"status": QrAuthStatus.PENDING}
-
-        task = asyncio.create_task(self._qr_wait_worker(account_id, client, qr))
-        self._qr_tasks[account_id] = task
-
-        logger.info(
-            "[tg client] QR login started: account_id=%s, expires_at=%s",
-            account_id,
-            expires_at,
-        )
-
-        return {
-            "qr_url": qr.url,
-            "expires_at": expires_at,
-        }
+        return await self._qr_auth.start(account_id)
 
     def get_qr_status(self, account_id: uuid.UUID) -> dict[str, str]:
         """Получить статус QR-сессии."""
-        session = self._qr_sessions.get(account_id)
-        if not session:
-            return {"status": QrAuthStatus.ERROR, "message": "QR-сессия не найдена"}
-        return dict(session)
+        return self._qr_auth.status(account_id)
 
     async def cancel_qr_login(self, account_id: uuid.UUID) -> None:
         """Отменить QR-авторизацию."""
-        task = self._qr_tasks.pop(account_id, None)
-        if task and not task.done():
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-
-        client = self.remove_client(account_id)
-        if client:
-            await client.disconnect()
-
-        self._qr_sessions.pop(account_id, None)
-        logger.info("[tg client] QR login cancelled: account_id=%s", account_id)
+        await self._qr_auth.cancel(account_id)
 
     async def complete_qr_login(self, account_id: uuid.UUID) -> dict[str, Any]:
         """
         Завершить QR-авторизацию: получить данные пользователя из Telegram.
         """
-        client = self.get_client(account_id)
-        if not client:
-            raise NotFoundError(detail=f"Клиент для account_id={account_id} не найден")
-
-        me = await client.get_me()
-        self._qr_sessions.pop(account_id, None)
-        self._qr_tasks.pop(account_id, None)
-
-        return {
-            "first_name": me.first_name,
-            "last_name": me.last_name,
-            "username": me.username,
-            "telegram_id": me.id,
-        }
+        return await self._qr_auth.complete(account_id)
 
     # ── Сообщения и медиа ──────────────────────────────────────────
 
@@ -373,12 +304,18 @@ class TelegramClientManager:
                 break
 
             media = await self.extract_media(client, msg)
+            telegram_sender = await msg.get_sender()
             messages.append(
                 Message(
                     account_id=account_id,
                     chat_id=chat_id,
                     message_id=msg.id,
-                    sender_id=msg.sender_id,
+                    sender=Sender(
+                        sender_id=msg.sender_id,
+                        username=getattr(telegram_sender, "username", None),
+                        first_name=getattr(telegram_sender, "first_name", None),
+                        last_name=getattr(telegram_sender, "last_name", None),
+                    ),
                     text=msg.text or "",
                     media=media,
                     date=msg.date,
@@ -431,5 +368,6 @@ class TelegramClientManager:
 
     async def stop_all(self) -> None:
         """Отключить все клиенты при остановке приложения."""
+        await self._qr_auth.stop()
         for account_id in list(self.get_all_client_ids()):
             await self.disconnect_account(account_id)

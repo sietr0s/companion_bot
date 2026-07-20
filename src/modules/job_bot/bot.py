@@ -11,7 +11,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.config import settings
 from src.modules.job_bot.handlers import (
     register_incoming_handlers,
@@ -35,7 +35,11 @@ def create_bot_service(bot: Bot) -> BotService:
     return BotService(bot=bot)
 
 
-def create_dispatcher(bus: MessageBus, bot_service: BotService) -> Dispatcher:
+def create_dispatcher(
+    producer: MessageProducer,
+    consumer: MessageConsumer,
+    bot_service: BotService,
+) -> Dispatcher:
     """
     Создать диспетчер и зарегистрировать обработчики.
 
@@ -46,10 +50,10 @@ def create_dispatcher(bus: MessageBus, bot_service: BotService) -> Dispatcher:
     dp = Dispatcher()
 
     # Регистрация обработчиков шины (исходящие сообщения)
-    register_outgoing_handlers()
+    register_outgoing_handlers(consumer, bot_service)
 
     # Регистрация aiogram-обработчиков (входящие сообщения)
-    incoming_router = register_incoming_handlers()
+    incoming_router = register_incoming_handlers(producer)
     dp.include_router(incoming_router)
 
     return dp

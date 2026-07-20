@@ -11,14 +11,19 @@
           "Health"
         ],
         "summary": "Health Check",
-        "description": "Health check — без БД, без зависимостей.",
         "operationId": "health_check_health_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
               }
             }
           }
@@ -109,27 +114,80 @@
         }
       }
     },
-    "/api/v1/public/auth/me/password": {
-      "patch": {
+    "/api/v1/public/users/": {
+      "get": {
         "tags": [
-          "Auth"
+          "Users"
         ],
-        "summary": "Смена пароля",
-        "description": "Сменить пароль текущего пользователя.",
-        "operationId": "change_password_api_v1_public_auth_me_password_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangePasswordRequest"
-              }
+        "summary": "Получить пользователей для администратора",
+        "description": "Вернуть список профилей только авторизованному администратору.",
+        "operationId": "get_users_admin_api_v1_public_users__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "field+operator+value",
+              "title": "Filters"
+            },
+            "description": "field+operator+value"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
             }
           },
-          "required": true
-        },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
+          }
+        ],
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__base__schemas__PaginatedResponse_UserRead___1"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -141,35 +199,8 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/public/auth/me": {
-      "delete": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Удаление учётной записи",
-        "description": "Удалить учётную запись текущего пользователя (каскадное удаление профиля).\n\nБез пароля — удаление по JWT (auth_id).",
-        "operationId": "delete_account_api_v1_public_auth_me_delete",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/public/users/": {
+        }
+      },
       "post": {
         "tags": [
           "Users"
@@ -177,15 +208,20 @@
         "summary": "Создание профиля пользователя",
         "description": "Создаёт профиль пользователя.\n\nauth_id берётся из JWT-токена (авторизованный пользователь).\nВ теле запроса можно передать first_name, last_name и т.д.",
         "operationId": "create_profile_api_v1_public_users__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -208,12 +244,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/users/me": {
@@ -333,6 +364,65 @@
         ]
       }
     },
+    "/api/v1/public/users/{profile_id}": {
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Обновить пользователя администратором",
+        "description": "Обновить профиль пользователя из административного интерфейса.",
+        "operationId": "update_user_admin_api_v1_public_users__profile_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/notifications/templates/": {
       "post": {
         "tags": [
@@ -428,6 +518,18 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
         ],
         "responses": {
@@ -650,6 +752,18 @@
               "default": 50,
               "title": "Limit"
             }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
         ],
         "responses": {
@@ -731,7 +845,6 @@
           "Telegram Clients"
         ],
         "summary": "Шаг 1: отправить номер телефона",
-        "description": "Отправляет SMS-код на указанный номер телефона.",
         "operationId": "auth_phone_api_v1_public_telegram_auth_phone_post",
         "requestBody": {
           "content": {
@@ -764,12 +877,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/code": {
@@ -778,7 +886,6 @@
           "Telegram Clients"
         ],
         "summary": "Шаг 2: ввести SMS-код",
-        "description": "Вводит SMS-код. Если аккаунт с 2FA — возвращает статус 2fa_required.",
         "operationId": "auth_code_api_v1_public_telegram_auth_code_post",
         "requestBody": {
           "content": {
@@ -811,12 +918,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/password": {
@@ -825,7 +927,6 @@
           "Telegram Clients"
         ],
         "summary": "Шаг 3: ввести пароль 2FA",
-        "description": "Вводит пароль облачного шифрования (2FA).",
         "operationId": "auth_password_api_v1_public_telegram_auth_password_post",
         "requestBody": {
           "content": {
@@ -858,12 +959,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/qr": {
@@ -872,7 +968,6 @@
           "Telegram Clients"
         ],
         "summary": "Запустить QR-авторизацию Telegram",
-        "description": "Создаёт QR-сессию для авторизации Telegram через сканирование QR-кода.",
         "operationId": "auth_qr_start_api_v1_public_telegram_auth_qr_post",
         "responses": {
           "200": {
@@ -884,23 +979,8 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/qr/{account_id}/status": {
@@ -909,13 +989,7 @@
           "Telegram Clients"
         ],
         "summary": "Статус QR-авторизации",
-        "description": "Возвращает текущий статус QR-сессии: pending, connected, expired или error.",
         "operationId": "auth_qr_status_api_v1_public_telegram_auth_qr__account_id__status_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -958,13 +1032,7 @@
           "Telegram Clients"
         ],
         "summary": "Отменить QR-авторизацию",
-        "description": "Отменяет QR-сессию и очищает временные данные.",
         "operationId": "auth_qr_cancel_api_v1_public_telegram_auth_qr__account_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1000,13 +1068,7 @@
           "Telegram Clients"
         ],
         "summary": "Завершить QR-авторизацию",
-        "description": "Создаёт запись аккаунта в БД после успешного QR-сканирования.",
         "operationId": "auth_qr_complete_api_v1_public_telegram_auth_qr__account_id__complete_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1049,13 +1111,7 @@
           "Telegram Clients"
         ],
         "summary": "Список Telegram-аккаунтов",
-        "description": "Возвращает все Telegram-аккаунты текущего пользователя с фильтрацией и пагинацией.",
         "operationId": "get_accounts_api_v1_public_telegram__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "filters",
@@ -1093,6 +1149,18 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
         ],
         "responses": {
@@ -1124,14 +1192,8 @@
         "tags": [
           "Telegram Clients"
         ],
-        "summary": "Детальный просмотр Telegram-аккаунта",
-        "description": "Получить детализацию Telegram-аккаунта по ID.",
+        "summary": "Telegram-аккаунт",
         "operationId": "get_account_api_v1_public_telegram__account_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1172,13 +1234,7 @@
           "Telegram Clients"
         ],
         "summary": "Удалить Telegram-аккаунт",
-        "description": "Удаляет Telegram-аккаунт, отключает клиент, удаляет сессию.",
         "operationId": "delete_account_api_v1_public_telegram__account_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1214,13 +1270,7 @@
           "Telegram Clients"
         ],
         "summary": "Список чатов аккаунта",
-        "description": "Возвращает все чаты указанного Telegram-аккаунта.",
         "operationId": "get_chats_api_v1_public_telegram__account_id__chats_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1279,13 +1329,7 @@
           "Telegram Clients"
         ],
         "summary": "Сообщения чата",
-        "description": "Возвращает сообщения указанного чата (on-demand из Telegram API).",
         "operationId": "get_messages_api_v1_public_telegram__account_id__chats__chat_id__messages_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1364,13 +1408,7 @@
           "Telegram Clients"
         ],
         "summary": "Настройки чтения аккаунта",
-        "description": "Получить настройки чтения для своего Telegram-аккаунта.",
         "operationId": "get_settings_api_v1_public_telegram__account_id__settings_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1389,7 +1427,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
+                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
                 }
               }
             }
@@ -1410,14 +1448,8 @@
         "tags": [
           "Telegram Clients"
         ],
-        "summary": "Создать настройки чтения аккаунта",
-        "description": "Создать настройки чтения для своего Telegram-аккаунта.",
+        "summary": "Создать настройки чтения",
         "operationId": "create_settings_api_v1_public_telegram__account_id__settings_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1446,7 +1478,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
+                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
                 }
               }
             }
@@ -1467,14 +1499,8 @@
         "tags": [
           "Telegram Clients"
         ],
-        "summary": "Обновить настройки чтения аккаунта",
-        "description": "Обновить настройки чтения для своего Telegram-аккаунта.",
+        "summary": "Обновить настройки чтения",
         "operationId": "update_settings_api_v1_public_telegram__account_id__settings_put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1503,7 +1529,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
+                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
                 }
               }
             }
@@ -1524,14 +1550,8 @@
         "tags": [
           "Telegram Clients"
         ],
-        "summary": "Удалить настройки чтения аккаунта",
-        "description": "Удалить настройки чтения для своего Telegram-аккаунта.",
+        "summary": "Удалить настройки чтения",
         "operationId": "delete_settings_api_v1_public_telegram__account_id__settings_delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1547,6 +1567,199 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/telegram/{account_id}/whitelist": {
+      "post": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Add Chat To Whitelist",
+        "operationId": "add_chat_to_whitelist_api_v1_public_telegram__account_id__whitelist_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhitelistChatCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/telegram/{account_id}/whitelist/{chat_id}": {
+      "delete": {
+        "tags": [
+          "Telegram Clients"
+        ],
+        "summary": "Remove Chat From Whitelist",
+        "operationId": "remove_chat_from_whitelist_api_v1_public_telegram__account_id__whitelist__chat_id__delete",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/media/": {
+      "get": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Получить файлы для администратора",
+        "description": "Вернуть список файлов авторизованному администратору.",
+        "operationId": "list_files_admin_api_v1_public_media__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "field+operator+value",
+              "title": "Filters"
+            },
+            "description": "field+operator+value"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_FileRead_"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -1735,30 +1948,6 @@
       }
     },
     "/api/v1/public/classifier/categories": {
-      "get": {
-        "tags": [
-          "Classifier"
-        ],
-        "summary": "Список категорий",
-        "description": "Получить список всех категорий.",
-        "operationId": "get_categories_api_v1_public_classifier_categories_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryRead"
-                  },
-                  "type": "array",
-                  "title": "Response Get Categories Api V1 Public Classifier Categories Get"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "Classifier"
@@ -1766,15 +1955,20 @@
         "summary": "Создать категорию",
         "description": "Создать новую категорию для классификации.",
         "operationId": "create_category_api_v1_public_classifier_categories_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CategoryCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1797,12 +1991,55 @@
               }
             }
           }
-        },
-        "security": [
+        }
+      },
+      "get": {
+        "tags": [
+          "Classifier"
+        ],
+        "summary": "Список категорий",
+        "description": "Получить список всех категорий.",
+        "operationId": "get_categories_api_v1_public_classifier_categories_get",
+        "parameters": [
           {
-            "HTTPBearer": []
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryRead"
+                  },
+                  "title": "Response Get Categories Api V1 Public Classifier Categories Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/public/classifier/categories/{slug}": {
@@ -1902,229 +2139,19 @@
         }
       }
     },
-    "/internal/auth/": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Создать учётную запись",
-        "description": "Создать учётную запись (internal, без JWT).",
-        "operationId": "create_account_internal_auth__post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/auth/{auth_id}": {
+    "/api/v1/public/job-matcher/subscriptions": {
       "get": {
         "tags": [
-          "Internal"
+          "Job Matcher"
         ],
-        "summary": "[Internal] Получить учётную запись по auth_id",
-        "description": "Получить учётную запись по auth_id (internal).",
-        "operationId": "get_account_internal_auth__auth_id__get",
-        "parameters": [
+        "summary": "Получить подписки для администратора",
+        "description": "Вернуть подписки только авторизованному администратору.",
+        "operationId": "get_subscriptions_admin_api_v1_public_job_matcher_subscriptions_get",
+        "security": [
           {
-            "name": "auth_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Auth Id"
-            }
+            "HTTPBearer": []
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Обновить учётную запись",
-        "description": "Обновить учётную запись (internal).",
-        "operationId": "update_account_internal_auth__auth_id__patch",
-        "parameters": [
-          {
-            "name": "auth_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Auth Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Удалить учётную запись",
-        "description": "Удалить учётную запись (internal, без проверки пароля).",
-        "operationId": "delete_account_internal_auth__auth_id__delete",
-        "parameters": [
-          {
-            "name": "auth_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Auth Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/auth/verify": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Проверить валидность токена",
-        "description": "Проверить валидность JWT токена (internal).",
-        "operationId": "verify_token_internal_auth_verify_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyTokenRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyTokenResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/users/": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Получить пользователей с фильтрацией",
-        "description": "Внутренний эндпоинт для межмодульного взаимодействия.\n\nФильтры: `filters=field+eq+value`.\nОператоры: eq, ne, gt, ge, lt, le, like, ilike, in.",
-        "operationId": "get_users_internal_users__get",
         "parameters": [
           {
             "name": "filters",
@@ -2162,6 +2189,18 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
         ],
         "responses": {
@@ -2170,47 +2209,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_UserRead_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Создать профиль пользователя",
-        "description": "Создать профиль пользователя (internal, без JWT).",
-        "operationId": "create_profile_internal_internal_users__post",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserRead"
+                  "$ref": "#/components/schemas/PaginatedResponse_SubscriptionAdminRead_"
                 }
               }
             }
@@ -2228,482 +2227,19 @@
         }
       }
     },
-    "/internal/users/{profile_id}": {
+    "/api/v1/public/job-matcher/offers": {
       "get": {
         "tags": [
-          "Internal"
+          "Job Matcher"
         ],
-        "summary": "[Internal] Получить профиль по id",
-        "description": "Получить профиль по id (internal).",
-        "operationId": "get_profile_internal_internal_users__profile_id__get",
-        "parameters": [
+        "summary": "Получить вакансии для администратора",
+        "description": "Вернуть сохранённые вакансии авторизованному администратору.",
+        "operationId": "get_offers_admin_api_v1_public_job_matcher_offers_get",
+        "security": [
           {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
+            "HTTPBearer": []
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Обновить профиль",
-        "description": "Обновить профиль (internal).",
-        "operationId": "update_profile_internal_internal_users__profile_id__patch",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Удалить профиль",
-        "description": "Удалить профиль (internal, без проверки JWT).",
-        "operationId": "delete_profile_internal_internal_users__profile_id__delete",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/users/{profile_id}/telegram": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Создать Telegram профиль",
-        "description": "Создать Telegram профиль и связать с пользователем (internal).",
-        "operationId": "create_telegram_profile_internal_users__profile_id__telegram_post",
-        "parameters": [
-          {
-            "name": "profile_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Profile Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TelegramCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__internal__telegram__TelegramRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/notifications/send": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Отправить уведомление по шаблону",
-        "description": "Отправить уведомление по имени шаблона.\n\nИспользуется для межмодульного взаимодействия.",
-        "operationId": "send_notification_internal_notifications_send_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SendNotificationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SendNotificationRequest"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/notifications/templates/{template_id}/render": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Тестовый рендер шаблона",
-        "description": "Тестовый рендер шаблона с данными.\n\nВозвращает rendered subject и body без отправки.",
-        "operationId": "render_template_test_internal_notifications_templates__template_id__render_post",
-        "parameters": [
-          {
-            "name": "template_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Template Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "default": {},
-                "title": "Test Data"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Render Template Test Internal Notifications Templates  Template Id  Render Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/telegram/{account_id}/settings": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "Get Settings",
-        "description": "Получить настройки Telegram-аккаунта.",
-        "operationId": "get_settings_internal_telegram__account_id__settings_get",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Account Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "Create Settings",
-        "description": "Создать настройки Telegram-аккаунта.",
-        "operationId": "create_settings_internal_telegram__account_id__settings_post",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Account Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TelegramSettingsCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "Update Settings",
-        "description": "Обновить настройки Telegram-аккаунта.",
-        "operationId": "update_settings_internal_telegram__account_id__settings_put",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Account Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TelegramSettingsUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TelegramSettingsRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "Delete Settings",
-        "description": "Удалить настройки Telegram-аккаунта.",
-        "operationId": "delete_settings_internal_telegram__account_id__settings_delete",
-        "parameters": [
-          {
-            "name": "account_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Account Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/media/": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Список всех файлов",
-        "description": "Получить список всех файлов с фильтрацией и пагинацией (internal).",
-        "operationId": "list_files_internal_internal_media__get",
         "parameters": [
           {
             "name": "filters",
@@ -2738,95 +2274,21 @@
               "type": "integer",
               "maximum": 500,
               "minimum": 1,
-              "default": 100,
+              "default": 50,
               "title": "Limit"
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_FileRead_"
-                }
-              }
-            }
           },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/media/upload": {
-      "post": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Загрузить файл",
-        "description": "Загрузить файл (без JWT, network-level доступ).",
-        "operationId": "upload_file_internal_media_upload_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_file_internal_media_upload_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/media/{file_id}": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Метаданные файла",
-        "description": "Метаданные любого файла (включая приватные).",
-        "operationId": "get_file_internal_media__file_id__get",
-        "parameters": [
           {
-            "name": "file_id",
-            "in": "path",
-            "required": true,
+            "name": "order_by",
+            "in": "query",
+            "required": false,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "File Id"
-            }
+              "description": "Поле сортировки; '-' = DESC",
+              "default": "-created_at",
+              "title": "Order By"
+            },
+            "description": "Поле сортировки; '-' = DESC"
           }
         ],
         "responses": {
@@ -2835,7 +2297,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileRead"
+                  "$ref": "#/components/schemas/PaginatedResponse_JobOfferAdminRead_"
                 }
               }
             }
@@ -2851,23 +2313,30 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/v1/public/job-matcher/users/{auth_id}": {
       "delete": {
         "tags": [
-          "Internal"
+          "Job Matcher"
         ],
-        "summary": "[Internal] Удалить файл",
-        "description": "Удалить файл (без JWT).",
-        "operationId": "delete_file_internal_media__file_id__delete",
+        "summary": "Удалить пользователя и его подписку",
+        "description": "Удалить подписку и через межмодульные клиенты удалить user и auth.",
+        "operationId": "delete_user_admin_api_v1_public_job_matcher_users__auth_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
-            "name": "file_id",
+            "name": "auth_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "File Id"
+              "title": "Auth Id"
             }
           }
         ],
@@ -2881,74 +2350,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/media/{file_id}/download": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Скачать файл",
-        "description": "Скачать любой файл (потоком, включая приватные).",
-        "operationId": "download_file_internal_media__file_id__download_get",
-        "parameters": [
-          {
-            "name": "file_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "File Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/internal/classifier/internal/classifier/categories": {
-      "get": {
-        "tags": [
-          "Internal"
-        ],
-        "summary": "[Internal] Список категорий",
-        "description": "Получить список всех категорий для внутреннего использования.",
-        "operationId": "get_categories_internal_classifier_internal_classifier_categories_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryRead"
-                  },
-                  "type": "array",
-                  "title": "Response Get Categories Internal Classifier Internal Classifier Categories Get"
                 }
               }
             }
@@ -2965,11 +2366,6 @@
             "type": "string",
             "format": "uuid",
             "title": "Id"
-          },
-          "auth_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Auth Id"
           },
           "phone": {
             "type": "string",
@@ -3037,7 +2433,6 @@
         "type": "object",
         "required": [
           "id",
-          "auth_id",
           "phone",
           "is_connected",
           "created_at",
@@ -3045,105 +2440,6 @@
         ],
         "title": "AccountRead",
         "description": "Схема чтения Telegram-аккаунта."
-      },
-      "AuthCreate": {
-        "properties": {
-          "identifier": {
-            "type": "string",
-            "title": "Identifier"
-          },
-          "identifier_type": {
-            "type": "string",
-            "enum": [
-              "email",
-              "phone",
-              "telegram"
-            ],
-            "title": "Identifier Type"
-          },
-          "hashed_password": {
-            "type": "string",
-            "title": "Hashed Password"
-          },
-          "role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "identifier",
-          "identifier_type",
-          "hashed_password"
-        ],
-        "title": "AuthCreate",
-        "description": "Запрос на создание учётной записи (internal)."
-      },
-      "AuthRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "identifier": {
-            "type": "string",
-            "title": "Identifier"
-          },
-          "identifier_type": {
-            "type": "string",
-            "title": "Identifier Type"
-          },
-          "hashed_password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hashed Password"
-          },
-          "role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Role"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "identifier",
-          "identifier_type",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "AuthRead",
-        "description": "Схема чтения учётной записи (для internal API)."
       },
       "AuthStep1Response": {
         "properties": {
@@ -3205,129 +2501,11 @@
         "title": "AuthStep3Response",
         "description": "Ответ после ввода 2FA пароля."
       },
-      "QrStartResponse": {
-        "properties": {
-          "account_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Account Id"
-          },
-          "qr_url": {
-            "type": "string",
-            "title": "Qr Url"
-          },
-          "expires_at": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "account_id",
-          "qr_url"
-        ],
-        "title": "QrStartResponse",
-        "description": "Ответ на старт QR-авторизации."
-      },
-      "QrStatusResponse": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "connected",
-              "expired",
-              "error"
-            ],
-            "title": "Status"
-          },
-          "message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "title": "QrStatusResponse",
-        "description": "Текущий статус QR-сессии."
-      },
-      "AuthUpdate": {
-        "properties": {
-          "identifier": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Identifier"
-          },
-          "identifier_type": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "email",
-                  "phone",
-                  "telegram"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Identifier Type"
-          },
-          "hashed_password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hashed Password"
-          },
-          "role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "title": "AuthUpdate",
-        "description": "Запрос на обновление учётной записи (internal)."
-      },
       "Body_upload_file_api_v1_public_media_upload_post": {
         "properties": {
           "file": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File"
           },
           "is_public": {
@@ -3341,25 +2519,6 @@
           "file"
         ],
         "title": "Body_upload_file_api_v1_public_media_upload_post"
-      },
-      "Body_upload_file_internal_media_upload_post": {
-        "properties": {
-          "file": {
-            "type": "string",
-            "format": "binary",
-            "title": "File"
-          },
-          "is_public": {
-            "type": "boolean",
-            "title": "Is Public",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "file"
-        ],
-        "title": "Body_upload_file_internal_media_upload_post"
       },
       "CategoryCreate": {
         "properties": {
@@ -3494,26 +2653,6 @@
         "title": "CategoryUpdate",
         "description": "Обновление категории (partial update)."
       },
-      "ChangePasswordRequest": {
-        "properties": {
-          "current_password": {
-            "type": "string",
-            "title": "Current Password"
-          },
-          "new_password": {
-            "type": "string",
-            "minLength": 8,
-            "title": "New Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "current_password",
-          "new_password"
-        ],
-        "title": "ChangePasswordRequest",
-        "description": "Запрос на смену пароля."
-      },
       "ChatRead": {
         "properties": {
           "id": {
@@ -3545,6 +2684,11 @@
               }
             ],
             "title": "Username"
+          },
+          "is_in_whitelist": {
+            "type": "boolean",
+            "title": "Is In Whitelist",
+            "default": false
           }
         },
         "type": "object",
@@ -3692,6 +2836,165 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "JobOfferAdminRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "salary_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary From"
+          },
+          "salary_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary To"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "source_chat_id": {
+            "type": "integer",
+            "title": "Source Chat Id"
+          },
+          "source_message_id": {
+            "type": "integer",
+            "title": "Source Message Id"
+          },
+          "telegram_sender_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Sender Id"
+          },
+          "telegram_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Username"
+          },
+          "telegram_first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram First Name"
+          },
+          "telegram_last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Last Name"
+          },
+          "category_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Ids"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source_chat_id",
+          "source_message_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JobOfferAdminRead",
+        "description": "Вакансия, доступная администратору frontend."
       },
       "LoginRequest": {
         "properties": {
@@ -3948,6 +3251,42 @@
         ],
         "title": "PaginatedResponse[FileRead]"
       },
+      "PaginatedResponse_JobOfferAdminRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobOfferAdminRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[JobOfferAdminRead]"
+      },
       "PaginatedResponse_NotificationLogRead_": {
         "properties": {
           "items": {
@@ -3983,6 +3322,42 @@
           "total_pages"
         ],
         "title": "PaginatedResponse[NotificationLogRead]"
+      },
+      "PaginatedResponse_SubscriptionAdminRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionAdminRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[SubscriptionAdminRead]"
       },
       "PaginatedResponse_TemplateRead_": {
         "properties": {
@@ -4020,42 +3395,6 @@
         ],
         "title": "PaginatedResponse[TemplateRead]"
       },
-      "PaginatedResponse_UserRead_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/src__modules__users__schemas__internal__user__UserRead"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "page_size": {
-            "type": "integer",
-            "title": "Page Size"
-          },
-          "total_pages": {
-            "type": "integer",
-            "title": "Total Pages"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size",
-          "total_pages"
-        ],
-        "title": "PaginatedResponse[UserRead]"
-      },
       "PasswordRequest": {
         "properties": {
           "account_id": {
@@ -4091,6 +3430,72 @@
         "title": "PhoneRequest",
         "description": "Шаг 1: отправка номера телефона для получения SMS-кода."
       },
+      "QrAuthStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "connected",
+          "expired",
+          "error"
+        ],
+        "title": "QrAuthStatus",
+        "description": "Статусы QR-авторизации."
+      },
+      "QrStartResponse": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "qr_url": {
+            "type": "string",
+            "title": "Qr Url"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "qr_url"
+        ],
+        "title": "QrStartResponse",
+        "description": "Ответ на старт QR-авторизации."
+      },
+      "QrStatusResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/QrAuthStatus"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "QrStatusResponse",
+        "description": "Текущий статус QR-сессии."
+      },
       "RegisterRequest": {
         "properties": {
           "identifier": {
@@ -4121,106 +3526,114 @@
         "title": "RegisterRequest",
         "description": "Запрос на регистрацию нового пользователя."
       },
-      "SendNotificationRequest": {
+      "SubscriptionAdminRead": {
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
           "auth_id": {
             "type": "string",
             "format": "uuid",
             "title": "Auth Id"
           },
-          "template_name": {
-            "type": "string",
-            "title": "Template Name",
-            "description": "Имя шаблона"
+          "keywords": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keywords"
           },
-          "channel": {
-            "type": "string",
-            "title": "Channel",
-            "description": "Канал отправки (email, sms, push)",
-            "default": "email"
+          "category_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Ids"
           },
-          "body": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Body",
-            "description": "Данные для рендера шаблона"
+          "min_salary": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Salary"
+          },
+          "max_salary": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Salary"
+          },
+          "locations": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locations"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
           }
         },
         "type": "object",
         "required": [
+          "id",
           "auth_id",
-          "template_name"
+          "is_active",
+          "created_at",
+          "updated_at"
         ],
-        "title": "SendNotificationRequest",
-        "description": "Запрос на отправку уведомления (internal)."
-      },
-      "TelegramCreate": {
-        "properties": {
-          "telegram_id": {
-            "type": "string",
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Telegram Id"
-          },
-          "telegram_username": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Username"
-          },
-          "telegram_first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram First Name"
-          },
-          "telegram_last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Last Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "telegram_id"
-        ],
-        "title": "TelegramCreate",
-        "description": "Создание Telegram-профиля (internal)."
+        "title": "SubscriptionAdminRead",
+        "description": "Подписка пользователя, доступная администратору frontend."
       },
       "TelegramSettingsCreate": {
         "properties": {
-          "read_groups": {
+          "use_whitelist": {
             "type": "boolean",
-            "title": "Read Groups",
-            "default": true
-          },
-          "read_personal": {
-            "type": "boolean",
-            "title": "Read Personal",
-            "default": true
-          },
-          "read_channels": {
-            "type": "boolean",
-            "title": "Read Channels",
+            "title": "Use Whitelist",
             "default": true
           },
           "whitelist_chat_ids": {
@@ -4242,72 +3655,9 @@
         "title": "TelegramSettingsCreate",
         "description": "Создание настроек Telegram-аккаунта (internal)."
       },
-      "TelegramSettingsRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "account_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Account Id"
-          },
-          "read_groups": {
-            "type": "boolean",
-            "title": "Read Groups"
-          },
-          "read_personal": {
-            "type": "boolean",
-            "title": "Read Personal"
-          },
-          "read_channels": {
-            "type": "boolean",
-            "title": "Read Channels"
-          },
-          "whitelist_chat_ids": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Whitelist Chat Ids"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "account_id",
-          "read_groups",
-          "read_personal",
-          "read_channels",
-          "whitelist_chat_ids",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TelegramSettingsRead",
-        "description": "Чтение настроек Telegram-аккаунта (internal)."
-      },
       "TelegramSettingsUpdate": {
         "properties": {
-          "read_groups": {
+          "use_whitelist": {
             "anyOf": [
               {
                 "type": "boolean"
@@ -4316,29 +3666,7 @@
                 "type": "null"
               }
             ],
-            "title": "Read Groups"
-          },
-          "read_personal": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Read Personal"
-          },
-          "read_channels": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Read Channels"
+            "title": "Use Whitelist"
           },
           "whitelist_chat_ids": {
             "anyOf": [
@@ -4575,6 +3903,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",
@@ -4585,111 +3920,84 @@
         ],
         "title": "ValidationError"
       },
-      "VerifyTokenRequest": {
+      "WhitelistChatCreate": {
         "properties": {
-          "token": {
-            "type": "string",
-            "title": "Token"
+          "chat_id": {
+            "type": "integer",
+            "title": "Chat Id"
           }
         },
         "type": "object",
         "required": [
-          "token"
+          "chat_id"
         ],
-        "title": "VerifyTokenRequest",
-        "description": "Запрос на проверку токена (internal)."
+        "title": "WhitelistChatCreate"
       },
-      "VerifyTokenResponse": {
+      "src__base__schemas__PaginatedResponse_UserRead___1": {
         "properties": {
-          "valid": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[UserRead]"
+      },
+      "src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "use_whitelist": {
             "type": "boolean",
-            "title": "Valid"
+            "title": "Use Whitelist"
           },
-          "auth_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Auth Id"
-          },
-          "identifier": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Identifier"
-          },
-          "role": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Role"
-          }
-        },
-        "type": "object",
-        "required": [
-          "valid"
-        ],
-        "title": "VerifyTokenResponse",
-        "description": "Ответ с информацией о токене (internal)."
-      },
-      "src__modules__users__schemas__internal__telegram__TelegramRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "telegram_id": {
-            "type": "string",
-            "title": "Telegram Id"
-          },
-          "telegram_username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Username"
-          },
-          "telegram_first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram First Name"
-          },
-          "telegram_last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Last Name"
+          "whitelist_chat_ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Whitelist Chat Ids"
           },
           "created_at": {
             "type": "string",
@@ -4705,130 +4013,34 @@
         "type": "object",
         "required": [
           "id",
-          "telegram_id",
+          "account_id",
+          "use_whitelist",
+          "whitelist_chat_ids",
           "created_at",
           "updated_at"
         ],
-        "title": "TelegramRead",
-        "description": "Чтение Telegram-профиля."
+        "title": "TelegramSettingsRead",
+        "description": "Чтение настроек Telegram-аккаунта (internal)."
       },
-      "src__modules__users__schemas__internal__user__UserCreate": {
+      "src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead": {
         "properties": {
-          "auth_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Auth Id"
+          "use_whitelist": {
+            "type": "boolean",
+            "title": "Use Whitelist"
           },
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          }
-        },
-        "type": "object",
-        "required": [
-          "auth_id"
-        ],
-        "title": "UserCreate",
-        "description": "Создание профиля пользователя (internal)."
-      },
-      "src__modules__users__schemas__internal__user__UserRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "auth_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Auth Id"
-          },
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
+          "whitelist_chat_ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Whitelist Chat Ids"
           },
           "created_at": {
             "type": "string",
@@ -4843,67 +4055,13 @@
         },
         "type": "object",
         "required": [
-          "id",
-          "auth_id",
+          "use_whitelist",
+          "whitelist_chat_ids",
           "created_at",
           "updated_at"
         ],
-        "title": "UserRead",
-        "description": "Схема чтения профиля пользователя (internal)."
-      },
-      "src__modules__users__schemas__internal__user__UserUpdate": {
-        "properties": {
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          }
-        },
-        "type": "object",
-        "title": "UserUpdate",
-        "description": "Обновление профиля пользователя (internal)."
+        "title": "TelegramSettingsRead",
+        "description": "Чтение настроек Telegram-аккаунта (public)."
       },
       "src__modules__users__schemas__public__telegram__TelegramRead": {
         "properties": {

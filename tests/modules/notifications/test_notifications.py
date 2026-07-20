@@ -1,12 +1,15 @@
 """Тесты модуля нотификаций."""
 
 import uuid
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.bus_topics import BusTopics
+from src.core.clients.users_client import UsersClient
+from src.modules.notifications.constants import NotificationStatus
 from src.modules.notifications.repository import (
     NotificationLogRepository,
     NotificationTemplateRepository,
@@ -184,6 +187,7 @@ class TestNotificationService:
             template_repo=NotificationTemplateRepository(),
             log_repo=NotificationLogRepository(),
             provider=MockProvider(),
+            message_bus=AsyncMock(),
         )
 
     @pytest.mark.asyncio
@@ -284,6 +288,51 @@ class TestNotificationService:
         assert log.status == "sent"
         # Без шаблона body превращается в строку
         assert log.body is not None
+
+    @pytest.mark.asyncio
+    async def test_telegram_notification_is_published_to_bot_bus(
+        self,
+        db_session: AsyncSession,
+        service,
+        monkeypatch,
+    ):
+        telegram_id = 303486120
+
+        async def resolve_telegram_id(self, auth_id, session=None):
+            return telegram_id
+
+        monkeypatch.setattr(
+            UsersClient,
+            "resolve_telegram_id_by_auth_id",
+            resolve_telegram_id,
+        )
+        service.provider.send = AsyncMock()
+
+        log = await service.send_notification(
+            session=db_session,
+            auth_id=uuid.uuid4(),
+            template_name="job_offer",
+            channel="telegram",
+            body={
+                "offer_text": "Python Developer\nПолный текст вакансии",
+                "telegram_sender_id": 123456,
+                "telegram_username": "vacancy_author",
+                "telegram_first_name": "Иван",
+                "telegram_last_name": "Иванов",
+            },
+        )
+
+        service.message_bus.publish.assert_awaited_once()
+        topic, message = service.message_bus.publish.await_args.args
+        assert topic == BusTopics.BOT_MESSAGE_OUTGOING
+        assert message["chat_id"] == telegram_id
+        assert "Python Developer" in message["text"]
+        assert "Полный текст вакансии" in message["text"]
+        assert "Иван Иванов" in message["text"]
+        assert "@vacancy_author" in message["text"]
+        service.provider.send.assert_not_awaited()
+        assert log.recipient == str(telegram_id)
+        assert log.status == NotificationStatus.SENT
 
     @pytest.mark.asyncio
     async def test_get_history(self, db_session: AsyncSession, service, mock_users_client):

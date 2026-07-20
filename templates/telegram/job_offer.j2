@@ -1,0 +1,7 @@
+💼 Новая вакансия
+
+{{ offer_text }}
+
+{% if telegram_first_name or telegram_last_name or telegram_username or telegram_sender_id -%}
+👤 Контакт:{% if telegram_first_name %} {{ telegram_first_name }}{% endif %}{% if telegram_last_name %} {{ telegram_last_name }}{% endif %}{% if telegram_username %} (@{{ telegram_username }}){% elif telegram_sender_id %} (Telegram ID: {{ telegram_sender_id }}){% endif %}
+{%- endif %}

@@ -1,5 +1,8 @@
 """Тесты AI-компонентов модуля classifier."""
 
+import uuid
+from unittest.mock import MagicMock
+
 import pytest
 
 from src.modules.classifier.ai.ner import RegexEntityExtractor
@@ -124,3 +127,41 @@ class TestZeroShotCategoryClassifier:
         result = await classifier.classify("Разработчик Python", labels)
         # Модель может не загрузиться в тестах — проверяем что результат возвращается
         assert isinstance(result.categories, list)
+
+    @pytest.mark.asyncio
+    async def test_classify_maps_gliclass_predictions(self):
+        """Результат GLiClass маппится на категории и сортируется по score."""
+        from src.modules.classifier.ai.category import ZeroShotCategoryClassifier
+
+        backend_id = uuid.uuid4()
+        frontend_id = uuid.uuid4()
+        classifier = ZeroShotCategoryClassifier(threshold=0.42)
+        classifier._pipeline = MagicMock(
+            return_value=[
+                [
+                    {"label": "Frontend", "score": 0.61},
+                    {"label": "Backend", "score": 0.93},
+                ]
+            ]
+        )
+        labels = [
+            {"id": backend_id, "slug": "backend", "name": "Backend"},
+            {"id": frontend_id, "slug": "frontend", "name": "Frontend"},
+        ]
+
+        result = await classifier.classify("Python and React", labels)
+
+        assert [category.id for category in result.categories] == [backend_id, frontend_id]
+        assert [category.confidence for category in result.categories] == [0.93, 0.61]
+        classifier._pipeline.assert_called_once_with(
+            "Python and React",
+            ["Backend", "Frontend"],
+            threshold=0.42,
+        )
+
+    def test_pipeline_device(self):
+        """Числовая настройка устройства преобразуется в формат GLiClass."""
+        from src.modules.classifier.ai.category import ZeroShotCategoryClassifier
+
+        assert ZeroShotCategoryClassifier(device=-1)._pipeline_device == "cpu"
+        assert ZeroShotCategoryClassifier(device=1)._pipeline_device == "cuda:1"

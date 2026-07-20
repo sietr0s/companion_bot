@@ -12,11 +12,12 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, UnauthorizedError
 from src.core.security import create_access_token, hash_password, verify_password
 from src.modules.auth.constants import ERROR_MESSAGES
+from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.schemas.events import UserDeleted, UserLoggedIn, UserRegistered
 from src.modules.auth.schemas.internal import (
@@ -26,7 +27,7 @@ from src.modules.auth.schemas.internal import (
 from src.modules.auth.schemas.public import TokenResponse
 
 
-class AuthService(BaseService[AuthRepository]):
+class AuthService(BaseService[AuthRepository, Auth]):
     """
     Сервис авторизации: регистрация и вход.
 
@@ -43,7 +44,7 @@ class AuthService(BaseService[AuthRepository]):
     4. Публикует событие UserLoggedIn
     """
 
-    def __init__(self, repository: AuthRepository, message_bus: MessageBus) -> None:
+    def __init__(self, repository: AuthRepository, message_bus: MessageProducer) -> None:
         super().__init__(repository)
         self.message_bus = message_bus
 

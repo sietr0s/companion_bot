@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.filters import Filter
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.users.constants import ERROR_MESSAGES
@@ -22,7 +22,7 @@ from src.modules.users.repository import TelegramRepository, UserRepository
 from src.modules.users.schemas.events import ProfileCreated, ProfileDeleted, ProfileUpdated
 
 
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, User]):
     """
     Сервис управления профилями пользователей.
 
@@ -34,7 +34,7 @@ class UserService(BaseService[UserRepository]):
         self,
         repository: UserRepository,
         telegram_repository: TelegramRepository,
-        message_bus: MessageBus,
+        message_bus: MessageProducer,
     ) -> None:
         super().__init__(repository)
         self.telegram_repository = telegram_repository
@@ -45,7 +45,7 @@ class UserService(BaseService[UserRepository]):
         session: AsyncSession,
         auth_id: uuid.UUID,
         data: dict,
-    ) -> None:
+    ) -> User:
         """
         Создать профиль пользователя.
 
@@ -63,6 +63,7 @@ class UserService(BaseService[UserRepository]):
         # Публикуем событие о создании профиля
         event = ProfileCreated(auth_id=auth_id, profile_id=profile.id)
         await self.message_bus.publish(BusTopics.PROFILE_CREATED, event.to_bus_dict())
+        return profile
 
     async def get_profile(self, session: AsyncSession, auth_id: uuid.UUID):
         """Получить профиль по auth_id. Raise NotFoundError если не найден."""
@@ -117,9 +118,10 @@ class UserService(BaseService[UserRepository]):
         filters: list[Filter] | None = None,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = "-created_at",
     ) -> tuple[list[User], int]:
         """Получить список пользователей с фильтрацией и пагинацией."""
-        return await self.repository.get_list(session, filters, skip, limit)
+        return await self.repository.get_list(session, filters, skip, limit, order_by)
 
     async def create_telegram_profile(
         self,

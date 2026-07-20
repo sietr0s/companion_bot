@@ -6,9 +6,7 @@
  * Создание настроек Telegram-аккаунта (internal).
  */
 export type TelegramSettingsCreate = {
-    read_groups?: boolean;
-    read_personal?: boolean;
-    read_channels?: boolean;
+    use_whitelist?: boolean;
     whitelist_chat_ids?: Array<(string | number)>;
 };
 

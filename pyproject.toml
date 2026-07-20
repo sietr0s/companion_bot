@@ -33,6 +33,12 @@ ignore = [
 "tests/**/*.py" = ["S101"]  # assert in tests
 "src/base/**/*.py" = ["N806"]  # uppercase constants
 
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
@@ -58,6 +64,9 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+markers = [
+    "e2e: tests requiring explicitly configured external services",
+]
 
 [tool.coverage.run]
 omit = [

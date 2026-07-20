@@ -15,6 +15,7 @@ from src.base.filters import parse_filters
 from src.base.schemas import PaginatedResponse
 from src.core.dependencies import get_db_session
 from src.core.exceptions import NotFoundError
+from src.core.internal_auth import require_internal_service_key
 from src.modules.users.dependencies import get_user_service
 from src.modules.users.schemas.internal import (
     TelegramCreate,
@@ -25,7 +26,21 @@ from src.modules.users.schemas.internal import (
 )
 from src.modules.users.service import UserService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/internal/users",
+    tags=["Internal"],
+    dependencies=[Depends(require_internal_service_key)],
+)
+
+FILTER_FIELDS = {
+    "id",
+    "auth_id",
+    "first_name",
+    "last_name",
+    "telegram_id",
+    "created_at",
+    "updated_at",
+}
 
 
 @router.get(
@@ -37,6 +52,7 @@ async def get_users(
     filters: list[str] = Query(default_factory=list, description="field+operator+value"),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=100, ge=1, le=500),
+    order_by: str = Query(default="-created_at", description="Поле сортировки; '-' = DESC"),
     session: AsyncSession = Depends(get_db_session),
     user_service: UserService = Depends(get_user_service),
 ) -> PaginatedResponse:
@@ -46,9 +62,9 @@ async def get_users(
     Фильтры: `filters=field+eq+value`.
     Операторы: eq, ne, gt, ge, lt, le, like, ilike, in.
     """
-    parsed = parse_filters(filters)
+    parsed = parse_filters(filters, allowed_fields=FILTER_FIELDS)
     skip = (page - 1) * limit
-    users, total = await user_service.get_users(session, parsed, skip, limit)
+    users, total = await user_service.get_users(session, parsed, skip, limit, order_by)
     return PaginatedResponse.from_list(users, total, page=page, page_size=limit)
 
 

@@ -19,9 +19,41 @@
 - `POST /api/v1/public/auth/login` — вход
 - `POST /api/v1/public/media/upload` — загрузка файла
 
+Frontend обращается только к `/api/v1/public/*`. Защищённые admin-endpoint'ы также относятся к public API. Маршруты `/internal/*` предназначены исключительно для межмодульного взаимодействия и будущего разделения модулей на микросервисы.
+
+Frontend-контракт генерируется командой `.venv/Scripts/python scripts/generate_frontend_openapi.py`; internal-маршруты в `frontend/openapi.json` не включаются.
+
 Internal API (для внутреннего использования) остаются без версионирования:
 - `GET /internal/auth/{id}` — внутренний вызов
-- `POST /internal/users/filter` — внутренний вызов
+- `GET /internal/users/?filters=auth_id+eq+...` — внутренний вызов
+
+Все list-endpoint'ы, читающие данные из БД, поддерживают `order_by`:
+
+- `order_by=-created_at` — новые записи первыми (значение по умолчанию);
+- `order_by=created_at` — старые записи первыми;
+- вместо `created_at` можно передать другое ORM-поле ресурса.
+
+Неизвестное или несортируемое поле возвращает HTTP 422. При одинаковых значениях
+основного поля используется `id`, поэтому порядок страниц остаётся стабильным.
+
+---
+
+## Актуальный реестр маршрутов
+
+Источник истины — `APIRouter` внутри каждого модуля и генерируемая схема
+`/openapi.json`. `main.py` только подключает готовые роутеры без префиксов.
+
+| Модуль | Public API | Internal API |
+|--------|------------|--------------|
+| auth | `POST /api/v1/public/auth/register`, `POST /login`, `PATCH /me/password`, `DELETE /me` | `POST /internal/auth/`, `GET/PATCH/DELETE /internal/auth/{auth_id}`, `POST /internal/auth/verify` |
+| users | `GET /api/v1/public/users/` (admin), `PATCH /{profile_id}` (admin), `POST /`, `GET/PATCH/DELETE /me`, `GET /me/telegram` | `GET/POST /internal/users/`, `GET/PATCH/DELETE /internal/users/{profile_id}`, `POST /{profile_id}/telegram` |
+| notifications | CRUD `/api/v1/public/notifications/templates/`, `GET /history/` | `POST /internal/notifications/send`, `POST /internal/notifications/templates/{template_id}/render` |
+| telegram | `/api/v1/public/telegram/auth/*`, аккаунты, чаты, сообщения и настройки | CRUD `/internal/telegram/{account_id}/settings` |
+| media | `GET /api/v1/public/media/` (admin), `POST /upload`, `GET/DELETE /{file_id}`, `GET /{file_id}/download` | `GET /internal/media/`, `POST /internal/media/upload`, `GET/DELETE /{file_id}`, `GET /{file_id}/download` |
+| classifier | CRUD `/api/v1/public/classifier/categories` | `GET /internal/classifier/categories` |
+| job_matcher | `GET /api/v1/public/job-matcher/subscriptions` (admin), `GET /offers` (admin), `DELETE /users/{auth_id}` (admin) | `GET /internal/job-matcher/subscriptions` |
+
+В сокращённых путях таблицы начало берётся из полного префикса в той же ячейке.
 
 ---
 
@@ -301,7 +333,7 @@ Internal API (для внутреннего использования) оста
 
 > Все эндпоинты требуют авторизацию: `Authorization: Bearer <token>`
 
-### POST /telegram-clients/api/v1/public/auth/phone
+### POST /api/v1/public/telegram/auth/phone
 
 Шаг 1 авторизации: отправка номера телефона для получения SMS-кода.
 
@@ -328,7 +360,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### POST /telegram-clients/api/v1/public/auth/code
+### POST /api/v1/public/telegram/auth/code
 
 Шаг 2 авторизации: ввод SMS-кода.
 
@@ -372,7 +404,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### POST /telegram-clients/api/v1/public/auth/password
+### POST /api/v1/public/telegram/auth/password
 
 Шаг 3 авторизации: ввод пароля облачного шифрования (2FA).
 
@@ -407,7 +439,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### GET /telegram-clients/
+### GET /api/v1/public/telegram/
 
 Список всех Telegram-аккаунтов текущего пользователя.
 
@@ -432,7 +464,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### DELETE /telegram-clients/{account_id}
+### DELETE /api/v1/public/telegram/{account_id}
 
 Удалить Telegram-аккаунт. Отключает клиент, удаляет session-файл и запись из БД.
 
@@ -446,7 +478,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### GET /telegram-clients/{account_id}/chats
+### GET /api/v1/public/telegram/{account_id}/chats
 
 Получить все чаты указанного Telegram-аккаунта (on-demand из Telegram API).
 
@@ -472,7 +504,7 @@ Internal API (для внутреннего использования) оста
 
 ---
 
-### GET /telegram-clients/{account_id}/chats/{chat_id}/messages
+### GET /api/v1/public/telegram/{account_id}/chats/{chat_id}/messages
 
 Получить сообщения указанного чата (on-demand из Telegram API).
 
@@ -511,13 +543,13 @@ Internal API (для внутреннего использования) оста
 ## Типичный сценарий (Telegram)
 
 ```
-1. POST /telegram-clients/api/v1/public/auth/phone   → отправляем номер
-2. POST /telegram-clients/api/v1/public/auth/code    → вводим SMS-код
-3. POST /telegram-clients/api/v1/public/auth/password → вводим 2FA (если нужно)
-4. GET  /telegram-clients/             → список аккаунтов
-5. GET  /telegram-clients/{id}/chats   → список чатов
-6. GET  /telegram-clients/{id}/chats/{chat_id}/messages → сообщения
-7. DELETE /telegram-clients/{id}       → удалить аккаунт
+1. POST /api/v1/public/telegram/auth/phone    → отправляем номер
+2. POST /api/v1/public/telegram/auth/code     → вводим SMS-код
+3. POST /api/v1/public/telegram/auth/password → вводим 2FA (если нужно)
+4. GET  /api/v1/public/telegram/             → список аккаунтов
+5. GET  /api/v1/public/telegram/{id}/chats   → список чатов
+6. GET  /api/v1/public/telegram/{id}/chats/{chat_id}/messages → сообщения
+7. DELETE /api/v1/public/telegram/{id}       → удалить аккаунт
 ```
 
 ---
@@ -617,9 +649,9 @@ Internal API (для внутреннего использования) оста
 
 ## Internal
 
-> Роуты без авторизации. Доступ ограничен network-level (Docker/k8s).
+> Все `/internal/*` роуты требуют заголовок `X-Internal-Service-Key`. Значение ключа задаётся через обязательную переменную окружения `INTERNAL_SERVICE_KEY`; network-level ограничения остаются дополнительным уровнем защиты.
 
-### GET /internal/api/v1/public/users/
+### GET /internal/users/
 
 Получить пользователей с фильтрацией (для межмодульного взаимодействия).
 
@@ -628,10 +660,13 @@ Internal API (для внутреннего использования) оста
 | Параметр | Тип | По умолчанию | Описание |
 |----------|-----|--------------|----------|
 | filters | list[str] | [] | Фильтры формата `field+operator+value` |
-| skip | int | 0 | Смещение |
+| page | int | 1 | Номер страницы |
 | limit | int | 100 | Лимит (1–500) |
 
 **Операторы фильтров:**
+
+Неизвестное поле, неправильный оператор, формат или тип значения возвращают
+`422 Unprocessable Entity`. Для каждого endpoint действует явный whitelist полей.
 
 | Оператор | Описание | Пример |
 |----------|----------|--------|
@@ -648,9 +683,9 @@ Internal API (для внутреннего использования) оста
 **Примеры:**
 
 ```
-GET /internal/api/v1/public/users/?filters=auth_id+eq+550e8400-...
-GET /internal/api/v1/public/users/?filters=email+eq+test@test.com
-GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
+GET /internal/users/?filters=auth_id+eq+550e8400-...
+GET /internal/users/?filters=email+eq+test@test.com
+GET /internal/users/?filters=auth_id+eq+...&filters=email+eq+...
 ```
 
 **Ответ 200:** list[UserRead]
@@ -660,9 +695,9 @@ GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
 ## Media
 
 > Публичные эндпоинты `/api/v1/public/media/` требуют авторизацию для upload/delete.
-> Внутренние эндпоинты `/internal/api/v1/public/media/` — без авторизации (network-level доступ).
+> Внутренние эндпоинты `/internal/media/` требуют `X-Internal-Service-Key`.
 
-### POST /api/v1/public/media/
+### POST /api/v1/public/media/upload
 
 Загрузить файл. Требуется авторизация.
 
@@ -747,9 +782,9 @@ GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
 
 ## Internal Media
 
-> Эндпоинты без авторизации. Доступ ограничен network-level.
+> Эндпоинты требуют `X-Internal-Service-Key`; доступ также рекомендуется ограничивать на network-level.
 
-### POST /internal/api/v1/public/media/
+### POST /internal/media/upload
 
 Загрузить файл (без проверки авторизации и is_public).
 
@@ -766,7 +801,7 @@ GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
 
 ---
 
-### GET /internal/api/v1/public/media/{file_id}
+### GET /internal/media/{file_id}
 
 Получить метаданные файла (без проверки is_public).
 
@@ -774,7 +809,7 @@ GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
 
 ---
 
-### GET /internal/api/v1/public/media/{file_id}/download
+### GET /internal/media/{file_id}/download
 
 Скачать файл (потоком, без проверки is_public).
 
@@ -785,7 +820,7 @@ GET /internal/api/v1/public/users/?filters=auth_id+eq+...&filters=email+eq+...
 
 ---
 
-### DELETE /internal/api/v1/public/media/{file_id}
+### DELETE /internal/media/{file_id}
 
 Удалить файл (без проверки авторизации).
 
@@ -858,7 +893,7 @@ response = await client.get("/api/v1/public/users/", params={"filters": "auth_id
 
 **Внутренний запрос:**
 ```
-GET /internal/api/v1/public/users/?filters=auth_id+eq+{auth_id}
+GET /internal/users/?filters=auth_id+eq+{auth_id}
 ```
 
 **Пример:**
@@ -917,7 +952,7 @@ class NotificationService:
 
 **Внутренний запрос:**
 ```
-POST /internal/api/v1/public/media/
+POST /internal/media/upload
 Content-Type: multipart/form-data
 ```
 
@@ -954,7 +989,7 @@ if file_id:
 
 **Внутренний запрос:**
 ```
-GET /internal/api/v1/public/media/{file_id}/download
+GET /internal/media/{file_id}/download
 ```
 
 **Пример:**
@@ -978,7 +1013,7 @@ if file_data:
 
 **Внутренний запрос:**
 ```
-DELETE /internal/api/v1/public/media/{file_id}
+DELETE /internal/media/{file_id}
 ```
 
 **Пример:**

@@ -12,12 +12,16 @@ src/modules/<module_name>/
 ├── models.py          # SQLAlchemy-модель
 ├── schemas/
 │   ├── __init__.py
-│   ├── api.py         # Pydantic-схемы для HTTP
+│   ├── public/        # Pydantic-схемы публичного HTTP API
+│   ├── internal/      # Pydantic-схемы internal API
 │   └── events.py      # Pydantic-схемы для событий шины
 ├── repository.py      # Репозиторий (наследуется от BaseRepository)
 ├── service.py         # Сервис (наследуется от BaseService)
 ├── handlers.py        # Обработчики событий шины (опционально)
-└── router.py          # FastAPI-роутер
+└── routers/
+    ├── __init__.py    # Экспорт public_router/internal_router
+    ├── public.py      # /api/v1/public/<module>
+    └── internal.py    # /internal/<module>
 ```
 
 ---
@@ -63,7 +67,7 @@ class MyEntity(BaseModel):
 
 ---
 
-## Шаг 4. Определите API-схемы (`schemas/api.py`)
+## Шаг 4. Определите API-схемы (`schemas/public/`, `schemas/internal/`)
 
 ```python
 import uuid
@@ -162,17 +166,16 @@ class MyEntityRepository(BaseRepository[MyEntity]):
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import NotFoundError
 from src.modules.my_module.repository import MyEntityRepository
-from src.modules.my_module.schemas.api import MyEntityCreate, MyEntityUpdate
+from src.modules.my_module.schemas.public import MyEntityCreate, MyEntityUpdate
 from src.modules.my_module.schemas.events import MyEntityCreated
 
 
-class MyEntityService(BaseService[MyEntityRepository]):
+class MyEntityService(BaseService[MyEntityRepository, MyEntity]):
     def __init__(
-        self, repository: MyEntityRepository, message_bus: MessageBus
+        self, repository: MyEntityRepository, message_bus: MessageProducer
     ) -> None:
         super().__init__(repository)
         self.message_bus = message_bus
@@ -214,18 +217,18 @@ class MyEntityService(BaseService[MyEntityRepository]):
 
 ```python
 import logging
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageConsumer
 from src.core.bus_topics import BusTopics
 
 logger = logging.getLogger(__name__)
 
 
-def register_handlers(bus: MessageBus) -> None:
-    @bus.subscribe(BusTopics.USER_REGISTERED)
+def register_handlers(consumer: MessageConsumer) -> None:
+    @consumer.subscribe(BusTopics.USER_REGISTERED)
     async def handle_user_registered(message: dict) -> None:
         logger.info("Новый пользователь: %s", message.get("auth_id"))
 
-    @bus.subscribe(BusTopics.PROFILE_UPDATED)
+    @consumer.subscribe(BusTopics.PROFILE_UPDATED)
     async def handle_profile_updated(message: dict) -> None:
         logger.info("Профиль обновлён: %s", message.get("auth_id"))
 ```
@@ -237,7 +240,9 @@ def register_handlers(bus: MessageBus) -> None:
 
 ---
 
-## Шаг 9. Создайте роутер (`router.py`)
+## Шаг 9. Создайте роутеры (`routers/public.py`, `routers/internal.py`)
+
+Роутер сам владеет полным префиксом и тегами. `main.py` не должен знать URL модуля.
 
 ```python
 import uuid
@@ -245,10 +250,13 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.dependencies import get_current_user, get_db_session
 from src.modules.my_module.dependencies import get_my_entity_service
-from src.modules.my_module.schemas.api import MyEntityCreate, MyEntityRead
+from src.modules.my_module.schemas.public import MyEntityCreate, MyEntityRead
 from src.modules.my_module.service import MyEntityService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/v1/public/my-module",
+    tags=["MyModule"],
+)
 
 
 @router.post(
@@ -280,8 +288,8 @@ DI-зависимости модуля <module_name>.
 """
 
 from fastapi import Depends
-from src.bus.interface import MessageBus
-from src.bus.providers import get_message_bus
+from src.bus import get_producer
+from src.bus.interface import MessageProducer
 from src.modules.my_module.repository import MyEntityRepository
 from src.modules.my_module.service import MyEntityService
 
@@ -292,9 +300,8 @@ def get_my_entity_repository() -> MyEntityRepository:
 
 def get_my_entity_service(
     repo: MyEntityRepository = Depends(get_my_entity_repository),
-    bus: MessageBus = Depends(get_message_bus),
 ) -> MyEntityService:
-    return MyEntityService(repository=repo, message_bus=bus)
+    return MyEntityService(repository=repo, message_bus=get_producer())
 ```
 
 **Почему в модуле, а не в `core/dependencies.py`?**
@@ -307,9 +314,10 @@ def get_my_entity_service(
 ## Шаг 11. Подключите роутер в `main.py`
 
 ```python
-from src.modules.my_module.router import router as my_module_router
+from src.modules.my_module.routers import public_router, internal_router
 
-app.include_router(my_module_router, prefix="/my-module", tags=["MyModule"])
+app.include_router(public_router)
+app.include_router(internal_router)
 ```
 
 ---
@@ -317,9 +325,10 @@ app.include_router(my_module_router, prefix="/my-module", tags=["MyModule"])
 ## Шаг 12. Зарегистрируйте обработчики в `main.py`
 
 ```python
-from src.modules.my_module.handlers import register_handlers as register_my_module_handlers
+from src.bus import get_consumer
+from src.modules.my_module.handlers import register_handlers
 
-register_my_module_handlers(producer)
+register_handlers(get_consumer())
 ```
 
 ---
@@ -332,7 +341,7 @@ register_my_module_handlers(producer)
 - [ ] API-схемы определены (auth_id не в Create-схеме)
 - [ ] События определены (event_name из BusTopics)
 - [ ] Репозиторий создан (наследуется от BaseRepository)
-- [ ] Сервис создан (наследуется от BaseService, принимает MessageBus)
+- [ ] Сервис создан (наследуется от BaseService, принимает MessageProducer)
 - [ ] **Сервис НЕ использует** `session.add()`, `session.commit()`, `session.refresh()` — только методы репозитория
 - [ ] Обработчики событий созданы (опционально)
 - [ ] Роутер создан (auth_id через Depends)

@@ -21,7 +21,7 @@ from src.core.bus_topics import BusTopics
 from src.modules.classifier.repository import CategoryRepository, ClassificationLogRepository
 from src.modules.classifier.service import ClassifierService
 from src.modules.job_matcher.repository import JobOfferRepository
-from src.modules.job_matcher.service import JobMatcherService
+from src.modules.job_matcher.services import JobOfferService
 from tests.conftest import MockBus
 
 
@@ -80,7 +80,7 @@ class TestJobMatcherClassifierIntegration:
         3. Обновляется category_ids
         """
         bus = InMemoryProducer()
-        job_matcher_service = JobMatcherService(
+        job_matcher_service = JobOfferService(
             offer_repo=JobOfferRepository(),
             sub_repo=None,
             bus=bus,
@@ -99,9 +99,18 @@ class TestJobMatcherClassifierIntegration:
             session=db_session,
             text=text,
             chat_id=123456,
+            message_id=42,
+            sender={
+                "sender_id": 987654,
+                "username": "vacancy_author",
+                "first_name": "Иван",
+                "last_name": "Иванов",
+            },
         )
         assert job_offer.id is not None
         assert job_offer.category_ids is None
+        assert job_offer.telegram_sender_id == 987654
+        assert job_offer.telegram_username == "vacancy_author"
 
         # 2. Классифицируем
         result = await classifier_service.process_classify_request(
@@ -174,7 +183,7 @@ class TestJobMatcherClassifierIntegration:
         JobOffer получает несколько категорий.
         """
         bus = InMemoryProducer()
-        job_matcher_service = JobMatcherService(
+        job_matcher_service = JobOfferService(
             offer_repo=JobOfferRepository(),
             sub_repo=None,
             bus=bus,
@@ -192,6 +201,13 @@ class TestJobMatcherClassifierIntegration:
             session=db_session,
             text="Fullstack developer",
             chat_id=111,
+            message_id=43,
+            sender={
+                "sender_id": 987655,
+                "username": "fullstack_author",
+                "first_name": "Анна",
+                "last_name": None,
+            },
         )
 
         # Классифицируем

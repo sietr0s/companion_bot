@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 
 from src.core.config import settings
+from src.core.internal_auth import INTERNAL_SERVICE_KEY_HEADER
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,13 @@ class BaseHTTPClient:
         try:
             async with httpx.AsyncClient() as client:
                 url = f"{self._base_url}{path}"
+                headers = dict(kwargs.pop("headers", {}) or {})
+                headers[INTERNAL_SERVICE_KEY_HEADER] = settings.INTERNAL_SERVICE_KEY
                 response = await client.request(
                     method,
                     url,
                     timeout=self._timeout,
+                    headers=headers,
                     **kwargs,
                 )
                 response.raise_for_status()

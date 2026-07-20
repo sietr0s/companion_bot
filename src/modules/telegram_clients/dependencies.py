@@ -23,6 +23,15 @@ logger = logging.getLogger(__name__)
 _telegram_client_manager: TelegramClientManager | None = None
 
 
+def get_telegram_client_manager() -> TelegramClientManager:
+    """Создать или вернуть singleton TelegramClientManager по умолчанию."""
+    global _telegram_client_manager
+    if _telegram_client_manager is None:
+        _telegram_client_manager = TelegramClientManager()
+        logger.info("Создан новый экземпляр TelegramClientManager")
+    return _telegram_client_manager
+
+
 def get_telegram_account_repository() -> TelegramAccountRepository:
     """Фабрика репозитория Telegram-аккаунтов."""
     return TelegramAccountRepository()
@@ -39,22 +48,27 @@ def get_telegram_chat_state_repository() -> TelegramChatStateRepository:
 
 
 def get_telegram_account_service(
-        repo: TelegramAccountRepository = Depends(get_telegram_account_repository),
-        settings_repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
-        chat_state_repo: TelegramChatStateRepository = Depends(get_telegram_chat_state_repository),
+    repo: TelegramAccountRepository = Depends(get_telegram_account_repository),
+    settings_repo: TelegramSettingsRepository = Depends(
+        get_telegram_settings_repository
+    ),
+    chat_state_repo: TelegramChatStateRepository = Depends(
+        get_telegram_chat_state_repository
+    ),
+    client_manager: TelegramClientManager = Depends(get_telegram_client_manager),
 ) -> TelegramAccountService:
     """Фабрика сервиса Telegram-Aккаунтов."""
     return TelegramAccountService(
         repository=repo,
         message_bus=get_producer(),
-        client_manager=get_telegram_client_manager(),
+        client_manager=client_manager,
         settings_repository=settings_repo,
         chat_state_repository=chat_state_repo,
     )
 
 
 def get_telegram_settings_service(
-        repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
+    repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsService:
     """Фабрика сервиса Telegram-Настроек."""
     return TelegramSettingsService(
@@ -63,26 +77,14 @@ def get_telegram_settings_service(
     )
 
 
-def get_telegram_client_service_factory() -> TelegramAccountService:
+def get_telegram_client_service_factory(
+    client_manager: TelegramClientManager | None = None,
+) -> TelegramAccountService:
     """Фабрика сервиса Telegram-клиентов."""
     return TelegramAccountService(
         repository=get_telegram_account_repository(),
         message_bus=get_producer(),
-        client_manager=get_telegram_client_manager(),
+        client_manager=client_manager or get_telegram_client_manager(),
         settings_repository=get_telegram_settings_repository(),
         chat_state_repository=get_telegram_chat_state_repository(),
     )
-
-
-def get_telegram_client_manager() -> TelegramClientManager:
-    """
-    Создать или вернуть существующий TelegramClientManager.
-
-    Returns:
-        Singleton-экземпляр TelegramClientManager
-    """
-    global _telegram_client_manager
-    if _telegram_client_manager is None:
-        _telegram_client_manager = TelegramClientManager()
-        logger.info("Создан новый экземпляр TelegramClientManager")
-    return _telegram_client_manager

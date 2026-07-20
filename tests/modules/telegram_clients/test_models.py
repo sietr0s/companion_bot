@@ -19,7 +19,7 @@ async def tg_account(db_session: AsyncSession) -> TelegramAccount:
 
     # Создаём Auth аккаунт для ForeignKey
     auth_repo = AuthRepository()
-    auth_account = await auth_repo.create(
+    await auth_repo.create(
         db_session,
         {
             "identifier": "test_chat_state@example.com",
@@ -134,7 +134,7 @@ class TestTelegramChatStateUniqueConstraint:
 
         # Создаём второй Auth аккаунт
         auth_repo = AuthRepository()
-        auth_account2 = await auth_repo.create(
+        await auth_repo.create(
             db_session,
             {
                 "identifier": "test_chat_state2@example.com",

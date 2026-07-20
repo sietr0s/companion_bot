@@ -1,11 +1,10 @@
-"""Zero-shot классификатор категорий на основе BART."""
+"""Zero-shot классификатор категорий на основе GLiClass."""
 
 import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
-
-from transformers import pipeline
+from typing import Any
 
 from src.core.config import settings
 from src.modules.classifier.ai.base import CategoryClassifier, CategoryScore, ClassifyResult
@@ -24,23 +23,33 @@ class _LabelInfo:
 
 class ZeroShotCategoryClassifier:
     """
-    Zero-shot классификатор на основе transformers pipeline.
+    Multi-label zero-shot классификатор на основе GLiClass.
 
-    Использует transformers.pipeline для классификации текста
-    без дополнительного обучения. Модель инициализируется явно
-    через метод initialize() при старте приложения.
+    Модель инициализируется явно через initialize() при старте приложения.
     """
 
-    def __init__(self, model_name: str = "facebook/bart-large-mnli", device: int = -1) -> None:
+    def __init__(
+        self,
+        model_name: str = "knowledgator/gliclass-large-v1.0",
+        device: int = -1,
+        threshold: float = 0.5,
+    ) -> None:
         """
         Args:
             model_name: Название модели HuggingFace.
             device: Устройство (-1 = CPU, 0 = GPU).
+            threshold: Минимальная уверенность для включения категории.
         """
         self._model_name = model_name
         self._device = device
-        self._pipeline = None
+        self._threshold = threshold
+        self._pipeline: Any | None = None
         self._initialized = False
+
+    @property
+    def _pipeline_device(self) -> str:
+        """Преобразовать числовую настройку устройства в формат GLiClass."""
+        return "cpu" if self._device < 0 else f"cuda:{self._device}"
 
     async def initialize(self) -> None:
         """Инициализация pipeline. Вызывается при старте приложения."""
@@ -51,17 +60,23 @@ class ZeroShotCategoryClassifier:
             loop = asyncio.get_running_loop()
 
             def _load() -> None:
-                self._pipeline = pipeline(
-                    "zero-shot-classification",
-                    model=self._model_name,
-                    device=self._device,
+                from gliclass import GLiClassModel, ZeroShotClassificationPipeline
+                from transformers import AutoTokenizer
+
+                model = GLiClassModel.from_pretrained(self._model_name)
+                tokenizer = AutoTokenizer.from_pretrained(self._model_name)
+                self._pipeline = ZeroShotClassificationPipeline(
+                    model,
+                    tokenizer,
+                    classification_type="multi-label",
+                    device=self._pipeline_device,
                 )
 
             await loop.run_in_executor(None, _load)
             self._initialized = True
             logger.info("Модель %s загружена", self._model_name)
         except ImportError:
-            logger.error("transformers не установлен. Классификация недоступна.")
+            logger.error("gliclass или transformers не установлен. Классификация недоступна.")
             self._initialized = False
         except Exception as e:
             logger.exception("Ошибка загрузки модели %s: %s", self._model_name, e)
@@ -83,7 +98,9 @@ class ZeroShotCategoryClassifier:
         Returns:
             ClassifyResult со всеми категориями по убыванию confidence.
         """
-        # Если модель не загрузилась — возвращаем пустой результат
+        if not labels:
+            return ClassifyResult(categories=[])
+
         if self._pipeline is None:
             logger.warning("Модель не загружена, возвращаем пустой результат")
             return ClassifyResult(categories=[])
@@ -96,23 +113,32 @@ class ZeroShotCategoryClassifier:
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 None,
-                lambda: self._pipeline(text, label_names, multi_label=False),
+                lambda: self._pipeline(
+                    text,
+                    label_names,
+                    threshold=self._threshold,
+                )[0],
             )
 
-            # Маппинг результата обратно в CategoryScore
-            # result: {"labels": [...], "scores": [...], "sequence": "..."}
+            # GLiClass result: [{"label": str, "score": float}, ...]
             name_to_label = {label["name"]: label for label in labels}
 
             categories = []
-            for label_name, score in zip(result["labels"], result["scores"], strict=True):
+            for prediction in sorted(
+                result,
+                key=lambda item: item["score"],
+                reverse=True,
+            ):
+                label_name = prediction["label"]
                 label_info = name_to_label.get(label_name)
                 if label_info:
+                    logger.info("Category: %s %s", label_info["name"], prediction["score"])
                     categories.append(
                         CategoryScore(
                             id=label_info["id"],
                             slug=label_info["slug"],
                             name=label_info["name"],
-                            confidence=float(score),
+                            confidence=float(prediction["score"]),
                         )
                     )
 
@@ -134,5 +160,6 @@ def get_category_classifier() -> CategoryClassifier:
         _classifier_instance = ZeroShotCategoryClassifier(
             model_name=settings.CLASSIFIER_MODEL_NAME,
             device=settings.CLASSIFIER_DEVICE,
+            threshold=settings.CLASSIFIER_THRESHOLD,
         )
     return _classifier_instance

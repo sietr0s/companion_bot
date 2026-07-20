@@ -2,7 +2,7 @@ import type {
   AuthService,
   ClassifierService,
   HealthService,
-  InternalService,
+  JobMatcherService,
   MediaService,
   NotificationsService,
   TelegramClientsService,
@@ -13,7 +13,7 @@ export interface ApiClient {
   auth: typeof AuthService;
   classifier: typeof ClassifierService;
   health: typeof HealthService;
-  internal: typeof InternalService;
+  jobMatcher: typeof JobMatcherService;
   media: typeof MediaService;
   notifications: typeof NotificationsService;
   telegram: typeof TelegramClientsService;

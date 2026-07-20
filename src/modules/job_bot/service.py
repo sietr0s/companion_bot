@@ -8,8 +8,8 @@
 import logging
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 
-from src.modules.job_bot.keyboards import get_main_keyboard
 from src.modules.job_bot.texts import (
     VACANCY_LOCATION_TEMPLATE,
     VACANCY_SALARY_TEMPLATE,
@@ -53,7 +53,7 @@ class BotService:
                 await self._bot.send_message(
                     chat_id=chat_id,
                     text=text,
-                    reply_markup=get_main_keyboard(),
+                    reply_markup=InlineKeyboardMarkup.model_validate(keyboard),
                 )
             else:
                 await self._bot.send_message(
@@ -74,6 +74,40 @@ class BotService:
             logger.error("Ошибка валидации данных для отправки в чат %s: %s", chat_id, e)
         except Exception as e:
             logger.exception("Неожиданная ошибка при отправке сообщения в чат %s: %s", chat_id, e)
+
+    async def edit_message(
+        self,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        keyboard: dict | None = None,
+    ) -> None:
+        """Заменить текст и inline-клавиатуру ранее отправленного сообщения."""
+        if not chat_id or not message_id or not text:
+            logger.warning(
+                "Неполные данные для редактирования: chat_id=%s, message_id=%s",
+                chat_id,
+                message_id,
+            )
+            return
+
+        try:
+            reply_markup = (
+                InlineKeyboardMarkup.model_validate(keyboard) if keyboard else None
+            )
+            await self._bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=text,
+                reply_markup=reply_markup,
+            )
+        except Exception as e:
+            logger.exception(
+                "Не удалось отредактировать сообщение %s в чате %s: %s",
+                message_id,
+                chat_id,
+                e,
+            )
 
     async def send_offer(
         self,

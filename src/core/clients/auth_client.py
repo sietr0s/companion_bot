@@ -72,9 +72,9 @@ class AuthClient:
             auth_id = await service.register_and_return_id(session, data)
             return auth_id
 
-        from src.core.database import get_async_session_factory
+        from src.core.database import create_async_session
 
-        async with get_async_session_factory()() as s:
+        async with create_async_session() as s:
             auth_id = await service.register_and_return_id(s, data)
             return auth_id
 
@@ -98,8 +98,24 @@ class AuthClient:
             account = await service.repository.get_by_identifier(session, identifier)
             return account.id if account else None
 
-        from src.core.database import get_async_session_factory
+        from src.core.database import create_async_session
 
-        async with get_async_session_factory()() as s:
+        async with create_async_session() as s:
             account = await service.repository.get_by_identifier(s, identifier)
             return account.id if account else None
+
+    async def delete_account(
+        self,
+        auth_id: uuid.UUID,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Удалить учётную запись через API модуля auth."""
+        service = self._get_service()
+        if session is not None:
+            await service.delete_account_internal(session, auth_id)
+            return
+
+        from src.core.database import create_async_session
+
+        async with create_async_session() as own_session:
+            await service.delete_account_internal(own_session, auth_id)

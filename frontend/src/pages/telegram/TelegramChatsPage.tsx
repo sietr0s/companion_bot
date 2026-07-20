@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button, Card, Col, Empty, List, Row, Space, Tag, Typography } from 'antd';
-import { SettingOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { Button, Card, Col, Empty, List, Row, Space, Tag, Typography, message } from 'antd';
+import { CheckOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PageTitle } from '../../components/common/PageTitle';
 import { ChatRead, TelegramClientsService } from '../../api/generated';
@@ -11,6 +11,7 @@ export function TelegramChatsPage() {
   const { accountId } = useParams<{ accountId: string }>();
   const navigate = useNavigate();
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   const accountQuery = useQuery({
     queryKey: ['telegram', 'account', accountId],
@@ -33,6 +34,26 @@ export function TelegramChatsPage() {
         selectedChatId!,
         50,
       ),
+  });
+
+  const whitelistMutation = useMutation({
+    mutationFn: (chatId: number) =>
+      TelegramClientsService.addChatToWhitelistApiV1PublicTelegramAccountIdWhitelistPost(accountId!, { chat_id: chatId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['telegram', 'chats', accountId] });
+      void queryClient.invalidateQueries({ queryKey: ['telegram', 'settings', accountId] });
+      void message.success('Чат добавлен в whitelist');
+    },
+  });
+
+  const removeWhitelistMutation = useMutation({
+    mutationFn: (chatId: number) =>
+      TelegramClientsService.removeChatFromWhitelistApiV1PublicTelegramAccountIdWhitelistChatIdDelete(accountId!, chatId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['telegram', 'chats', accountId] });
+      void queryClient.invalidateQueries({ queryKey: ['telegram', 'settings', accountId] });
+      void message.success('Чат убран из whitelist');
+    },
   });
 
   const phone = accountQuery.data?.phone ?? `Аккаунт ${accountId}`;
@@ -65,6 +86,17 @@ export function TelegramChatsPage() {
                   style={{ cursor: 'pointer' }}
                 >
                   <List.Item.Meta title={item.name ?? item.username ?? String(item.id)} description={item.chat_type} />
+                  <Button
+                    size="small"
+                    icon={item.is_in_whitelist ? <CheckOutlined /> : <PlusOutlined />}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (item.is_in_whitelist) removeWhitelistMutation.mutate(item.id);
+                      else whitelistMutation.mutate(item.id);
+                    }}
+                  >
+                    {item.is_in_whitelist ? 'Убрать' : 'Добавить'}
+                  </Button>
                 </List.Item>
               )}
             />

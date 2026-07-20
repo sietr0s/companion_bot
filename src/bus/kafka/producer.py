@@ -8,8 +8,6 @@ Kafka-реализация продюсера шины сообщений.
 
 import json
 import logging
-from collections import defaultdict
-from collections.abc import Callable
 from typing import Any
 
 import backoff
@@ -30,7 +28,6 @@ class KafkaProducerBus:
 
     def __init__(self) -> None:
         self._producer: AIOKafkaProducer | None = None
-        self._subscribers: dict[str, list[Callable]] = defaultdict(list)
 
     async def start(self) -> None:
         """Инициализация и запуск Kafka-продюсера с retry."""
@@ -62,15 +59,13 @@ class KafkaProducerBus:
             await self._producer.stop()
             logger.info("KafkaProducerBus остановлен")
 
-    async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
+    async def publish(self, topic: str, message: dict[str, Any]) -> None:
         """
         Отправка сообщения в Kafka-топик.
 
         send_and_wait — гарантированная отправка
         с подтверждением от брокера.
 
-        Параметр await_handlers добавлен для совместимости
-        с протоколом MessageBus. Kafka всегда асинхронная.
         """
         if not self._producer:
             logger.error("Kafka-продюсер не инициализирован")
@@ -83,22 +78,3 @@ class KafkaProducerBus:
         if self._producer:
             await self._producer.send_and_wait(topic, message)
             logger.info("Сообщение отправлено в топик '%s'", topic)
-
-    def subscribe(self, topic: str) -> Callable:
-        """
-        Декоратор для регистрации обработчика на топик.
-
-        В Kafka-режиме подписчики регистрируются локально
-        для использования в KafkaConsumerRouter.
-        """
-
-        def decorator(func: Callable) -> Callable:
-            self._subscribers[topic].append(func)
-            logger.info("Зарегистрирован обработчик %s на топик '%s'", func.__name__, topic)
-            return func
-
-        return decorator
-
-    def get_subscribers(self) -> dict[str, list[Callable]]:
-        """Возвращает реестр подписчиков."""
-        return dict(self._subscribers)

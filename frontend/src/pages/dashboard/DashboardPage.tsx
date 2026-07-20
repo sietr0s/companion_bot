@@ -4,20 +4,21 @@ import { PageTitle } from '../../components/common/PageTitle';
 import {
   ClassifierService,
   HealthService,
-  InternalService,
+  MediaService,
   NotificationsService,
   TelegramClientsService,
+  UsersService,
 } from '../../api/generated';
 import { formatDate } from '../../utils/formatters';
 
 export function DashboardPage() {
   const usersQuery = useQuery({
     queryKey: ['dashboard', 'users'],
-    queryFn: () => InternalService.getUsersInternalUsersGet(undefined, 1, 1),
+    queryFn: () => UsersService.getUsersAdminApiV1PublicUsersGet(undefined, 1, 1),
   });
   const mediaQuery = useQuery({
     queryKey: ['dashboard', 'media'],
-    queryFn: () => InternalService.listFilesInternalInternalMediaGet(undefined, 1, 1),
+    queryFn: () => MediaService.listFilesAdminApiV1PublicMediaGet(undefined, 1, 1),
   });
   const telegramQuery = useQuery({
     queryKey: ['dashboard', 'telegram'],
@@ -38,7 +39,7 @@ export function DashboardPage() {
 
   return (
     <Space direction="vertical" size="large" className="page-stack">
-      <PageTitle title="Dashboard" subtitle="Сводка по живым backend-данным из FastAPI и internal/public endpoint'ов" />
+      <PageTitle title="Dashboard" subtitle="Сводка по живым backend-данным из public API FastAPI" />
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12} xl={6}>
           <Card>
@@ -62,7 +63,7 @@ export function DashboardPage() {
         <Col xs={24} md={12} xl={6}>
           <Card>
             <Statistic
-              title="Classifier categories"
+              title="Categories"
               value={categoriesQuery.data?.length ?? 0}
               loading={categoriesQuery.isLoading}
             />

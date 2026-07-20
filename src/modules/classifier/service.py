@@ -6,7 +6,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.service import BaseService
-from src.bus.interface import MessageBus
+from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.classifier.ai.base import CategoryClassifier, EntityExtractor
@@ -23,7 +23,7 @@ from src.modules.classifier.schemas.events import (
 from src.modules.classifier.schemas.public.category import CategoryCreate, CategoryUpdate
 
 
-class ClassifierService(BaseService[CategoryRepository]):
+class ClassifierService(BaseService[CategoryRepository, Category]):
     """
     Сервис классификации текстов.
 
@@ -34,7 +34,7 @@ class ClassifierService(BaseService[CategoryRepository]):
         self,
         repository: CategoryRepository,
         log_repository: ClassificationLogRepository,
-        message_bus: MessageBus,
+        message_bus: MessageProducer,
         category_classifier: CategoryClassifier,
         entity_extractor: EntityExtractor,
     ) -> None:
@@ -93,10 +93,19 @@ class ClassifierService(BaseService[CategoryRepository]):
         await self.repository.delete(session, category)
 
     async def get_all_categories(
-        self, session: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        session: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = "-created_at",
     ) -> tuple[list[Category], int]:
         """Получить список всех категорий с пагинацией."""
-        return await self.repository.get_list(session, skip=skip, limit=limit)
+        return await self.repository.get_list(
+            session,
+            skip=skip,
+            limit=limit,
+            order_by=order_by,
+        )
 
     async def init_default_categories(self, session: AsyncSession) -> None:
         """

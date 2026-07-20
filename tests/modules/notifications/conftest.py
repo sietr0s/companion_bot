@@ -27,7 +27,11 @@ def mock_users_client(monkeypatch):
     """Мок для UsersClient.resolve_email_by_auth_id."""
     from src.core.clients.users_client import UsersClient
 
-    async def mock_resolve_email_by_auth_id(self, auth_id: uuid.UUID) -> str:
+    async def mock_resolve_email_by_auth_id(
+        self,
+        auth_id: uuid.UUID,
+        session=None,
+    ) -> str:
         return f"user{str(auth_id)[:8]}@test.com"
 
     monkeypatch.setattr(UsersClient, "resolve_email_by_auth_id", mock_resolve_email_by_auth_id)

@@ -10,9 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.filters import Filter
 from src.base.service import BaseService
+from src.bus.interface import MessageProducer
+from src.core.bus_topics import BusTopics
 from src.core.clients.users_client import UsersClient
 from src.core.exceptions import NotFoundError
-from src.modules.notifications.constants import NotificationStatus
+from src.modules.notifications.constants import NotificationChannel, NotificationStatus
 from src.modules.notifications.models import NotificationLog, NotificationTemplate
 from src.modules.notifications.providers.base import NotificationProvider
 from src.modules.notifications.repository import (
@@ -22,7 +24,7 @@ from src.modules.notifications.repository import (
 from src.modules.notifications.template_engine import find_template, render
 
 
-class NotificationService(BaseService[NotificationTemplateRepository]):
+class NotificationService(BaseService[NotificationTemplateRepository, NotificationTemplate]):
     """
     Сервис управления уведомлениями.
 
@@ -34,10 +36,12 @@ class NotificationService(BaseService[NotificationTemplateRepository]):
         template_repo: NotificationTemplateRepository,
         log_repo: NotificationLogRepository,
         provider: NotificationProvider,
+        message_bus: MessageProducer,
     ) -> None:
         super().__init__(template_repo)
         self.log_repo = log_repo
         self.provider = provider
+        self.message_bus = message_bus
 
     # --- Шаблоны ---
 
@@ -60,9 +64,10 @@ class NotificationService(BaseService[NotificationTemplateRepository]):
         skip: int = 0,
         limit: int = 100,
         filters: list[Filter] | None = None,
+        order_by: str | None = "-created_at",
     ) -> tuple[list[NotificationTemplate], int]:
         """Получить список шаблонов с фильтрацией и пагинацией."""
-        return await self.repository.get_list(session, filters, skip, limit)
+        return await self.repository.get_list(session, filters, skip, limit, order_by)
 
     async def update_template(
         self,
@@ -87,9 +92,10 @@ class NotificationService(BaseService[NotificationTemplateRepository]):
         skip: int = 0,
         limit: int = 50,
         filters: list[Filter] | None = None,
+        order_by: str | None = "-created_at",
     ) -> tuple[list[NotificationLog], int]:
         """Получить историю уведомлений с фильтрацией и пагинацией."""
-        return await self.log_repo.get_list(session, filters, skip, limit)
+        return await self.log_repo.get_list(session, filters, skip, limit, order_by)
 
     # --- Отправка ---
 
@@ -110,9 +116,16 @@ class NotificationService(BaseService[NotificationTemplateRepository]):
         4. Отправить через провайдер
         5. Сохранить в лог
         """
-        # Резолвим email по auth_id
         client = UsersClient()
-        recipient = await client.resolve_email_by_auth_id(auth_id)
+        if channel == NotificationChannel.TELEGRAM:
+            recipient = str(
+                await client.resolve_telegram_id_by_auth_id(auth_id, session=session)
+            )
+        else:
+            recipient = await client.resolve_email_by_auth_id(auth_id, session=session)
+
+        if recipient is None:
+            raise NotFoundError(detail="Получатель уведомления не найден")
 
         # Ищем шаблон
         template_data = await find_template(session, template_name, channel)
@@ -132,11 +145,16 @@ class NotificationService(BaseService[NotificationTemplateRepository]):
             rendered_body = str(body)
             subject = template_name
 
-        # Отправляем через провайдер
         status = NotificationStatus.SENT
         error_message = None
         try:
-            await self.provider.send(recipient, subject, rendered_body)
+            if channel == NotificationChannel.TELEGRAM:
+                await self.message_bus.publish(
+                    BusTopics.BOT_MESSAGE_OUTGOING,
+                    {"chat_id": int(recipient), "text": rendered_body},
+                )
+            else:
+                await self.provider.send(recipient, subject, rendered_body)
         except Exception as e:
             status = NotificationStatus.FAILED
             error_message = str(e)

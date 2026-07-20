@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, Card, Form, Input, Space, Switch, message } from 'antd';
+import { Button, Card, Form, Space, Switch, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,10 +12,7 @@ export function TelegramSettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [settingsForm] = Form.useForm<{
-    read_groups: boolean;
-    read_personal: boolean;
-    read_channels: boolean;
-    whitelist_chat_ids: string;
+    use_whitelist: boolean;
   }>();
 
   const accountQuery = useQuery({
@@ -33,46 +30,27 @@ export function TelegramSettingsPage() {
   useEffect(() => {
     if (settingsQuery.data) {
       settingsForm.setFieldsValue({
-        read_groups: settingsQuery.data.read_groups,
-        read_personal: settingsQuery.data.read_personal,
-        read_channels: settingsQuery.data.read_channels,
-        whitelist_chat_ids: settingsQuery.data.whitelist_chat_ids.join(', '),
+        use_whitelist: settingsQuery.data.use_whitelist,
       });
     } else if (settingsQuery.error instanceof ApiError && settingsQuery.error.status === 404) {
       settingsForm.setFieldsValue({
-        read_groups: true,
-        read_personal: true,
-        read_channels: false,
-        whitelist_chat_ids: '',
+        use_whitelist: true,
       });
     }
   }, [settingsForm, settingsQuery.data, settingsQuery.error]);
 
   const settingsMutation = useMutation({
     mutationFn: async (values: {
-      read_groups: boolean;
-      read_personal: boolean;
-      read_channels: boolean;
-      whitelist_chat_ids: string;
+      use_whitelist: boolean;
     }) => {
-      const whitelistChatIds = values.whitelist_chat_ids
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-
       if (settingsQuery.data) {
         return TelegramClientsService.updateSettingsApiV1PublicTelegramAccountIdSettingsPut(accountId!, {
-          read_groups: values.read_groups,
-          read_personal: values.read_personal,
-          read_channels: values.read_channels,
+          use_whitelist: values.use_whitelist,
         });
       }
 
       return TelegramClientsService.createSettingsApiV1PublicTelegramAccountIdSettingsPost(accountId!, {
-        read_groups: values.read_groups,
-        read_personal: values.read_personal,
-        read_channels: values.read_channels,
-        whitelist_chat_ids: whitelistChatIds,
+        use_whitelist: values.use_whitelist,
       });
     },
     onSuccess: () => {
@@ -102,17 +80,8 @@ export function TelegramSettingsPage() {
           onFinish={(values) => settingsMutation.mutate(values)}
           style={{ maxWidth: 480 }}
         >
-          <Form.Item name="read_groups" label="Read groups" valuePropName="checked">
+          <Form.Item name="use_whitelist" label="Использовать whitelist" valuePropName="checked">
             <Switch />
-          </Form.Item>
-          <Form.Item name="read_personal" label="Read personal" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item name="read_channels" label="Read channels" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item name="whitelist_chat_ids" label="Whitelist chat ids">
-            <Input.TextArea rows={4} placeholder="1, 2, -100123..." />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={settingsMutation.isPending}>
             Сохранить настройки

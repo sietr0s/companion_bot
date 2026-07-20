@@ -10,6 +10,7 @@ class NotificationChannel(StrEnum):
 
     EMAIL = "email"
     SMS = "sms"
+    TELEGRAM = "telegram"
 
 
 class NotificationStatus(StrEnum):

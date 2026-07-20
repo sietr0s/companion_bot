@@ -1,40 +1,47 @@
-"""
-Интерфейс шины сообщений (MessageBus).
-
-Определяется как Protocol — структурная типизация Python.
-Модули зависят от абстракции, а не от конкретной реализации,
-что позволяет подменять in-memory на Kafka без изменений в бизнес-логике.
-"""
+"""Раздельные интерфейсы издателя и потребителя сообщений."""
 
 from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class MessageBus(Protocol):
-    """
-    Протокол шины сообщений.
+class MessageProducer(Protocol):
+    """Публикует сообщения, но не знает об обработчиках."""
 
-    Реализация может быть in-memory (для монолита)
-    или на базе Kafka (для микросервисной архитектуры).
-    """
-
-    async def publish(self, topic: str, message: dict[str, Any], await_handlers: bool = False) -> None:
+    async def publish(self, topic: str, message: dict[str, Any]) -> None:
         """Опубликовать сообщение в топик."""
         ...
 
-    def subscribe(self, topic: str) -> Callable:
-        """Декоратор для подписки обработчика на топик."""
-        ...
-
-    def get_subscribers(self) -> dict[str, list[Callable]]:
-        """Получить маппинг топиков на списки обработчиков."""
-        ...
-
     async def start(self) -> None:
-        """Запуск шины (подключение к брокеру и т.д.)."""
+        """Запустить подключение к транспорту."""
         ...
 
     async def stop(self) -> None:
-        """Остановка шины (закрытие соединений)."""
+        """Остановить подключение к транспорту."""
         ...
+
+
+@runtime_checkable
+class MessageConsumer(Protocol):
+    """Регистрирует обработчики и получает сообщения из транспорта."""
+
+    def subscribe(self, topic: str) -> Callable:
+        """Вернуть декоратор регистрации обработчика топика."""
+        ...
+
+    def get_subscribers(self) -> dict[str, list[Callable]]:
+        """Вернуть отображение топиков на обработчики."""
+        ...
+
+    async def start(self) -> None:
+        """Начать получение сообщений."""
+        ...
+
+    async def stop(self) -> None:
+        """Остановить получение сообщений."""
+        ...
+
+
+# Временный алиас для прикладных сервисов, которым нужна только публикация.
+# Новый код должен использовать MessageProducer явно.
+MessageBus = MessageProducer

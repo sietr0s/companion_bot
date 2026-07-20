@@ -7,6 +7,7 @@
 
 from unittest.mock import MagicMock
 
+from src.bus import configure_bus
 from src.modules.auth.dependencies import get_auth_repository, get_auth_service
 from src.modules.media.dependencies import get_media_service, get_stored_file_repository
 from src.modules.notifications.dependencies import (
@@ -35,7 +36,8 @@ class TestAuthDependencies:
 
         repo = get_auth_repository()
         bus = MagicMock()
-        service = get_auth_service(repo=repo, bus=bus)
+        configure_bus(bus, MagicMock())
+        service = get_auth_service(repo=repo)
         assert service is not None
         assert service.repository is repo
         assert service.message_bus is bus
@@ -55,10 +57,11 @@ class TestUserDependencies:
         repo = get_user_repository()
         bus = MagicMock()
         telegram_repo = MagicMock()
+        configure_bus(bus, MagicMock())
         service = get_user_service(repo=repo, telegram_repo=telegram_repo)
         assert service is not None
         assert service.repository is repo
-        assert service.message_bus is not None
+        assert service.message_bus is bus
 
 
 class TestMediaDependencies:
@@ -75,10 +78,12 @@ class TestMediaDependencies:
         repo = get_stored_file_repository()
         storage = MagicMock()
         bus = MagicMock()
-        service = get_media_service(repo=repo, storage=storage, bus=bus)
+        configure_bus(bus, MagicMock())
+        service = get_media_service(repo=repo, storage=storage)
         assert service is not None
         assert service.repository is repo
         assert service.storage is storage
+        assert service.message_bus is bus
 
 
 class TestNotificationDependencies:

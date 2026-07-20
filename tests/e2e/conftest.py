@@ -8,6 +8,7 @@ Session-файл: 1 на все тесты (scope="session").
 
 import asyncio
 import os
+import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from uuid import uuid4
@@ -26,7 +27,12 @@ from src.main import app
 # Константы
 # =============================================================================
 
-E2E_SESSION_DIR = Path(os.getenv("TG_TEST_SESSION_PATH", "/tmp/ms_starter_e2e_tests"))
+E2E_SESSION_DIR = Path(
+    os.getenv(
+        "TG_TEST_SESSION_PATH",
+        str(Path(tempfile.gettempdir()) / "ms_starter_e2e_tests"),
+    )
+)
 E2E_SESSION_DIR.mkdir(parents=True, exist_ok=True)
 
 TG_API_ID = int(os.getenv("TG_API_ID", "0"))
@@ -37,6 +43,18 @@ TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "")
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/ms_starter_e2e"
 )
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Real E2E scenarios run only when explicitly enabled."""
+    if os.getenv("RUN_E2E", "").lower() in {"1", "true", "yes"}:
+        return
+
+    e2e_root = Path(__file__).parent.resolve()
+    marker = pytest.mark.skip(reason="Set RUN_E2E=1 and configure external services")
+    for item in items:
+        if Path(str(item.path)).resolve().is_relative_to(e2e_root):
+            item.add_marker(marker)
 
 
 # =============================================================================
@@ -60,6 +78,9 @@ async def telegram_client() -> TelegramClient:
     Session-файл хранится между запусками.
     При первом запуске требует аутентификации (SMS-код + 2FA).
     """
+    if not TG_API_ID or not TG_API_HASH or not TG_TEST_USER_PHONE:
+        pytest.skip("E2E Telegram credentials are not configured")
+
     session_path = E2E_SESSION_DIR / "test_e2e"
 
     client = TelegramClient(
@@ -101,7 +122,7 @@ async def test_bot() -> Bot:
     Один бот на все тесты.
     """
     if not TG_BOT_TOKEN:
-        raise ValueError("TG_BOT_TOKEN не указан. Установите переменную окружения.")
+        pytest.skip("TG_BOT_TOKEN is not configured")
 
     bot = Bot(token=TG_BOT_TOKEN)
 

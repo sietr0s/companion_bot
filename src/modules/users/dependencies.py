@@ -27,5 +27,8 @@ def get_user_service(
     telegram_repo: TelegramRepository = Depends(get_telegram_repository),
 ) -> UserService:
     """Фабрика сервиса пользователей с внедрением репозитория и шины."""
-    producer = get_producer()
-    return UserService(repository=repo, message_bus=producer, telegram_repository=telegram_repo)
+    return UserService(
+        repository=repo,
+        message_bus=get_producer(),
+        telegram_repository=telegram_repo,
+    )

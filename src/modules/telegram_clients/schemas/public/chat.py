@@ -10,3 +10,4 @@ class ChatRead(BaseModel):
     name: str | None = None
     chat_type: str  # "private", "group", "channel"
     username: str | None = None
+    is_in_whitelist: bool = False

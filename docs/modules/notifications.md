@@ -4,7 +4,7 @@
 
 ## Назначение
 
-Отправка уведомлений (email/sms) через шаблоны Jinja2. Поддержка хранения шаблонов в БД и файловой системе. Логирование всех отправок.
+Отправка уведомлений (email/Telegram) через шаблоны Jinja2. Поддержка хранения шаблонов в БД и файловой системе. Логирование всех отправок.
 
 ## Бизнес-логика
 
@@ -12,7 +12,7 @@
 
 - Создание, чтение, обновление, удаление шаблонов уведомлений
 - Отправка уведомлений через шину сообщений
-- Поддержка различных каналов (email, sms)
+- Поддержка каналов email и Telegram (sms зарезервирован)
 - Рендеринг шаблонов Jinja2
 - Логирование всех отправок
 - Поиск шаблонов (БД → файлы)
@@ -105,7 +105,7 @@ class NotificationLogRepository(BaseRepository[NotificationLog]):
 **Расположение**: `src/modules/notifications/service.py`
 
 ```python
-class NotificationService(BaseService[NotificationTemplateRepository]):
+class NotificationService(BaseService[NotificationTemplateRepository, NotificationTemplate]):
     """Бизнес-логика управления уведомлениями"""
 ```
 
@@ -373,8 +373,8 @@ Authorization: Bearer <admin_token>
 
 | Метод | Путь | Описание | Auth |
 |-------|------|----------|------|
-| `POST` | `/internal/notifications/send` | Отправка уведомления | ❌ |
-| `POST` | `/internal/notifications/templates/{template_id}/render` | Тестовый рендер | ❌ |
+| `POST` | `/internal/notifications/send` | Отправка уведомления | Service key |
+| `POST` | `/internal/notifications/templates/{template_id}/render` | Тестовый рендер | Service key |
 
 #### Пример отправки уведомления
 
@@ -540,24 +540,13 @@ def get_notification_service(
     )
 
 
-def get_notification_service_factory(
-    message_bus: Annotated[MessageBus, Depends(get_message_bus)],
-) -> Callable[[AsyncSession], NotificationService]:
-    """
-    Фабрика сервисов для обработчиков шины
-    
-    Возвращает функцию, которая создаёт сервис с сессией
-    """
-    def factory(session: AsyncSession) -> NotificationService:
-        template_repo = NotificationTemplateRepository()
-        log_repo = NotificationLogRepository()
-        provider = SmtpProvider(...)
-        return NotificationService(
-            repository=template_repo,
-            log_repository=log_repo,
-            provider=provider,
-            session=session,
-        )
+def get_notification_service_factory() -> NotificationService:
+    """Создать сервис для обработчика шины."""
+    return NotificationService(
+        template_repo=NotificationTemplateRepository(),
+        log_repo=NotificationLogRepository(),
+        provider=SmtpProvider(),
+    )
     return factory
 ```
 
@@ -571,6 +560,7 @@ def get_notification_service_factory(
 class NotificationChannel(str, Enum):
     EMAIL = "email"  # Email уведомления
     SMS = "sms"      # SMS уведомления
+    TELEGRAM = "telegram"  # Сообщения через Telegram-бота
 ```
 
 ### NotificationStatus

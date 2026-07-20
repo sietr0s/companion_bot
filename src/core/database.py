@@ -32,6 +32,12 @@ def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
     return _async_session_factory
 
 
+def create_async_session() -> AsyncSession:
+    """Создать новую асинхронную сессию БД."""
+    factory = get_async_session_factory()
+    return factory()
+
+
 async def init_db() -> None:
     global _engine, _async_session_factory
 
@@ -59,6 +65,5 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     Используется как зависимость в FastAPI (Depends).
     Сессия автоматически закрывается после завершения запроса.
     """
-    factory = get_async_session_factory()
-    async with factory() as session:
+    async with create_async_session() as session:
         yield session

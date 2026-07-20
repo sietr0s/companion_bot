@@ -1,18 +1,21 @@
 """
 DI-зависимости модуля job_matcher.
 
-Фабрики для внедрения JobMatcherService через FastAPI Depends.
+Фабрики сервисов, разделённых по ответственности.
 """
 
 from fastapi import Depends
 
-from src.bus.interface import MessageBus
 from src.bus import get_producer
 from src.modules.job_matcher.repository import (
     JobOfferRepository,
     SubscriptionRepository,
 )
-from src.modules.job_matcher.service import JobMatcherService
+from src.modules.job_matcher.services import (
+    JobMatcherUserService,
+    JobOfferService,
+    SubscriptionService,
+)
 
 
 def get_job_offer_repository() -> JobOfferRepository:
@@ -25,33 +28,55 @@ def get_subscription_repository() -> SubscriptionRepository:
     return SubscriptionRepository()
 
 
-def get_job_matcher_service(
+def get_job_offer_service(
     offer_repo: JobOfferRepository = Depends(get_job_offer_repository),
     sub_repo: SubscriptionRepository = Depends(get_subscription_repository),
-    bus: MessageBus = Depends(get_producer),
-) -> JobMatcherService:
-    """Фабрика сервиса подбора вакансий с внедрением репозиториев и шины."""
-    return JobMatcherService(
+) -> JobOfferService:
+    """Фабрика сервиса вакансий."""
+    return JobOfferService(
         offer_repo=offer_repo,
         sub_repo=sub_repo,
-        bus=bus,
+        bus=get_producer(),
     )
 
 
-def get_job_matcher_service_factory(
-    bus: MessageBus | None = None,
-):
-    """
-    Фабрика (session, service) для обработчиков шины.
+def get_subscription_service(
+    repository: SubscriptionRepository = Depends(get_subscription_repository),
+) -> SubscriptionService:
+    """Фабрика сервиса подписок."""
+    return SubscriptionService(repository=repository, bus=get_producer())
 
-    Возвращает кортеж (session, JobMatcherService) для использования
-    в обработчиках событий шины.
 
-    Args:
-        bus: Шина сообщений. Если None, используется шина по умолчанию.
-    """
-    return JobMatcherService(
+def get_job_matcher_user_service(
+    repository: SubscriptionRepository = Depends(get_subscription_repository),
+) -> JobMatcherUserService:
+    """Фабрика сервиса пользователей job_matcher."""
+    return JobMatcherUserService(
+        subscription_repository=repository,
+        bus=get_producer(),
+    )
+
+
+def get_job_offer_service_factory() -> JobOfferService:
+    """Создать сервис вакансий для обработчика шины."""
+    return JobOfferService(
         offer_repo=get_job_offer_repository(),
         sub_repo=get_subscription_repository(),
-        bus=bus,
+        bus=get_producer(),
+    )
+
+
+def get_subscription_service_factory() -> SubscriptionService:
+    """Создать сервис подписок для обработчика шины."""
+    return SubscriptionService(
+        repository=get_subscription_repository(),
+        bus=get_producer(),
+    )
+
+
+def get_job_matcher_user_service_factory() -> JobMatcherUserService:
+    """Создать сервис пользователей для обработчика шины."""
+    return JobMatcherUserService(
+        subscription_repository=get_subscription_repository(),
+        bus=get_producer(),
     )

@@ -6,6 +6,7 @@ import uuid
 
 from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
+from src.bus.in_memory.transport import InMemoryTransport
 from src.modules.auth.schemas.events import UserLoggedIn, UserRegistered
 from src.modules.users.schemas.events import ProfileCreated, ProfileDeleted, ProfileUpdated
 
@@ -74,34 +75,37 @@ class TestInMemoryProducer:
 
     async def test_subscribe_and_publish(self):
         """Обработчик вызывается при публикации в топик."""
-        bus = InMemoryProducer()
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
         received = []
 
-        @bus.subscribe("test.topic")
+        @consumer.subscribe("test.topic")
         async def handler(message):
             received.append(message)
 
-        await bus.publish("test.topic", {"key": "value"})
-        # Даём event loop время выполнить create_task
-        import asyncio
-
-        await asyncio.sleep(0.05)
+        await consumer.start()
+        await producer.publish("test.topic", {"key": "value"})
+        await transport.queue.join()
+        await consumer.stop()
         assert len(received) == 1
         assert received[0]["key"] == "value"
 
     def test_multiple_subscribers(self):
         """Несколько обработчиков на один топик."""
-        bus = InMemoryProducer()
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
 
-        @bus.subscribe("multi")
+        @consumer.subscribe("multi")
         async def handler1(msg):
             pass
 
-        @bus.subscribe("multi")
+        @consumer.subscribe("multi")
         async def handler2(msg):
             pass
 
-        assert len(bus.get_subscribers()["multi"]) == 2
+        assert len(consumer.get_subscribers()["multi"]) == 2
 
     async def test_publish_no_subscribers(self):
         """Публикация в топик без подписчиков не вызывает ошибку."""
@@ -110,23 +114,24 @@ class TestInMemoryProducer:
 
     async def test_async_handler_called(self):
         """Асинхронный обработчик получает сообщение."""
-        bus = InMemoryProducer()
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
         received = []
 
-        @bus.subscribe("async.topic")
+        @consumer.subscribe("async.topic")
         async def handler(message):
             received.append(message)
 
-        await bus.publish("async.topic", {"payload": 42})
-        # Даём event loop время выполнить create_task
-        import asyncio
-
-        await asyncio.sleep(0.05)
+        await consumer.start()
+        await producer.publish("async.topic", {"payload": 42})
+        await transport.queue.join()
+        await consumer.stop()
         assert len(received) == 1
         assert received[0]["payload"] == 42
 
     async def test_start_stop(self):
-        """start/stop не вызывают ошибок (заглушки)."""
+        """Producer не требует отдельной фоновой задачи."""
         bus = InMemoryProducer()
         await bus.start()
         await bus.stop()
@@ -136,7 +141,9 @@ class TestInMemoryConsumer:
     """Тесты in-memory консьюмера."""
 
     async def test_start_stop(self):
-        """start/stop не вызывают ошибок (заглушки)."""
-        consumer = InMemoryConsumer(subscribers={})
+        """Consumer запускает и корректно останавливает чтение очереди."""
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport, producer)
         await consumer.start()
         await consumer.stop()

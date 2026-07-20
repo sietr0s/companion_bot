@@ -8,9 +8,7 @@ from pydantic import BaseModel
 class TelegramSettingsRead(BaseModel):
     """Чтение настроек Telegram-аккаунта (public)."""
 
-    read_groups: bool
-    read_personal: bool
-    read_channels: bool
+    use_whitelist: bool
     whitelist_chat_ids: list[str | int]
     created_at: datetime
     updated_at: datetime
@@ -21,7 +19,5 @@ class TelegramSettingsRead(BaseModel):
 class TelegramSettingsUpdate(BaseModel):
     """Обновление настроек Telegram-аккаунта (public)."""
 
-    read_groups: bool | None = None
-    read_personal: bool | None = None
-    read_channels: bool | None = None
+    use_whitelist: bool | None = None
     whitelist_chat_ids: list[str | int] | None = None

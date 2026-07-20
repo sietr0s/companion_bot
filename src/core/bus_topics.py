@@ -63,6 +63,7 @@ class BusTopics:
 
     # Модуль JobBot — команда на отправку сообщения пользователю
     BOT_MESSAGE_OUTGOING: str = "job_bot.command.send_message"
+    BOT_MESSAGE_EDIT: str = "job_bot.command.edit_message"
 
     # ========== Системные топики ==========
     DLQ: str = "bus.dlq"

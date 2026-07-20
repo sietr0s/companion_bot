@@ -8,7 +8,7 @@
 import logging
 import uuid
 
-from src.core.database import get_async_session_factory
+from src.core.database import create_async_session
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class MediaClient:
             Исключения пробрасываются наверх (ValueError, SQLAlchemyError и т.д.).
         """
         service = self._get_service()
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             stored_file = await service.upload(
                 session,
                 filename=filename,
@@ -83,7 +83,7 @@ class MediaClient:
         """
         service = self._get_service()
         file_uuid = uuid.UUID(file_id)
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             _, data = await service.download(session, file_uuid)
             return data
 
@@ -102,6 +102,6 @@ class MediaClient:
         """
         service = self._get_service()
         file_uuid = uuid.UUID(file_id)
-        async with get_async_session_factory()() as session:
+        async with create_async_session() as session:
             await service.delete(session, file_uuid)
             return True

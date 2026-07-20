@@ -6,7 +6,7 @@
 
 ### Основные принципы
 - **Изоляция модулей** — модули не импортируют друг друга напрямую
-- **Связь через шину** — взаимодействие только через события (MessageBus)
+- **Связь через шину** — `MessageProducer` публикует, `MessageConsumer` подписывается
 - **Интерфейсы (Protocol)** — зависимости между модулями через абстракции
 - **Нет ForeignKey между модулями** — каждая таблица принадлежит одному модулю
 - **DI-контейнер** — FastAPI Depends для внедрения зависимостей
@@ -55,7 +55,7 @@ src/
     └── job_matcher/             # Бизнес-логика подбора вакансий
         ├── models.py            # Subscription, JobOffer
         ├── repository.py        # Репозиторий подписок
-        ├── service.py           # JobMatcherService
+        ├── services/            # JobOfferService, SubscriptionService, JobMatcherUserService
         └── handlers.py          # Обработчики шины
 ```
 
@@ -198,7 +198,7 @@ async def test_get_profile_not_found(db_session: AsyncSession):
 | `src/main.py` | Точка входа, инициализация шины, регистрация роутеров и обработчиков |
 | `src/core/exceptions.py` | Иерархия исключений (`AppException`, `NotFoundError`, `ConflictError`, `UnauthorizedError`) |
 | `src/core/clients/` | Клиенты для межмодульного взаимодействия (`UsersClient`, `MediaClient`) |
-| `src/bus/interface.py` | Protocol `MessageBus` — интерфейс шины |
+| `src/bus/interface.py` | Protocol `MessageProducer` и `MessageConsumer` |
 | `tests/conftest.py` | Общие фикстуры для тестов |
 | `STYLEGUIDE.md` | Подробный гайд по стилю кода в проекте |
 | `docs/architecture.md` | Детальная документация по архитектуре |
@@ -209,12 +209,12 @@ async def test_get_profile_not_found(db_session: AsyncSession):
 
 1. Создать директорию `src/modules/<module_name>/`
 2. Создать `models.py` — SQLAlchemy модели
-3. Создать `schemas/api.py` — Pydantic схемы для API
+3. Создать `schemas/public/` и `schemas/internal/` — Pydantic-схемы HTTP API
 4. Создать `schemas/events.py` — схемы событий шины
 5. Создать `repository.py` — репозиторий с кастомными методами
 6. Создать `service.py` — бизнес-логика
-7. Создать `router.py` — HTTP роуты (публичные)
-8. Создать `internal.py` — HTTP роуты (внутренние, если нужно)
+7. Создать `routers/public.py` — публичный роутер со своим полным префиксом
+8. Создать `routers/internal.py` — internal-роутер со своим полным префиксом
 9. Создать `handlers.py` — обработчики событий шины
 10. **Создать `dependencies.py`** — DI-фабрики модуля (не в `core/dependencies.py`)
 11. Зарегистрировать топики в `src/core/bus_topics.py`
@@ -223,7 +223,7 @@ async def test_get_profile_not_found(db_session: AsyncSession):
 
 ## Important Notes
 
-- **TelegramClientManager** — singleton, управляется в `main.py`, не через DI
+- **TelegramClientManager** — один экземпляр на `ApplicationContainer` и lifespan приложения
 - **Session-файлы Telegram** хранятся в `sessions/` (маунтится в Docker)
 - **Клиенты** получают session внутри методов через `get_session()` — не нужно передавать вручную
 - **Обработчики шины** не используют try/except — ошибки пробрасываются наверх

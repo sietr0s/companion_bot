@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # JWT — обязательное поле, без дефолта
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60*24
 
     # Шина сообщений: "in_memory" или "kafka"
     MESSAGE_BUS: str = "in_memory"
@@ -58,6 +58,7 @@ class Settings(BaseSettings):
 
     # Internal API (межмодульное взаимодействие)
     INTERNAL_API_BASE_URL: str = "http://localhost:8000/internal"
+    INTERNAL_SERVICE_KEY: str
 
     # Telegram (Telethon)
     TG_API_ID: int = 0
@@ -82,6 +83,9 @@ class Settings(BaseSettings):
     # Шаблоны
     TEMPLATES_DIR: str = "templates"
 
+    # Classifier
+    CLASSIFIER_CATEGORY_MIN_SCORE: float = 0.8
+
     # Media
     MEDIA_STORAGE_PROVIDER: str = "local"  # "local" | "s3"
     MEDIA_STORAGE_PATH: str = "uploads"  # для LocalStorage
@@ -94,8 +98,9 @@ class Settings(BaseSettings):
     APP_URL: str = "http://localhost:8000"  # для webhook
 
     # Classifier (AI-классификация)
-    CLASSIFIER_MODEL_NAME: str = "facebook/bart-large-mnli"
+    CLASSIFIER_MODEL_NAME: str = "knowledgator/gliclass-large-v1.0"
     CLASSIFIER_DEVICE: int = -1  # -1 = CPU, 0 = GPU
+    CLASSIFIER_THRESHOLD: float = 0.5
 
     # Admin (seed-пользователь) — обязательные поля, без дефолтов
     ADMIN_EMAIL: str
