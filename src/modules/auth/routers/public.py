@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_current_user, get_db_session
 from src.modules.auth.dependencies import get_auth_service
-from src.modules.auth.schemas.public import (
+from src.modules.auth.schemas_api import (
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,

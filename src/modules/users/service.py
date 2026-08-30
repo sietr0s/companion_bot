@@ -19,7 +19,7 @@ from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.users.constants import ERROR_MESSAGES
 from src.modules.users.models import Telegram, User
 from src.modules.users.repository import TelegramRepository, UserRepository
-from src.modules.users.schemas.events import ProfileCreated, ProfileDeleted, ProfileUpdated
+from src.modules.users.schemas_bus import ProfileCreated, ProfileDeleted, ProfileUpdated
 
 
 class UserService(BaseService[UserRepository, User]):

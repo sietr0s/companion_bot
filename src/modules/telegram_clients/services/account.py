@@ -35,19 +35,19 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
     TelegramSettingsRepository,
 )
-from src.modules.telegram_clients.schemas.events import (
-    Media,
-    Sender,
-    TgAccountConnected,
-    TgAccountDisconnected,
-    TgMessageReceived,
-)
-from src.modules.telegram_clients.schemas.public import (
+from src.modules.telegram_clients.schemas_api import (
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
     QrStartResponse,
     QrStatusResponse,
+)
+from src.modules.telegram_clients.schemas_bus import (
+    Media,
+    Sender,
+    TgAccountConnected,
+    TgAccountDisconnected,
+    TgMessageReceived,
 )
 
 logger = logging.getLogger(__name__)

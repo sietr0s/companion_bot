@@ -42,3 +42,10 @@ class InvalidFilterError(AppException):
 
     def __init__(self, detail: str = "Некорректный фильтр"):
         super().__init__(status_code=422, detail=detail)
+
+
+class ValidationError(AppException):
+    """Ошибка валидации данных (422)."""
+
+    def __init__(self, detail: str = "Ошибка валидации"):
+        super().__init__(status_code=422, detail=detail)

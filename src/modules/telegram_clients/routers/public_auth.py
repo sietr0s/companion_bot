@@ -7,13 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
 from src.modules.telegram_clients.dependencies import get_telegram_account_service
-from src.modules.telegram_clients.schemas.public import (
+from src.modules.telegram_clients.schemas_api import (
     AccountRead,
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
-    CodeRequest,
-    PasswordRequest,
     PhoneRequest,
     QrStartResponse,
     QrStatusResponse,

@@ -19,12 +19,9 @@ from src.core.security import create_access_token, hash_password, verify_passwor
 from src.modules.auth.constants import ERROR_MESSAGES
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
-from src.modules.auth.schemas.events import UserDeleted, UserLoggedIn, UserRegistered
-from src.modules.auth.schemas.internal import (
-    AuthRead,
-    VerifyTokenResponse,
-)
-from src.modules.auth.schemas.public import TokenResponse
+from src.modules.auth.schemas.internal import AuthRead, VerifyTokenResponse
+from src.modules.auth.schemas_api import TokenResponse
+from src.modules.auth.schemas_bus import UserDeleted, UserLoggedIn, UserRegistered
 
 
 class AuthService(BaseService[AuthRepository, Auth]):

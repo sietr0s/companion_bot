@@ -18,7 +18,7 @@ from src.core.dependencies import (
 )
 from src.core.exceptions import NotFoundError
 from src.modules.users.dependencies import get_user_service
-from src.modules.users.schemas.public import TelegramRead, UserCreate, UserRead, UserUpdate
+from src.modules.users.schemas_api import TelegramRead, UserCreate, UserRead, UserUpdate
 from src.modules.users.service import UserService
 
 router = APIRouter(prefix="/api/v1/public/users", tags=["Users"])
