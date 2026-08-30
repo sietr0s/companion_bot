@@ -18,13 +18,6 @@ from src.core.exceptions import AppException
 from src.core.seed import seed_admin
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
-from src.modules.job_bot.bot import create_bot, create_bot_service, create_dispatcher
-from src.modules.media.routers import internal_router as media_internal_router
-from src.modules.media.routers import public_router as media_router
-from src.modules.media.storage.local import LocalStorage
-from src.modules.notifications.handlers import register_handlers as register_notification_handlers
-from src.modules.notifications.routers import internal_router as notifications_internal_router
-from src.modules.notifications.routers import public_router as notifications_router
 from src.modules.telegram_clients.dependencies import get_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
 from src.modules.telegram_clients.routers import internal_router as tg_internal_router
@@ -45,7 +38,6 @@ logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
 def _register_bus_handlers(container: ApplicationContainer) -> None:
     consumer = container.consumer
-    producer = container.producer
 
     register_users_handlers(consumer)
     register_tg_handlers(consumer, container.telegram_client_manager)
@@ -157,8 +149,6 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.include_router(auth_internal_router)
     application.include_router(users_router)
     application.include_router(users_internal_router)
-    application.include_router(notifications_router)
-    application.include_router(notifications_internal_router)
     application.include_router(tg_router)
     application.include_router(tg_internal_router)
     application.include_router(media_router)

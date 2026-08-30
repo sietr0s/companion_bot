@@ -1,105 +1,69 @@
-# Modular Monolith Starter
+# Modular Monolith — Digital Companion
 
-Шаблон сервиса на основе **Modular Monolith** — изолированные модули в одном процессе, готовые к выносу в микросервисы.
+Модульный монолит с event-driven шиной сообщений.
 
 ## Быстрый старт
 
 ```bash
 python3.12 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # укажите DATABASE_URL, JWT_SECRET_KEY, TG_API_ID, TG_API_HASH
+cp .env.example .env
 uvicorn src.main:app --reload
 ```
 
 Swagger UI: `http://localhost:8000/docs`
 
-### Pre-commit hooks
+## Модули
 
-Для автоматической проверки кода перед коммитом:
+| Модуль | Описание |
+|--------|----------|
+| `auth` | Аутентификация и авторизация (JWT) |
+| `users` | Пользователи Telegram |
+| `telegram_clients` | Транспорт для Telegram (Telethon) |
+| `batching` | Группировка сообщений в батчи |
+| `memory` | Память диалогов, контекст, RAG |
+| `llm` | Генерация ответов через LLM |
+| `orchestrator` | Координация потока сообщений |
+
+## Структура модуля
+
+```text
+src/modules/<module_name>/
+├── __init__.py           # Публичный API
+├── dependencies.py       # DI-фабрики
+├── handlers.py           # Обработчики шины
+├── routers.py            # HTTP endpoints (опционально)
+├── models.py             # SQLAlchemy ORM
+├── schemas_api.py        # Pydantic схемы для HTTP
+├── schemas_bus.py        # Pydantic схемы для шины
+├── service.py            # Бизнес-логика
+├── repository.py         # Репозиторий
+└── exceptions.py         # Исключения модуля
+```
+
+## Архитектура
+
+- **Event-driven**: модули общаются только через шину событий
+- **Изоляция**: нет прямых вызовов между модулями
+- **Оркестратор**: координирует поток, подписан на все `.out` топики
+
+## Топики шины
+
+| Модуль | `.in` | `.out` |
+|--------|-------|--------|
+| users | get_or_create, update_last_seen | user_created, user_found |
+| telegram_clients | send_message | message_received, message_sent |
+| batching | add_message | batch_ready |
+| memory | process_batch, build_context, update_memory | batch_processed, context_built, memory_updated |
+| llm | generate_reply, summarize, pre_retrieve, post_retrieve | reply_generated, reply_suppressed, summary_generated |
+| orchestrator | все `.out` | все `.in` |
+
+## Pre-commit hooks
 
 ```bash
-# Установка pre-commit
 pip install pre-commit
 pre-commit install
-
-# Запуск всех проверок вручную
 pre-commit run --all-files
 ```
 
-**Что проверяется:**
-- `ruff` — линтинг и форматирование
-- `mypy` — проверка типов
-- `pytest` — тесты (при push)
-- Трейлинг-пробелы, концовка файлов, YAML-синтаксис
-
-## Документация
-
-| Документ | Описание |
-|----------|----------|
-| [Архитектура](docs/architecture.md) | Принципы, стек, структура проекта, ClientManager |
-| [API](docs/api.md) | Все HTTP-эндпоинты: Auth, Users, Telegram Clients |
-| [База данных](docs/database.md) | Модели, поля, индексы, ER-диаграмма |
-| [Шина сообщений](docs/bus.md) | Топики, события, реализации, диаграмма потоков |
-| [Новый модуль](docs/new-module.md) | Пошаговый гайд создания модуля (12 шагов + чеклист) |
-| [Правила изоляции](docs/isolation-rules.md) | Что разрешено / запрещено, паттерны общения |
-| [Развёртывание](docs/deployment.md) | Локальная разработка, Docker, Production, миграции |
-| [Фильтрация](docs/filters.md) | Универсальная система фильтрации, операторы, примеры |
-
-## Модули
-
-| Модуль | Префикс | Описание |
-|--------|---------|----------|
-| **auth** | `/auth` | Регистрация, вход, JWT (role: user/admin) |
-| **users** | `/users` | Профиль пользователя (CRUD) |
-| **telegram_clients** | `/telegram-clients` | Telegram-аккаунты, авторизация, чаты, сообщения |
-| **notifications** | `/notifications` | Шаблоны (Jinja2), отправка email, история (admin) |
-| **media** | `/media` | Загрузка/скачивание файлов, StorageProvider Protocol, is_public доступ |
-| **internal** | `/internal` | Межмодульный API: users, media (network-level) |
-
-## Тесты и линтинг
-
-```bash
-# Unit и интеграционные тесты
-pytest tests/ -v
-
-# E2E тесты (реальный Telegram API)
-pytest tests/e2e/ -v
-
-# Запуск с маркерами
-pytest tests/e2e/ -v -m "e2e and telegram"
-
-# Линтинг
-ruff check src/ tests/
-```
-
-### E2E тесты
-
-E2E тесты используют **реальный Telegram API** (Telethon + aiogram) для проверки сквозной интеграции модулей.
-
-**Быстрый старт:**
-
-```bash
-# 1. Настройка окружения
-cp .env.test.example .env.test
-# Заполните TG_API_ID, TG_API_HASH, TG_BOT_TOKEN, TG_TEST_USER_PHONE
-
-# 2. Первая аутентификация (создание session)
-mkdir -p /tmp/ms_starter_e2e_tests
-pytest tests/e2e/scenarios/test_registration.py -v
-
-# 3. Запуск всех E2E тестов
-pytest tests/e2e/ -v
-```
-
-**Документация:** См. [docs/e2e-testing.md](docs/e2e-testing.md) для подробного руководства.
-
-**Структура тестов:**
-- `tests/e2e/scenarios/` — User Journey (регистрация, сообщения, команды боту, match)
-- `tests/e2e/conftest.py` — фикстуры (Telethon клиент, aiogram бот, БД, шина)
-- `tests/e2e/utils.py` — вспомогательные функции
-
-**Маркеры:**
-- `@pytest.mark.e2e` — E2E тесты
-- `@pytest.mark.telegram` — тесты с Telegram API
-- `@pytest.mark.bot` — тесты с ботом
-- `@pytest.mark.slow` — медленные тесты (полный цикл)
+Проверки: `ruff`, `mypy`, `pytest`

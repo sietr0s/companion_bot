@@ -37,6 +37,10 @@ class BusTopics:
     MEDIA_UPLOADED: str = "media.event.uploaded"
     MEDIA_DELETED: str = "media.event.deleted"
 
+    # Модуль Batching — события пакетов
+    BATCH_READY: str = "batching.event.batch.ready"
+    BATCH_COMPLETED: str = "batching.event.batch.completed"
+
     # ========== Commands (публикует НЕ владелец, чтобы попросить другой модуль) ==========
 
     # Модуль TelegramClients — команды на отправку сообщений
@@ -44,6 +48,9 @@ class BusTopics:
 
     # Модуль Notifications — команда на отправку уведомления
     NOTIFICATION_SEND: str = "notifications.command.send"
+
+    # Модуль Batching — команды на добавление сообщения
+    BATCH_ADD_MESSAGE: str = "batching.command.add_message"
 
     # ========== Системные топики ==========
     DLQ: str = "bus.dlq"

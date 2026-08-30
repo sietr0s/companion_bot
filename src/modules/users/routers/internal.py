@@ -17,7 +17,7 @@ from src.core.dependencies import get_db_session
 from src.core.exceptions import NotFoundError
 from src.core.internal_auth import require_internal_service_key
 from src.modules.users.dependencies import get_user_service
-from src.modules.users.schemas.internal import (
+from src.modules.users.schemas_api import (
     TelegramCreate,
     TelegramRead,
     UserCreate,
