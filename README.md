@@ -55,9 +55,6 @@ pre-commit run --all-files
 | **notifications** | `/notifications` | Шаблоны (Jinja2), отправка email, история (admin) |
 | **media** | `/media` | Загрузка/скачивание файлов, StorageProvider Protocol, is_public доступ |
 | **internal** | `/internal` | Межмодульный API: users, media (network-level) |
-| **job_bot** | — | Telegram-бот (aiogram): шлюз для входящих/исходящих сообщений |
-| **job_matcher** | — | Бизнес-логика подбора вакансий: парсинг, классификация, подписки |
-| **classifier** | `/classifier` | AI-классификация текстов: категории, NER, логирование |
 
 ## Тесты и линтинг
 

@@ -18,13 +18,7 @@ from src.core.exceptions import AppException
 from src.core.seed import seed_admin
 from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
-from src.modules.classifier.handlers import register_handlers as register_classifier_handlers
-from src.modules.classifier.routers import internal_router as classifier_internal_router
-from src.modules.classifier.routers import public_router as classifier_router
 from src.modules.job_bot.bot import create_bot, create_bot_service, create_dispatcher
-from src.modules.job_matcher.handlers import register_handlers as register_job_matcher_handlers
-from src.modules.job_matcher.routers import internal_router as job_matcher_internal_router
-from src.modules.job_matcher.routers import public_router as job_matcher_public_router
 from src.modules.media.routers import internal_router as media_internal_router
 from src.modules.media.routers import public_router as media_router
 from src.modules.media.storage.local import LocalStorage
@@ -56,8 +50,6 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     register_users_handlers(consumer)
     register_tg_handlers(consumer, container.telegram_client_manager)
     register_notification_handlers(consumer)
-    register_job_matcher_handlers(consumer)
-    register_classifier_handlers(consumer, producer)
 
     @consumer.subscribe(BusTopics.DLQ)
     async def handle_dlq(message: dict) -> None:
@@ -89,15 +81,6 @@ def _create_lifespan(container: ApplicationContainer):
 
         async with create_async_session() as session:
             await seed_admin(session, producer)
-
-        from src.modules.classifier.handlers import init_default_categories_on_startup
-
-        await init_default_categories_on_startup()
-
-        from src.modules.classifier.ai.category import get_category_classifier
-
-        classifier_model = get_category_classifier()
-        await classifier_model.initialize()
 
         if settings.MEDIA_STORAGE_PROVIDER == "local":
             LocalStorage().ensure_base_path()
@@ -180,10 +163,6 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.include_router(tg_internal_router)
     application.include_router(media_router)
     application.include_router(media_internal_router)
-    application.include_router(classifier_router)
-    application.include_router(classifier_internal_router)
-    application.include_router(job_matcher_internal_router)
-    application.include_router(job_matcher_public_router)
 
     return application
 
