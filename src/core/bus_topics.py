@@ -37,19 +37,6 @@ class BusTopics:
     MEDIA_UPLOADED: str = "media.event.uploaded"
     MEDIA_DELETED: str = "media.event.deleted"
 
-    # Модуль JobBot — события входящих сообщений от бота
-    BOT_MESSAGE_INCOMING: str = "job_bot.event.message.incoming"
-
-    # Модуль JobMatcher — события бизнес-логики
-    JOB_OFFER_PARSED: str = "job_matcher.event.offer.parsed"
-    JOB_OFFER_CLASSIFIED: str = "job_matcher.event.offer.classified"
-    SUBSCRIPTION_CREATED: str = "job_matcher.event.subscription.created"
-    SUBSCRIPTION_UPDATED: str = "job_matcher.event.subscription.updated"
-    SUBSCRIPTION_DELETED: str = "job_matcher.event.subscription.deleted"
-
-    # Модуль Classifier — события классификации
-    TEXT_CLASSIFY_COMPLETED: str = "classifier.event.classify.completed"
-
     # ========== Commands (публикует НЕ владелец, чтобы попросить другой модуль) ==========
 
     # Модуль TelegramClients — команды на отправку сообщений
@@ -57,13 +44,6 @@ class BusTopics:
 
     # Модуль Notifications — команда на отправку уведомления
     NOTIFICATION_SEND: str = "notifications.command.send"
-
-    # Модуль Classifier — команда на классификацию текста
-    TEXT_CLASSIFY_REQUEST: str = "classifier.command.classify"
-
-    # Модуль JobBot — команда на отправку сообщения пользователю
-    BOT_MESSAGE_OUTGOING: str = "job_bot.command.send_message"
-    BOT_MESSAGE_EDIT: str = "job_bot.command.edit_message"
 
     # ========== Системные топики ==========
     DLQ: str = "bus.dlq"

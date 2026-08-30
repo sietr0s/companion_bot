@@ -1,7 +1,12 @@
 """Раздельные интерфейсы издателя и потребителя сообщений."""
 
 from collections.abc import Callable
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, TypeVar, runtime_checkable
+
+from pydantic import BaseModel
+
+T = TypeVar("T", bound=BaseModel)
+R = TypeVar("R", bound=BaseModel)
 
 
 @runtime_checkable
@@ -25,8 +30,22 @@ class MessageProducer(Protocol):
 class MessageConsumer(Protocol):
     """Регистрирует обработчики и получает сообщения из транспорта."""
 
-    def subscribe(self, topic: str) -> Callable:
-        """Вернуть декоратор регистрации обработчика топика."""
+    def subscribe(
+        self,
+        topic: str,
+        action: str,
+        schema: type[BaseModel],
+        handler: Callable[[T], R],
+    ) -> None:
+        """
+        Регистрирует обработчик с типизированной схемой.
+
+        Args:
+            topic: Топик для подписки.
+            action: Действие (используется для определения схемы).
+            schema: Pydantic схема для валидации входных данных.
+            handler: Обработчик, принимающий типизированный объект и возвращающий типизированный объект.
+        """
         ...
 
     def get_subscribers(self) -> dict[str, list[Callable]]:
