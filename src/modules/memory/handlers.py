@@ -3,7 +3,8 @@
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
-from src.modules.llm.dependencies import get_llm_service
+from src.modules.llm.dependencies import get_embedder
+from src.modules.llm.service import LLMService
 from src.modules.memory.repository import (
     ConversationRepository,
     MessageRepository,
@@ -25,7 +26,7 @@ def _service(producer: MessageProducer) -> MemoryService:
         summaries=SummaryStateRepository(),
         vectors=VectorRecordRepository(),
         message_bus=producer,
-        llm=get_llm_service(),
+        llm=LLMService(producer, get_embedder()),
     )
 
 
