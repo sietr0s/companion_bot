@@ -14,7 +14,11 @@ from src.modules.memory.repository import (
     SummaryStateRepository,
     VectorRecordRepository,
 )
-from src.modules.memory.schemas.events import BuildContextCommand, ProcessBatchCommand
+from src.modules.memory.schemas.events import (
+    BuildContextCommand,
+    ProcessBatchCommand,
+    UpdateMemoryCommand,
+)
 from src.modules.memory.service import MemoryService
 
 
@@ -238,3 +242,55 @@ async def test_build_context_omits_retrieved_on_pre_failure(db_session):
     assert event.retrieved_count == 0
     assert "User: recent" in event.context
     assert "Summary: past" in event.context
+
+
+@pytest.mark.asyncio
+async def test_update_memory_indexes_outgoing_batch(db_session):
+    conv = await ConversationRepository().create(
+        db_session,
+        {"telegram_chat_id": 30, "user_id": uuid.uuid4()},
+    )
+    llm = RecordingLLM()
+    svc = _service(llm)
+    event = await svc.update_memory(
+        db_session,
+        UpdateMemoryCommand(
+            conversation_id=conv.id,
+            telegram_chat_id=30,
+            outgoing_messages=["reply"],
+            delivery_status="delivered",
+        ),
+    )
+    row = (await db_session.execute(select(VectorRecord))).scalar_one()
+    assert "Assistant: reply" in row.text
+    assert row.extra_data["direction"] == "outgoing"
+    assert llm.embed_calls[0][1] == "document"
+    assert event.summary_updated is False
+    assert event.messages_count == 1
+    assert llm.summarize_calls == []
+
+
+@pytest.mark.asyncio
+async def test_update_memory_skips_when_not_delivered(db_session):
+    conv = await ConversationRepository().create(
+        db_session,
+        {"telegram_chat_id": 31, "user_id": uuid.uuid4()},
+    )
+    llm = RecordingLLM()
+    svc = _service(llm)
+    event = await svc.update_memory(
+        db_session,
+        UpdateMemoryCommand(
+            conversation_id=conv.id,
+            telegram_chat_id=31,
+            outgoing_messages=["reply"],
+            delivery_status="failed",
+        ),
+    )
+    count = (
+        await db_session.execute(select(func.count()).select_from(VectorRecord))
+    ).scalar()
+    assert count == 0
+    assert event.messages_count == 0
+    assert event.summary_updated is False
+    assert llm.embed_calls == []

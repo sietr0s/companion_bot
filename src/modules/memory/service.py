@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,6 +69,70 @@ class MemoryService:
         self._message_bus = message_bus
         self._llm = llm
 
+    async def _index_batch(
+        self,
+        session: AsyncSession,
+        *,
+        conversation_id: UUID,
+        messages: list[str],
+        direction: str,
+        sequence_numbers: list[int],
+        batch_id: UUID | None = None,
+    ) -> None:
+        if not sequence_numbers:
+            return
+        glued = glue_batch(messages, direction)
+        try:
+            embeddings = await self._llm.embed([glued], role="document")
+            await self._vectors.create(
+                session,
+                {
+                    "conversation_id": conversation_id,
+                    "text": glued,
+                    "embedding": embeddings[0],
+                    "extra_data": {
+                        "batch_id": str(batch_id) if batch_id is not None else None,
+                        "direction": direction,
+                        "seq_from": sequence_numbers[0],
+                        "seq_to": sequence_numbers[-1],
+                    },
+                },
+            )
+        except Exception:
+            logger.exception("failed to index batch embedding")
+
+    async def _maybe_summarize(
+        self,
+        session: AsyncSession,
+        *,
+        conversation_id: UUID,
+        current_sequence: int,
+    ) -> bool:
+        summary_state = await self._summaries.get_by_conversation_id(
+            session, conversation_id
+        )
+        checkpoint = summary_state.checkpoint if summary_state else 0
+        current_summary = summary_state.current_summary if summary_state else None
+        if current_sequence - checkpoint < SUMMARY_THRESHOLD:
+            return False
+        try:
+            after = await self._messages.get_after_checkpoint(
+                session, conversation_id, checkpoint
+            )
+            new_summary = await self._llm.summarize(
+                current_summary, [m.text for m in after]
+            )
+            await self._summaries.upsert(
+                session,
+                conversation_id,
+                new_summary,
+                current_sequence,
+            )
+            return True
+        except Exception:
+            logger.exception("failed to summarize conversation")
+            return False
+
     async def process_batch(
         self, session: AsyncSession, command: ProcessBatchCommand
     ) -> BatchProcessedEvent:
@@ -110,46 +174,19 @@ class MemoryService:
             },
         )
 
-        if sequence_numbers:
-            glued = glue_batch(command.messages, command.direction)
-            try:
-                embeddings = await self._llm.embed([glued], role="document")
-                await self._vectors.create(
-                    session,
-                    {
-                        "conversation_id": conversation.id,
-                        "text": glued,
-                        "embedding": embeddings[0],
-                        "extra_data": {
-                            "batch_id": str(command.batch_id) if command.batch_id is not None else None,
-                            "direction": command.direction,
-                            "seq_from": sequence_numbers[0],
-                            "seq_to": sequence_numbers[-1],
-                        },
-                    },
-                )
-            except Exception:
-                logger.exception("failed to index batch embedding")
-
-        summary_state = await self._summaries.get_by_conversation_id(session, conversation.id)
-        checkpoint = summary_state.checkpoint if summary_state else 0
-        current_summary = summary_state.current_summary if summary_state else None
-        if current_sequence - checkpoint >= SUMMARY_THRESHOLD:
-            try:
-                after = await self._messages.get_after_checkpoint(
-                    session, conversation.id, checkpoint
-                )
-                new_summary = await self._llm.summarize(
-                    current_summary, [m.text for m in after]
-                )
-                await self._summaries.upsert(
-                    session,
-                    conversation.id,
-                    new_summary,
-                    current_sequence,
-                )
-            except Exception:
-                logger.exception("failed to summarize conversation")
+        await self._index_batch(
+            session,
+            conversation_id=conversation.id,
+            messages=command.messages,
+            direction=command.direction,
+            sequence_numbers=sequence_numbers,
+            batch_id=command.batch_id,
+        )
+        await self._maybe_summarize(
+            session,
+            conversation_id=conversation.id,
+            current_sequence=current_sequence,
+        )
 
         event = BatchProcessedEvent(
             conversation_id=conversation.id,
@@ -210,8 +247,10 @@ class MemoryService:
             raise ConversationNotFoundError(f"Conversation {command.conversation_id} not found")
 
         messages_saved = 0
+        summary_updated = False
         if command.delivery_status == "delivered":
             current_sequence = conversation.last_sequence_number
+            sequence_numbers: list[int] = []
             for text in command.outgoing_messages:
                 current_sequence += 1
                 await self._messages.create(
@@ -224,6 +263,7 @@ class MemoryService:
                         "sequence_number": current_sequence,
                     },
                 )
+                sequence_numbers.append(current_sequence)
                 messages_saved += 1
             if messages_saved:
                 await self._conversations.update(
@@ -231,12 +271,24 @@ class MemoryService:
                     conversation,
                     {"last_sequence_number": current_sequence},
                 )
+                await self._index_batch(
+                    session,
+                    conversation_id=conversation.id,
+                    messages=command.outgoing_messages,
+                    direction="outgoing",
+                    sequence_numbers=sequence_numbers,
+                )
+                summary_updated = await self._maybe_summarize(
+                    session,
+                    conversation_id=conversation.id,
+                    current_sequence=current_sequence,
+                )
 
         event = MemoryUpdatedEvent(
             conversation_id=conversation.id,
             telegram_chat_id=conversation.telegram_chat_id,
             messages_count=messages_saved,
-            summary_updated=False,
+            summary_updated=summary_updated,
         )
         await self._message_bus.publish(BusTopics.MEMORY_UPDATED, event.to_bus_dict())
         return event
