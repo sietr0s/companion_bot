@@ -100,6 +100,7 @@ class MemoryService:
             )
         except Exception:
             logger.exception("failed to index batch embedding")
+            await session.rollback()
 
     async def _maybe_summarize(
         self,
@@ -131,6 +132,7 @@ class MemoryService:
             return True
         except Exception:
             logger.exception("failed to summarize conversation")
+            await session.rollback()
             return False
 
     async def process_batch(
@@ -174,9 +176,13 @@ class MemoryService:
             },
         )
 
+        conversation_id = conversation.id
+        telegram_chat_id = conversation.telegram_chat_id
+        telegram_account_id = conversation.telegram_account_id
+
         await self._index_batch(
             session,
-            conversation_id=conversation.id,
+            conversation_id=conversation_id,
             messages=command.messages,
             direction=command.direction,
             sequence_numbers=sequence_numbers,
@@ -184,14 +190,14 @@ class MemoryService:
         )
         await self._maybe_summarize(
             session,
-            conversation_id=conversation.id,
+            conversation_id=conversation_id,
             current_sequence=current_sequence,
         )
 
         event = BatchProcessedEvent(
-            conversation_id=conversation.id,
-            telegram_chat_id=conversation.telegram_chat_id,
-            telegram_account_id=conversation.telegram_account_id,
+            conversation_id=conversation_id,
+            telegram_chat_id=telegram_chat_id,
+            telegram_account_id=telegram_account_id,
             sequence_numbers=sequence_numbers,
             messages=list(command.messages),
         )
@@ -208,6 +214,7 @@ class MemoryService:
         )
         summary_state = await self._summaries.get_by_conversation_id(session, command.conversation_id)
         summary = summary_state.current_summary if summary_state else None
+        recent = [(msg.direction, msg.text) for msg in messages]
 
         retrieved: list[str] = []
         try:
@@ -221,12 +228,13 @@ class MemoryService:
             retrieved = await self._llm.retrieve_post(query, hit_texts)
         except Exception:
             logger.exception("retrieve failed")
+            await session.rollback()
             retrieved = []
 
         context = assemble_context(
             summary=summary,
             retrieved=retrieved,
-            recent=[(msg.direction, msg.text) for msg in messages],
+            recent=recent,
         )
 
         event = ContextBuiltEvent(
@@ -246,6 +254,8 @@ class MemoryService:
         if not conversation:
             raise ConversationNotFoundError(f"Conversation {command.conversation_id} not found")
 
+        conversation_id = conversation.id
+        telegram_chat_id = conversation.telegram_chat_id
         messages_saved = 0
         summary_updated = False
         if command.delivery_status == "delivered":
@@ -256,7 +266,7 @@ class MemoryService:
                 await self._messages.create(
                     session,
                     {
-                        "conversation_id": conversation.id,
+                        "conversation_id": conversation_id,
                         "text": text,
                         "direction": "outgoing",
                         "message_type": "text",
@@ -273,20 +283,20 @@ class MemoryService:
                 )
                 await self._index_batch(
                     session,
-                    conversation_id=conversation.id,
+                    conversation_id=conversation_id,
                     messages=command.outgoing_messages,
                     direction="outgoing",
                     sequence_numbers=sequence_numbers,
                 )
                 summary_updated = await self._maybe_summarize(
                     session,
-                    conversation_id=conversation.id,
+                    conversation_id=conversation_id,
                     current_sequence=current_sequence,
                 )
 
         event = MemoryUpdatedEvent(
-            conversation_id=conversation.id,
-            telegram_chat_id=conversation.telegram_chat_id,
+            conversation_id=conversation_id,
+            telegram_chat_id=telegram_chat_id,
             messages_count=messages_saved,
             summary_updated=summary_updated,
         )

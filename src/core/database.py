@@ -7,6 +7,7 @@
 import logging
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -54,8 +55,26 @@ async def init_db() -> None:
 
     if settings.CREATE_TABLES_ON_STARTUP:
         async with _engine.begin() as conn:
+            if conn.dialect.name == "postgresql":
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Таблицы БД созданы")
+
+
+def _load_models() -> None:
+    """Импортировать ORM-модели, чтобы они попали в Base.metadata."""
+    from src.modules.auth.models import Auth  # noqa: F401
+    from src.modules.batching.models import Batch, BatchMessage  # noqa: F401
+    from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord  # noqa: F401
+    from src.modules.telegram_clients.models import (  # noqa: F401
+        TelegramAccount,
+        TelegramChatState,
+        TelegramSettings,
+    )
+    from src.modules.users.models import User  # noqa: F401
+
+
+_load_models()
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

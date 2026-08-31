@@ -16,17 +16,11 @@ from src.core.bus_topics import BusTopics
 from src.modules.batching.handlers import register_handlers as register_batching
 from src.modules.llm.handlers import register_handlers as register_llm
 from src.modules.llm.service import LLMService
-from src.modules.memory.constants import EMBEDDING_DIM
 from src.modules.memory.handlers import register_handlers as register_memory
 from src.modules.memory.models import VectorRecord
 from src.modules.orchestrator.handlers import register_handlers as register_orchestrator
 from src.modules.telegram_clients.handlers import register_handlers as register_tg
-
-
-class FakeEmbedder:
-    def embed(self, texts, *, role):
-        assert role in ("query", "document")
-        return [[float(len(role))] * EMBEDDING_DIM for _ in texts]
+from tests.fakes.embedder import FakeEmbedder
 
 
 class _SessionCM:
@@ -42,14 +36,17 @@ class _SessionCM:
         return False
 
 
-async def _drain(transport: InMemoryTransport, timeout: float = 2.0) -> None:
+async def _drain(transport: InMemoryTransport, timeout: float = 3.0) -> None:
     deadline = asyncio.get_event_loop().time() + timeout
     while asyncio.get_event_loop().time() < deadline:
-        if transport.queue.empty():
-            await asyncio.sleep(0.05)
-            if transport.queue.empty():
-                return
+        remaining = max(0.01, deadline - asyncio.get_event_loop().time())
+        try:
+            await asyncio.wait_for(transport.queue.join(), timeout=remaining)
+        except TimeoutError:
+            return
         await asyncio.sleep(0.05)
+        if transport.queue.empty():
+            return
 
 
 @pytest.mark.asyncio

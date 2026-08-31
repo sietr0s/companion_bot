@@ -4,12 +4,7 @@ from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
 from src.modules.llm.service import LLMService
 from src.modules.memory.constants import EMBEDDING_DIM
-
-
-class FakeEmbedder:
-    def embed(self, texts, *, role):
-        assert role in ("query", "document")
-        return [[float(len(role))] * EMBEDDING_DIM for _ in texts]
+from tests.fakes.embedder import FakeEmbedder
 
 
 def _svc() -> LLMService:

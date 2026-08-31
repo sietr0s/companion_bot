@@ -19,7 +19,6 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     # Ensure table exists (e.g. fresh envs without prior create_all).
-    # Old JSON embeddings are discarded if present (none expected in prod).
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS vector_records (
@@ -28,15 +27,31 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             conversation_id UUID NOT NULL,
             text TEXT NOT NULL,
-            embedding JSON,
+            embedding vector(1024),
             extra_data JSON
         )
         """
     )
-    # Discard any prior JSON embeddings (none expected in prod).
+    # Convert leftover JSON embeddings in place; skip if already vector(1024).
     op.execute(
-        "ALTER TABLE vector_records ALTER COLUMN embedding TYPE vector(1024) "
-        "USING NULL"
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'vector_records'
+                  AND column_name = 'embedding'
+                  AND udt_name IS DISTINCT FROM 'vector'
+            ) THEN
+                ALTER TABLE vector_records
+                    ALTER COLUMN embedding TYPE vector(1024)
+                    USING embedding::text::vector;
+            END IF;
+        END
+        $$
+        """
     )
 
 

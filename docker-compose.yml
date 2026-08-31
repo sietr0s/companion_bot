@@ -67,9 +67,9 @@ services:
       - ms_network
     restart: unless-stopped
 
-  # PostgreSQL база данных
+  # PostgreSQL база данных (pgvector required for vector(1024))
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: ms_starter_db
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
