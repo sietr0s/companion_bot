@@ -14,6 +14,8 @@ class EmbeddingVector(TypeDecorator):
 
     impl = JSON
     cache_ok = True
+    # Forward pgvector operators (cosine_distance, etc.) used by search_similar.
+    comparator_factory = Vector.comparator_factory
 
     def __init__(self, dim: int) -> None:
         super().__init__()
