@@ -1,69 +1,113 @@
-# Modular Monolith — Digital Companion
+# Companion Bot
 
-Модульный монолит с event-driven шиной сообщений.
+Модульный монолит: FastAPI, PostgreSQL, event-driven шина (in-memory или Kafka).
 
 ## Быстрый старт
 
 ```bash
-python3.12 -m venv venv && source venv/bin/activate
+python3.12 -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
+```
+
+Обязательные переменные окружения:
+
+```env
+JWT_SECRET_KEY=change-me
+INTERNAL_SERVICE_KEY=change-me
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-me
+```
+
+Локально БД по умолчанию: `postgres:postgres@localhost:5432/modular_monolith`.
+
+```bash
 uvicorn src.main:app --reload
 ```
 
-Swagger UI: `http://localhost:8000/docs`
+- Health: `GET /health`
+- OpenAPI: `http://localhost:8000/docs`
+
+Через Docker: `docker compose up --build`.
+
+## Слои
+
+| Слой | Роль |
+|------|------|
+| `src/base` | `BaseModel`, `BaseRepository` (SQL/CRUD), `BaseService` (CRUD без SQL), `create_crud_router` |
+| `src/core` | конфиг, БД, JWT, контейнер, топики шины |
+| `src/bus` | producer/consumer (`in_memory` или `kafka`) |
+| `src/modules/*` | изолированные домены |
+
+Правила модуля:
+
+- SQL только в репозитории. Наследник `BaseRepository` не переопределяет CRUD, если нет новой логики.
+- Сервис вызывает репозиторий, без SQLAlchemy-запросов.
+- На каждую ORM-модель — HTTP CRUD через `create_crud_router`.
+- Схемы лежат в `schemas/`: `public.py` (HTTP), `events.py` (шина), при необходимости `internal.py`.
+
+```text
+src/modules/<module>/
+├── models.py
+├── repository.py
+├── service.py
+├── dependencies.py
+├── handlers.py          # подписки на шину (если нужны)
+├── routers.py           # или routers/
+└── schemas/
+    ├── public.py
+    └── events.py
+```
 
 ## Модули
 
-| Модуль | Описание |
-|--------|----------|
-| `auth` | Аутентификация и авторизация (JWT) |
-| `users` | Пользователи Telegram |
-| `telegram_clients` | Транспорт для Telegram (Telethon) |
-| `batching` | Группировка сообщений в батчи |
-| `memory` | Память диалогов, контекст, RAG |
-| `llm` | Генерация ответов через LLM |
-| `orchestrator` | Координация потока сообщений |
+| Модуль | Что делает | HTTP |
+|--------|------------|------|
+| `auth` | админы панели: регистрация, логин, JWT | `/api/v1/public/auth` |
+| `users` | собеседники Telegram (не связан с auth); `notes` — подсказки для LLM | `/api/v1/public/users` |
+| `telegram_clients` | Telethon: аккаунты, QR/SMS, чаты, whitelist | `/api/v1/public/telegram` |
+| `batching` | набор входящих сообщений в батч | `/api/v1/public/batches` |
+| `memory` | диалоги, сообщения, summary; vector retrieve in-process (LLM embed/pre/post/summarize) | `/memory` |
+| `llm` | заглушка генерации ответа | нет HTTP (только шина) |
+| `orchestrator` | пайплайн companion | нет HTTP (только шина) |
 
-## Структура модуля
+Маршрутов `/internal/` нет.
 
-```text
-src/modules/<module_name>/
-├── __init__.py           # Публичный API
-├── dependencies.py       # DI-фабрики
-├── handlers.py           # Обработчики шины
-├── routers.py            # HTTP endpoints (опционально)
-├── models.py             # SQLAlchemy ORM
-├── schemas_api.py        # Pydantic схемы для HTTP
-├── schemas_bus.py        # Pydantic схемы для шины
-├── service.py            # Бизнес-логика
-├── repository.py         # Репозиторий
-└── exceptions.py         # Исключения модуля
-```
+## Пайплайн companion
 
-## Архитектура
+1. Входящее сообщение Telegram → `telegram_clients.event.message.received`
+2. `users` upsert-ит собеседника по `sender_id`
+3. Orchestrator → `batching.command.add_message`
+4. Батч готов → memory: `process_batch` / `update_memory` сохраняют сообщения, индексируют батч (document embed → `VectorRecord`) и при пороге 50 вызывают summarize; `build_context` делает pre → vector search → post и собирает Summary / Retrieved / last N
+5. LLM генерирует ответ или подавляет его
+6. Orchestrator → `telegram_clients.command.send_message`
+7. Факт отправки → `telegram_clients.event.message.sent`
 
-- **Event-driven**: модули общаются только через шину событий
-- **Изоляция**: нет прямых вызовов между модулями
-- **Оркестратор**: координирует поток, подписан на все `.out` топики
+Модули не вызывают друг друга напрямую: команды и события идут через шину.
 
 ## Топики шины
 
-| Модуль | `.in` | `.out` |
-|--------|-------|--------|
-| users | get_or_create, update_last_seen | user_created, user_found |
-| telegram_clients | send_message | message_received, message_sent |
-| batching | add_message | batch_ready |
-| memory | process_batch, build_context, update_memory | batch_processed, context_built, memory_updated |
-| llm | generate_reply, summarize, pre_retrieve, post_retrieve | reply_generated, reply_suppressed, summary_generated |
-| orchestrator | все `.out` | все `.in` |
+Имена: `{module}.event.{action}` и `{module}.command.{action}`. Реестр — `src/core/bus_topics.py`.
 
-## Pre-commit hooks
+| Модуль | Команды | События |
+|--------|---------|---------|
+| auth | — | `user.registered`, `user.logged_in`, `user.deleted` |
+| users | — | `created`, `updated` |
+| telegram_clients | `send_message` | `message.received`, `message.sent`, `account.connected`, `account.disconnected` |
+| batching | `add_message` | `batch.ready`, `batch.completed` |
+| memory | `process_batch`, `build_context`, `update_memory` | `batch.processed`, `context.built`, `memory.updated` |
+| llm | `generate_reply`, `summarize` | `reply.generated`, `reply.suppressed`, `summary.generated` |
+
+Необработанные сообщения попадают в `bus.dlq`.
+
+## Тесты
 
 ```bash
-pip install pre-commit
-pre-commit install
-pre-commit run --all-files
+pytest tests --ignore=tests/e2e
 ```
 
-Проверки: `ruff`, `mypy`, `pytest`
+E2E (`tests/e2e`) требуют живой Telegram API и сессии.
+
+## Стек
+
+Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2, Telethon, pytest.

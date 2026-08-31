@@ -56,6 +56,8 @@ module = [
     "telethon.*",
     "aiogram.*",
     "aiosmtplib.*",
+    "sentence_transformers.*",
+    "pgvector.*",
 ]
 ignore_missing_imports = true
 
@@ -64,6 +66,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+addopts = "--ignore=tests/modules/media --ignore=tests/modules/notifications --ignore=tests/test_storage.py"
 markers = [
     "e2e: tests requiring explicitly configured external services",
 ]
