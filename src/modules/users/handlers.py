@@ -1,71 +1,33 @@
-"""
-Обработчики событий модуля пользователей.
+"""Upsert собеседника по входящему сообщению Telegram."""
 
-Подписываются на события из шины сообщений.
-Реагируют на события из модуля auth без прямого импорта —
-только через топики шины (Event-Driven Architecture).
-"""
-
-import logging
-
-from src.bus import get_consumer
-from src.bus.interface import MessageConsumer
+from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
+from src.core.database import create_async_session
+from src.modules.users.repository import UserRepository
+from src.modules.users.service import UserService
 
-logger = logging.getLogger(__name__)
 
+def register_handlers(
+    consumer: MessageConsumer,
+    producer: MessageProducer | None = None,
+) -> None:
+    @consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
+    async def handle_telegram_message(message: dict) -> None:
+        sender = message.get("sender") or {}
+        telegram_id = sender.get("sender_id")
+        if telegram_id is None:
+            return
+        from src.bus import get_producer
 
-def register_handlers(consumer: MessageConsumer | None = None) -> None:
-    """
-    Регистрация обработчиков событий на шину.
-
-    Вызывается при старте приложения. Каждый обработчик
-    подписывается на конкретный топик и реагирует
-    на события от других модулей.
-    """
-    bus = consumer or get_consumer()
-
-    @bus.subscribe(BusTopics.USER_REGISTERED)
-    async def handle_user_registered(message: dict) -> None:
-        """Реакция на регистрацию нового пользователя."""
-        logger.info(
-            "Новый пользователь зарегистрирован: auth_id=%s, identifier=%s",
-            message.get("auth_id"),
-            message.get("identifier"),
+        service = UserService(
+            repository=UserRepository(),
+            message_bus=producer or get_producer(),
         )
-
-    @bus.subscribe(BusTopics.USER_LOGGED_IN)
-    async def handle_user_logged_in(message: dict) -> None:
-        """Реакция на вход пользователя."""
-        logger.info(
-            "Пользователь вошёл в систему: auth_id=%s, identifier=%s",
-            message.get("auth_id"),
-            message.get("identifier"),
-        )
-
-    @bus.subscribe(BusTopics.PROFILE_CREATED)
-    async def handle_profile_created(message: dict) -> None:
-        """Реакция на создание профиля."""
-        logger.info(
-            "Профиль создан: auth_id=%s, profile_id=%s",
-            message.get("auth_id"),
-            message.get("profile_id"),
-        )
-
-    @bus.subscribe(BusTopics.PROFILE_UPDATED)
-    async def handle_profile_updated(message: dict) -> None:
-        """Реакция на обновление профиля."""
-        logger.info(
-            "Профиль обновлён: auth_id=%s, fields=%s",
-            message.get("auth_id"),
-            message.get("fields_updated"),
-        )
-
-    @bus.subscribe(BusTopics.PROFILE_DELETED)
-    async def handle_profile_deleted(message: dict) -> None:
-        """Реакция на удаление профиля."""
-        logger.info(
-            "Профиль удалён: auth_id=%s, profile_id=%s",
-            message.get("auth_id"),
-            message.get("profile_id"),
-        )
+        async with create_async_session() as session:
+            await service.get_or_create_from_telegram(
+                session,
+                telegram_id=int(telegram_id),
+                username=sender.get("username"),
+                first_name=sender.get("first_name"),
+                last_name=sender.get("last_name"),
+            )

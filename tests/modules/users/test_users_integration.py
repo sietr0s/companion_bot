@@ -1,10 +1,5 @@
-"""
-Интеграционные тесты модуля users.
+"""Интеграция HTTP CRUD собеседников (только admin JWT)."""
 
-Проверяют CRUD операции с профилями пользователей через реальное API.
-"""
-
-import uuid
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -13,340 +8,70 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
-from src.core.config import settings
 from src.main import app
 
 
 @pytest_asyncio.fixture
 async def test_client_with_db() -> AsyncGenerator[AsyncClient, None]:
-    """
-    HTTP клиент с тестовой БД.
-    Переопределяет get_db_session для использования test.db.
-    """
     from tests.conftest import TestSessionLocal, test_engine
 
-    # Создаём таблицы
     async with test_engine.begin() as conn:
         from src.base.model import Base
 
         await conn.run_sync(Base.metadata.create_all)
 
-    # Генератор сессий
     async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
         async with TestSessionLocal() as session:
             yield session
 
-    # Переопределяем зависимость get_db_session
     app.dependency_overrides[get_db_session] = override_get_db_session
-
-    # Создаём клиент
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-        headers={"X-Internal-Service-Key": settings.INTERNAL_SERVICE_KEY},
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
-
-    # Очищаем
     app.dependency_overrides.clear()
-
-    # Удаляем таблицы
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
 class TestUsersCRUD:
-    """Интеграционные тесты CRUD операций с пользователями."""
-
     @pytest.mark.asyncio
-    async def test_admin_can_list_users_via_public_api(
+    async def test_admin_crud(
         self,
         test_client_with_db: AsyncClient,
         admin_token: str,
         auth_token: str,
     ) -> None:
-        register_response = await test_client_with_db.post(
-            "/internal/auth/",
-            json={
-                "identifier": "public-admin-list@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_response.json()["id"]
-        await test_client_with_db.post(
-            "/internal/users/",
-            json={"auth_id": auth_id, "first_name": "Public"},
-        )
+        admin = {"Authorization": f"Bearer {admin_token}"}
+        user_headers = {"Authorization": f"Bearer {auth_token}"}
 
-        user_response = await test_client_with_db.get(
+        forbidden = await test_client_with_db.get("/api/v1/public/users/", headers=user_headers)
+        assert forbidden.status_code == 401
+
+        created = await test_client_with_db.post(
             "/api/v1/public/users/",
-            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"telegram_id": 10001, "first_name": "Alice", "notes": "коротко"},
+            headers=admin,
         )
-        admin_response = await test_client_with_db.get(
-            "/api/v1/public/users/",
-            headers={"Authorization": f"Bearer {admin_token}"},
+        assert created.status_code == 201, created.text
+        body = created.json()
+        user_id = body["id"]
+        assert body["telegram_id"] == 10001
+        assert body["notes"] == "коротко"
+
+        listed = await test_client_with_db.get("/api/v1/public/users/", headers=admin)
+        assert listed.status_code == 200
+        assert listed.json()["total"] >= 1
+
+        updated = await test_client_with_db.put(
+            f"/api/v1/public/users/{user_id}",
+            json={"first_name": "Alicia", "notes": "любит мемы"},
+            headers=admin,
         )
+        assert updated.status_code == 200
+        assert updated.json()["first_name"] == "Alicia"
 
-        assert user_response.status_code == 401
-        assert admin_response.status_code == 200
-        payload = admin_response.json()
-        assert payload["total"] == 1
-        assert payload["items"][0]["auth_id"] == auth_id
-
-    @pytest.mark.asyncio
-    async def test_admin_can_update_and_delete_user_with_auth_account(
-        self,
-        test_client_with_db: AsyncClient,
-        admin_token: str,
-        auth_token: str,
-    ) -> None:
-        from src.modules.auth.repository import AuthRepository
-        from src.modules.job_matcher.repository import SubscriptionRepository
-        from src.modules.users.repository import UserRepository
-        from tests.conftest import TestSessionLocal
-
-        register_response = await test_client_with_db.post(
-            "/internal/auth/",
-            json={
-                "identifier": "admin-managed-user@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
+        deleted = await test_client_with_db.delete(
+            f"/api/v1/public/users/{user_id}",
+            headers=admin,
         )
-        auth_id = register_response.json()["id"]
-        create_response = await test_client_with_db.post(
-            "/internal/users/",
-            json={"auth_id": auth_id, "first_name": "Before"},
-        )
-        profile_id = create_response.json()["id"]
-        async with TestSessionLocal() as session:
-            subscription = await SubscriptionRepository().create(
-                session,
-                {"auth_id": uuid.UUID(auth_id), "is_active": True},
-            )
-            subscription_id = subscription.id
-        admin_headers = {"Authorization": f"Bearer {admin_token}"}
-
-        forbidden_response = await test_client_with_db.patch(
-            f"/api/v1/public/users/{profile_id}",
-            json={"first_name": "Forbidden"},
-            headers={"Authorization": f"Bearer {auth_token}"},
-        )
-        update_response = await test_client_with_db.patch(
-            f"/api/v1/public/users/{profile_id}",
-            json={"first_name": "After", "bio": "Managed by admin"},
-            headers=admin_headers,
-        )
-        delete_response = await test_client_with_db.delete(
-            f"/api/v1/public/job-matcher/users/{auth_id}",
-            headers=admin_headers,
-        )
-
-        assert forbidden_response.status_code == 401
-        assert update_response.status_code == 200
-        assert update_response.json()["first_name"] == "After"
-        assert delete_response.status_code == 204
-
-        async with TestSessionLocal() as session:
-            assert await UserRepository().get_by_id(session, uuid.UUID(profile_id)) is None
-            assert await AuthRepository().get_by_id(session, uuid.UUID(auth_id)) is None
-            assert (
-                await SubscriptionRepository().get_by_id(session, subscription_id)
-                is None
-            )
-
-    @pytest.mark.asyncio
-    async def test_create_user_profile(self, test_client_with_db: AsyncClient):
-        """Создание профиля пользователя через internal API."""
-        client = test_client_with_db
-
-        # Сначала создаём Auth аккаунт
-        register_data = {
-            "identifier": "user-crud@test.com",
-            "identifier_type": "email",
-            "hashed_password": "testpassword123",
-        }
-        register_resp = await client.post("/internal/auth/", json=register_data)
-        assert register_resp.status_code == 201
-        auth_data = register_resp.json()
-        auth_id = auth_data["id"]
-
-        # Создаём профиль
-        profile_data = {
-            "auth_id": auth_id,
-            "first_name": "Иван",
-            "last_name": "Иванов",
-            "bio": "Тестовая биография",
-        }
-        profile_create_resp = await client.post("/internal/users/", json=profile_data)
-        assert profile_create_resp.status_code == 201
-        profile = profile_create_resp.json()
-        assert profile["auth_id"] == auth_id
-        assert profile["first_name"] == "Иван"
-        assert profile["last_name"] == "Иванов"
-        assert profile["bio"] == "Тестовая биография"
-
-        # Очистка
-        await client.delete(f"/internal/users/{profile['id']}")
-        await client.delete(f"/internal/auth/{auth_id}")
-
-    @pytest.mark.asyncio
-    async def test_get_profile_by_id(self, test_client_with_db: AsyncClient):
-        """Получение профиля по ID."""
-        client = test_client_with_db
-
-        # Создаём Auth и профиль
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "get-by-id@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
-        profile_create_resp = await client.post(
-            "/internal/users/",
-            json={
-                "auth_id": auth_id,
-                "first_name": "Петр",
-                "last_name": "Петров",
-            },
-        )
-        profile_id = profile_create_resp.json()["id"]
-
-        # Получаем профиль по ID
-        get_resp = await client.get(f"/internal/users/{profile_id}")
-        assert get_resp.status_code == 200
-        profile = get_resp.json()
-        assert profile["id"] == profile_id
-        assert profile["first_name"] == "Петр"
-
-        # Очистка
-        await client.delete(f"/internal/users/{profile_id}")
-        await client.delete(f"/internal/auth/{auth_id}")
-
-    @pytest.mark.asyncio
-    async def test_update_profile(self, test_client_with_db: AsyncClient):
-        """Обновление профиля пользователя."""
-        client = test_client_with_db
-
-        # Создаём Auth и профиль
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "update-test@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
-        profile_create_resp = await client.post(
-            "/internal/users/",
-            json={
-                "auth_id": auth_id,
-                "first_name": "Старое",
-                "last_name": "Имя",
-                "bio": "Старая биография",
-            },
-        )
-        profile_id = profile_create_resp.json()["id"]
-
-        # Обновляем профиль (PATCH)
-        update_data = {
-            "first_name": "Новое",
-            "bio": "Новая биография",
-        }
-        update_resp = await client.patch(f"/internal/users/{profile_id}", json=update_data)
-        assert update_resp.status_code == 200
-        updated_profile = update_resp.json()
-        assert updated_profile["first_name"] == "Новое"
-        assert updated_profile["bio"] == "Новая биография"
-
-        # Очистка
-        await client.delete(f"/internal/users/{profile_id}")
-        await client.delete(f"/internal/auth/{auth_id}")
-
-    @pytest.mark.asyncio
-    async def test_delete_profile(self, test_client_with_db: AsyncClient):
-        """Удаление профиля пользователя."""
-        client = test_client_with_db
-
-        # Создаём Auth и профиль
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "delete-test@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
-        profile_create_resp = await client.post(
-            "/internal/users/",
-            json={
-                "auth_id": auth_id,
-                "first_name": "Удалить",
-                "last_name": "Профиль",
-            },
-        )
-        profile_id = profile_create_resp.json()["id"]
-
-        # Удаляем профиль
-        delete_resp = await client.delete(f"/internal/users/{profile_id}")
-        assert delete_resp.status_code == 204
-
-        # Проверяем, что профиль удалён
-        get_resp = await client.get(f"/internal/users/{profile_id}")
-        assert get_resp.status_code == 404
-
-        # Очистка Auth
-        await client.delete(f"/internal/auth/{auth_id}")
-
-    @pytest.mark.asyncio
-    async def test_list_users_with_filters(self, test_client_with_db: AsyncClient):
-        """Получение списка пользователей с фильтрацией."""
-        client = test_client_with_db
-
-        # Создаём несколько профилей
-        auth_ids = []
-        profile_ids = []
-
-        for i in range(3):
-            register_resp = await client.post(
-                "/internal/auth/",
-                json={
-                    "identifier": f"filter-test-{i}@test.com",
-                    "identifier_type": "email",
-                    "hashed_password": "testpassword123",
-                },
-            )
-            auth_id = register_resp.json()["id"]
-            auth_ids.append(auth_id)
-
-            profile_create_resp = await client.post(
-                "/internal/users/",
-                json={
-                    "auth_id": auth_id,
-                    "first_name": f"User{i}",
-                    "last_name": "Test",
-                },
-            )
-            profile_ids.append(profile_create_resp.json()["id"])
-
-        # Получаем всех пользователей
-        list_resp = await client.get("/internal/users/")
-        assert list_resp.status_code == 200
-        users = list_resp.json()
-        assert len(users) >= 3
-
-        # Очистка
-        for profile_id in profile_ids:
-            await client.delete(f"/internal/users/{profile_id}")
-        for auth_id in auth_ids:
-            await client.delete(f"/internal/auth/{auth_id}")
+        assert deleted.status_code == 204

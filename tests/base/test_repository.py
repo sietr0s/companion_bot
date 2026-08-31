@@ -42,28 +42,11 @@ class TestBaseRepository:
         """Создание сущности через Pydantic-модель."""
         from src.modules.users.schemas.public import UserCreate
 
-        # Сначала создаём AuthAccount для ForeignKey
-        auth_repo = AuthRepository()
-        auth_account = await auth_repo.create(
-            db_session,
-            {
-                "identifier": "pydantic_fk@test.com",
-                "identifier_type": "email",
-                "hashed_password": "hashed",
-            },
-        )
-
-        # UserCreate — Pydantic-модель без auth_id (он пробрасывается отдельно)
         user_repo = UserRepository()
-        data = UserCreate(first_name="Тест", last_name="Тестов")
-        profile = await user_repo.create(
-            db_session,
-            {
-                "auth_id": auth_account.id,
-                **data.model_dump(exclude_unset=True),
-            },
-        )
+        data = UserCreate(telegram_id=1001, first_name="Тест", last_name="Тестов")
+        profile = await user_repo.create(db_session, data)
         assert profile.first_name == "Тест"
+        assert profile.telegram_id == 1001
 
     async def test_get_by_id(self, db_session: AsyncSession, repo: AuthRepository):
         """Получение сущности по ID."""

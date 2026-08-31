@@ -65,16 +65,6 @@ class TestTelegramSettingsInternalAPI:
         client = test_client_with_db
 
         # Создаём Auth аккаунт
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "settings-test@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
         # Создаём Telegram аккаунт через БД напрямую
         from src.modules.telegram_clients.models import TelegramAccount
         from tests.conftest import TestSessionLocal
@@ -96,7 +86,7 @@ class TestTelegramSettingsInternalAPI:
             "whitelist_chat_ids": [123456, 789012],
         }
         create_resp = await client.post(
-            f"/internal/telegram/{account_id}/settings", json=settings_data
+            f"/api/v1/public/telegram/{account_id}/settings", json=settings_data
         )
 
         assert create_resp.status_code == 201
@@ -105,7 +95,7 @@ class TestTelegramSettingsInternalAPI:
         assert data["whitelist_chat_ids"] == [123456, 789012]
 
         # Очистка
-        await client.delete(f"/internal/auth/{auth_id}")
+
 
     @pytest.mark.asyncio
     async def test_get_settings_internal(self, test_client_with_db: AsyncClient):
@@ -113,16 +103,6 @@ class TestTelegramSettingsInternalAPI:
         client = test_client_with_db
 
         # Создаём Auth аккаунт
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "get-settings-test@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
         # Создаём Telegram аккаунт через БД
         from src.modules.telegram_clients.models import TelegramAccount
         from tests.conftest import TestSessionLocal
@@ -139,17 +119,19 @@ class TestTelegramSettingsInternalAPI:
             await session.commit()
 
         # Создаём настройки по умолчанию
-        create_resp = await client.post(f"/internal/telegram/{account_id}/settings", json={})
+        create_resp = await client.post(
+            f"/api/v1/public/telegram/{account_id}/settings", json={}
+        )
         assert create_resp.status_code == 201
 
         # Получаем настройки
-        get_resp = await client.get(f"/internal/telegram/{account_id}/settings")
+        get_resp = await client.get(f"/api/v1/public/telegram/{account_id}/settings")
         assert get_resp.status_code == 200
         data = get_resp.json()
         assert data["use_whitelist"] is True  # default
 
         # Очистка
-        await client.delete(f"/internal/auth/{auth_id}")
+
 
     @pytest.mark.asyncio
     async def test_update_settings_internal(self, test_client_with_db: AsyncClient):
@@ -157,16 +139,6 @@ class TestTelegramSettingsInternalAPI:
         client = test_client_with_db
 
         # Создаём Auth аккаунт
-        register_resp = await client.post(
-            "/internal/auth/",
-            json={
-                "identifier": "update-settings-test@test.com",
-                "identifier_type": "email",
-                "hashed_password": "testpassword123",
-            },
-        )
-        auth_id = register_resp.json()["id"]
-
         # Создаём Telegram аккаунт через БД
         from src.modules.telegram_clients.models import TelegramAccount
         from tests.conftest import TestSessionLocal
@@ -184,14 +156,14 @@ class TestTelegramSettingsInternalAPI:
 
         # Создаём начальные настройки
         await client.post(
-            f"/internal/telegram/{account_id}/settings",
+            f"/api/v1/public/telegram/{account_id}/settings",
             json={"use_whitelist": True},
         )
 
         # Обновляем настройки
         update_data = {"use_whitelist": False, "whitelist_chat_ids": [999888]}
         update_resp = await client.put(
-            f"/internal/telegram/{account_id}/settings", json=update_data
+            f"/api/v1/public/telegram/{account_id}/settings", json=update_data
         )
 
         assert update_resp.status_code == 200
@@ -201,7 +173,7 @@ class TestTelegramSettingsInternalAPI:
         # Остальные поля должны сохраниться
 
         # Очистка
-        await client.delete(f"/internal/auth/{auth_id}")
+
 
 
 class TestTelegramSettingsPublicAPI:

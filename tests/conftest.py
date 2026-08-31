@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from src.base.model import Base
+from src.bus import configure_bus, create_bus
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.interface import MessageProducer
 from src.core.config import settings
@@ -49,6 +50,14 @@ async def enable_sqlite_foreign_keys():
 
 
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_message_bus():
+    """Свежая in-memory шина на каждый тест, без MagicMock из DI-тестов."""
+    producer, consumer = create_bus("in_memory")
+    configure_bus(producer, consumer)
+    yield producer
 
 
 @pytest.fixture(scope="session")
@@ -128,12 +137,10 @@ def telegram_repository() -> TelegramAccountRepository:
 @pytest_asyncio.fixture
 def user_service(
     user_repository: UserRepository,
-    telegram_repository: TelegramAccountRepository,
     message_bus: MessageProducer,
 ) -> UserService:
     return UserService(
         repository=user_repository,
-        telegram_repository=telegram_repository,
         message_bus=message_bus,
     )
 

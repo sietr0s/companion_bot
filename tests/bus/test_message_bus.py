@@ -8,7 +8,7 @@ from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
 from src.modules.auth.schemas.events import UserLoggedIn, UserRegistered
-from src.modules.users.schemas.events import ProfileCreated, ProfileDeleted, ProfileUpdated
+from src.modules.users.schemas.events import UserCreated, UserUpdated
 
 
 class TestBaseEvent:
@@ -39,35 +39,23 @@ class TestBaseEvent:
         data = event.to_bus_dict()
         assert data["event_name"] == "auth.event.user.logged_in"
 
-    def test_profile_updated_to_bus_dict(self):
-        event = ProfileUpdated(
-            auth_id=uuid.uuid4(),
-            profile_id=uuid.uuid4(),
-            fields_updated=["first_name", "bio"],
-        )
+    def test_user_created_to_bus_dict(self):
+        user_id = uuid.uuid4()
+        event = UserCreated(user_id=user_id, telegram_id=42)
         data = event.to_bus_dict()
-        assert data["event_name"] == "users.event.profile.updated"
-        assert data["fields_updated"] == ["first_name", "bio"]
+        assert data["event_name"] == "users.event.created"
+        assert data["user_id"] == str(user_id)
+        assert data["telegram_id"] == 42
 
-    def test_profile_created_to_bus_dict(self):
-        event = ProfileCreated(
-            auth_id=uuid.uuid4(),
-            profile_id=uuid.uuid4(),
+    def test_user_updated_to_bus_dict(self):
+        event = UserUpdated(
+            user_id=uuid.uuid4(),
+            telegram_id=42,
+            fields_updated=["first_name", "notes"],
         )
         data = event.to_bus_dict()
-        assert data["event_name"] == "users.event.profile.created"
-        assert "auth_id" in data
-        assert "profile_id" in data
-
-    def test_profile_deleted_to_bus_dict(self):
-        event = ProfileDeleted(
-            auth_id=uuid.uuid4(),
-            profile_id=uuid.uuid4(),
-        )
-        data = event.to_bus_dict()
-        assert data["event_name"] == "users.event.profile.deleted"
-        assert "auth_id" in data
-        assert "profile_id" in data
+        assert data["event_name"] == "users.event.updated"
+        assert data["fields_updated"] == ["first_name", "notes"]
 
 
 class TestInMemoryProducer:

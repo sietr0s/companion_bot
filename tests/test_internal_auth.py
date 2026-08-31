@@ -1,30 +1,19 @@
-"""Tests for the common authentication guard on internal endpoints."""
+"""Internal HTTP API отключён: маршрутов /internal/ нет."""
 
 from httpx import AsyncClient
 
-from src.core.config import settings
-from src.core.internal_auth import require_internal_service_key
+from src.main import app
 
 
-class TestInternalAuthentication:
-    async def test_internal_endpoint_rejects_missing_key(self, client: AsyncClient) -> None:
-        client.headers.pop("X-Internal-Service-Key", None)
-        response = await client.get("/internal/classifier/categories")
+class TestNoInternalApi:
+    async def test_internal_paths_are_absent(self, client: AsyncClient) -> None:
+        response = await client.get("/internal/users/")
+        assert response.status_code == 404
 
-        assert response.status_code == 401
+    async def test_openapi_has_no_internal_paths(self) -> None:
+        paths = app.openapi()["paths"]
+        assert not any(path.startswith("/internal/") for path in paths)
 
-    async def test_internal_endpoint_rejects_invalid_key(self, client: AsyncClient) -> None:
-        response = await client.get(
-            "/internal/classifier/categories",
-            headers={"X-Internal-Service-Key": "wrong-key"},
-        )
-
-        assert response.status_code == 401
-
-    async def test_guard_accepts_configured_key(self) -> None:
-        assert await require_internal_service_key(settings.INTERNAL_SERVICE_KEY) is None
-
-    async def test_health_endpoint_does_not_require_internal_key(self, client: AsyncClient) -> None:
+    async def test_health_endpoint_is_public(self, client: AsyncClient) -> None:
         response = await client.get("/health")
-
         assert response.status_code == 200

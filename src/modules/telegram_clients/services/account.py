@@ -10,22 +10,17 @@ import asyncio
 import logging
 import os
 import uuid
-from collections.abc import Sequence
-
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.events import NewMessage
 
-from src.base.filters import Filter
 from src.base.service import BaseService
 from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.client_manager import TelegramClientManager
-from src.modules.telegram_clients.constants import ChatType, TgAuthStatus
-from src.modules.telegram_clients.domain import Message as DomainMessage
-from src.modules.telegram_clients.domain import Sender as DomainSender
+from src.modules.telegram_clients.constants import TgAuthStatus
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
@@ -35,19 +30,18 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
     TelegramSettingsRepository,
 )
-from src.modules.telegram_clients.schemas_api import (
+from src.modules.telegram_clients.schemas.events import (
+    Sender,
+    TgAccountConnected,
+    TgAccountDisconnected,
+    TgMessageReceived,
+)
+from src.modules.telegram_clients.schemas.public import (
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
     QrStartResponse,
     QrStatusResponse,
-)
-from src.modules.telegram_clients.schemas_bus import (
-    Media,
-    Sender,
-    TgAccountConnected,
-    TgAccountDisconnected,
-    TgMessageReceived,
 )
 
 logger = logging.getLogger(__name__)
@@ -162,7 +156,7 @@ class TelegramAccountService(
             )
             await self.message_bus.publish(BusTopics.TG_ACCOUNT_CONNECTED, event.to_bus_dict())
 
-        return AuthStep3Response(account_id=data["account_id"])
+        return AuthStep3Response(account_id=data["account_id"], status=status)
 
     async def _update_account_info(self, session: AsyncSession, account: TelegramAccount) -> None:
         """Обновляет информацию об аккаунте из Telegram API."""
@@ -179,17 +173,6 @@ class TelegramAccountService(
                     "telegram_id": me.get("telegram_id"),
                 },
             )
-
-    async def get_accounts(
-            self,
-            session: AsyncSession,
-            filters: list[Filter] | None = None,
-            skip: int = 0,
-            limit: int = 100,
-            order_by: str | None = "-created_at",
-    ) -> tuple[Sequence[TelegramAccount], int]:
-        """Получить все Telegram-аккаунты с фильтрацией и пагинацией."""
-        return await self.repository.get_list(session, filters, skip, limit, order_by)
 
     async def get_active_accounts(
             self,
@@ -244,7 +227,7 @@ class TelegramAccountService(
             chat_id: int,
             limit: int = 50,
             offset_id: int = 0,
-    ) -> list[DomainMessage]:
+    ) -> list[TgMessageReceived]:
         """Получить сообщения чата из Telegram API (on-demand)."""
         account = await self._get_account(session, account_id)
         if not account.is_connected:
@@ -425,19 +408,16 @@ class TelegramAccountService(
                 continue
 
             # Публикуем каждое сообщение в шину и обновляем состояние
-            for domain_msg in unread_messages:
-                bus_event = self._domain_to_bus_event(domain_msg)
+            for msg in unread_messages:
                 await self.message_bus.publish(
                     BusTopics.TG_MESSAGE_RECEIVED,
-                    bus_event.to_bus_dict(),
+                    msg.to_bus_dict(),
                 )
-
-                # Обновляем состояние чтения
                 await self.chat_state_repository.upsert_last_read(
                     session=session,
                     account_id=account_id,
                     chat_id=state.chat_id,
-                    message_id=domain_msg.message_id,
+                    message_id=msg.message_id,
                 )
 
             total_read += len(unread_messages)
@@ -460,46 +440,11 @@ class TelegramAccountService(
             session: AsyncSession,
             account_id: uuid.UUID,
             chat_id: int,
-            chat_type: ChatType,
     ) -> bool:
-        """
-        Проверить нужно ли читать сообщение из данного чата.
-
-        Использует настройки TelegramSettings для аккаунта.
-        Если whitelist_chat_ids задан - проверяет наличие chat_id в списке.
-        Если whitelist пустой - читает все чаты разрешённых типов.
-
-        Args:
-            session: SQLAlchemy async сессия
-            account_id: ID аккаунта
-            chat_id: ID чата в Telegram
-            chat_type: Тип чата (private, group, channel, etc.)
-
-        Returns:
-            True если сообщение нужно читать, False иначе
-        """
         settings = await self.settings_repository.get_by_account_id(session, account_id)
-
-        # Если настроек нет - читаем всё по умолчанию
-        if not settings:
-            return True
-
-        # Проверка типа чата
-        if not settings.use_whitelist:
+        if not settings or not settings.use_whitelist:
             return True
         return str(chat_id) in {str(value) for value in (settings.whitelist_chat_ids or [])}
-
-    @staticmethod
-    def _domain_to_bus_event(msg: DomainMessage) -> TgMessageReceived:
-        """Маппинг доменной модели Message в событие шины TgMessageReceived."""
-        return TgMessageReceived(
-            account_id=msg.account_id,
-            chat_id=msg.chat_id,
-            message_id=msg.message_id,
-            sender=Sender.model_validate(msg.sender.model_dump()),
-            text=msg.text,
-            media=[Media(telegram_id=m.telegram_id, type=m.type) for m in msg.media],
-        )
 
     async def handle_incoming_message(
             self,
@@ -523,20 +468,10 @@ class TelegramAccountService(
         """
         try:
             # Определяем тип чата
-            if event.is_private:
-                chat_type = ChatType.PRIVATE
-            elif event.is_group:
-                chat_type = ChatType.GROUP
-            elif event.is_channel:
-                chat_type = ChatType.SUPERGROUP
-            else:
-                chat_type = ChatType.PRIVATE
-
             should_read = await self.should_read_message(
                 session,
                 account_id,
                 event.chat_id,
-                chat_type,
             )
 
             if not should_read:
@@ -545,27 +480,22 @@ class TelegramAccountService(
             client = self.client_manager.get_client(account_id)
 
             # Извлекаем медиа из сообщения
-            domain_media = await self.client_manager.extract_media(client, event.message)
+            media = await self.client_manager.extract_media(client, event.message)
             telegram_sender = await event.get_sender()
-
-            # Создаём доменную модель
-            domain_msg = DomainMessage(
+            msg_event = TgMessageReceived(
                 account_id=account_id,
                 chat_id=event.chat_id,
                 message_id=event.message.id,
-                sender=DomainSender(
+                sender=Sender(
                     sender_id=event.sender_id,
                     username=getattr(telegram_sender, "username", None),
                     first_name=getattr(telegram_sender, "first_name", None),
                     last_name=getattr(telegram_sender, "last_name", None),
                 ),
                 text=event.message.text,
-                media=domain_media,
+                media=media,
                 date=event.message.date,
             )
-
-            # Маппим в событие шины
-            msg_event = self._domain_to_bus_event(domain_msg)
             await self.message_bus.publish(BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict())
 
             # Обновляем состояние чтения чата

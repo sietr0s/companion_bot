@@ -83,8 +83,7 @@ def get_users_client():
     """
     Фабрика клиента пользователей для прямого вызова сервисов.
 
-    Используется другими модулями для вызова методов UserService без HTTP-запросов.
-    Клиент получает сервис через DI-фабрику с общей шиной сообщений.
+    Прямой вызов UserService без HTTP.
     """
     from src.core.clients.users_client import UsersClient
 

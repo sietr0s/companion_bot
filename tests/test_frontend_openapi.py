@@ -11,8 +11,6 @@ def test_frontend_openapi_contains_no_internal_paths() -> None:
     assert schema["paths"]
     assert not any(path.startswith("/internal/") for path in schema["paths"])
     assert "/api/v1/public/users/" in schema["paths"]
-    assert "/api/v1/public/job-matcher/subscriptions" in schema["paths"]
-    assert "/api/v1/public/job-matcher/offers" in schema["paths"]
-    assert "/api/v1/public/media/" in schema["paths"]
+    assert "/api/v1/public/telegram/" in schema["paths"]
     assert "/api/v1/public/auth/me" not in schema["paths"]
     assert "/api/v1/public/auth/me/password" not in schema["paths"]

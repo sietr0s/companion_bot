@@ -271,7 +271,7 @@ class TestIdentifierValidation:
 
     def test_valid_telegram_username_with_at(self):
         """Валидный telegram username с @."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         data = RegisterRequest(
             identifier="@validuser",
@@ -282,7 +282,7 @@ class TestIdentifierValidation:
 
     def test_valid_telegram_username_without_at(self):
         """Валидный telegram username без @."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         data = RegisterRequest(
             identifier="validuser",
@@ -293,7 +293,7 @@ class TestIdentifierValidation:
 
     def test_valid_telegram_username_with_underscore(self):
         """Валидный telegram username с подчеркиванием."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         data = RegisterRequest(
             identifier="@user_name123",
@@ -304,7 +304,7 @@ class TestIdentifierValidation:
 
     def test_invalid_telegram_username_too_short(self):
         """Telegram username слишком короткий."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         with pytest.raises(ValueError) as exc_info:
             RegisterRequest(
@@ -316,7 +316,7 @@ class TestIdentifierValidation:
 
     def test_invalid_telegram_username_starts_with_digit(self):
         """Telegram username начинается с цифры."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         with pytest.raises(ValueError) as exc_info:
             RegisterRequest(
@@ -328,7 +328,7 @@ class TestIdentifierValidation:
 
     def test_invalid_telegram_username_special_chars(self):
         """Telegram username содержит недопустимые символы."""
-        from src.modules.auth.schemas.public.auth import RegisterRequest
+        from src.modules.auth.schemas.public import RegisterRequest
 
         with pytest.raises(ValueError) as exc_info:
             RegisterRequest(

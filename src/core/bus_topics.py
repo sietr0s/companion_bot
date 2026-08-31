@@ -1,56 +1,43 @@
 """
 Конфигурация топиков шины сообщений.
 
-Единая точка определения всех топиков — исключает
-хардкод строк в разных модулях и опечатки.
-При добавлении нового события — добавляем топик сюда.
-
 Соглашение об именовании:
-  - {module}.event.{domain_action}  — событие, которое публикует ВЛАДЕЛЕЦ модуля
-    (в его домене что-то произошло). Другие модули могут подписаться и реагировать.
-  - {module}.command.{action}       — команда, которую публикует НЕ владелец,
-    чтобы попросить другой модуль что-то сделать (side-effect).
+  - {module}.event.{domain_action}  — событие владельца модуля
+  - {module}.command.{action}       — команда другому модулю
 """
 
 
 class BusTopics:
     """Реестр топиков шины сообщений."""
 
-    # ========== Events (публикует владелец модуля) ==========
-
-    # Модуль Auth — события аутентификации
     USER_REGISTERED: str = "auth.event.user.registered"
     USER_LOGGED_IN: str = "auth.event.user.logged_in"
     USER_DELETED: str = "auth.event.user.deleted"
 
-    # Модуль Users — события профилей
-    PROFILE_CREATED: str = "users.event.profile.created"
-    PROFILE_UPDATED: str = "users.event.profile.updated"
-    PROFILE_DELETED: str = "users.event.profile.deleted"
+    USER_CREATED: str = "users.event.created"
+    USER_UPDATED: str = "users.event.updated"
 
-    # Модуль TelegramClients — события Telegram-аккаунтов
     TG_MESSAGE_RECEIVED: str = "telegram_clients.event.message.received"
+    TG_MESSAGE_SENT: str = "telegram_clients.event.message.sent"
     TG_ACCOUNT_CONNECTED: str = "telegram_clients.event.account.connected"
     TG_ACCOUNT_DISCONNECTED: str = "telegram_clients.event.account.disconnected"
+    TG_MESSAGE_SEND: str = "telegram_clients.command.send_message"
 
-    # Модуль Media — события файлов
-    MEDIA_UPLOADED: str = "media.event.uploaded"
-    MEDIA_DELETED: str = "media.event.deleted"
-
-    # Модуль Batching — события пакетов
+    BATCH_ADD_MESSAGE: str = "batching.command.add_message"
     BATCH_READY: str = "batching.event.batch.ready"
     BATCH_COMPLETED: str = "batching.event.batch.completed"
 
-    # ========== Commands (публикует НЕ владелец, чтобы попросить другой модуль) ==========
+    MEMORY_PROCESS_BATCH: str = "memory.command.process_batch"
+    MEMORY_BUILD_CONTEXT: str = "memory.command.build_context"
+    MEMORY_UPDATE: str = "memory.command.update_memory"
+    MEMORY_BATCH_PROCESSED: str = "memory.event.batch.processed"
+    MEMORY_CONTEXT_BUILT: str = "memory.event.context.built"
+    MEMORY_UPDATED: str = "memory.event.memory.updated"
 
-    # Модуль TelegramClients — команды на отправку сообщений
-    TG_MESSAGE_SEND: str = "telegram_clients.command.send_message"
+    LLM_GENERATE_REPLY: str = "llm.command.generate_reply"
+    LLM_SUMMARIZE: str = "llm.command.summarize"
+    LLM_REPLY_GENERATED: str = "llm.event.reply.generated"
+    LLM_REPLY_SUPPRESSED: str = "llm.event.reply.suppressed"
+    LLM_SUMMARY_GENERATED: str = "llm.event.summary.generated"
 
-    # Модуль Notifications — команда на отправку уведомления
-    NOTIFICATION_SEND: str = "notifications.command.send"
-
-    # Модуль Batching — команды на добавление сообщения
-    BATCH_ADD_MESSAGE: str = "batching.command.add_message"
-
-    # ========== Системные топики ==========
     DLQ: str = "bus.dlq"

@@ -7,11 +7,15 @@ from alembic import context
 
 # Import all models for Alembic autogenerate
 from src.base.model import Base
-from src.modules.auth.models import Auth
-from src.modules.users.models import User
-from src.modules.telegram_clients.models import TelegramAccount, TelegramSettings, TelegramChatState
-from src.modules.notifications.models import NotificationTemplate, NotificationLog
-from src.modules.media.models import StoredFile
+from src.modules.auth.models import Auth  # noqa: F401
+from src.modules.users.models import User  # noqa: F401
+from src.modules.telegram_clients.models import (  # noqa: F401
+    TelegramAccount,
+    TelegramChatState,
+    TelegramSettings,
+)
+from src.modules.batching.models import Batch, BatchMessage  # noqa: F401
+from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

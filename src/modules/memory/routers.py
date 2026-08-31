@@ -1,44 +1,71 @@
-"""Memory module HTTP routers (optional, for admin API)."""
+"""Memory module HTTP CRUD routers."""
 
-from uuid import UUID
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.core.database import get_async_session
-from src.modules.memory.repository import MemoryRepository
-from src.modules.memory.schemas_api import (
-    ConversationListResponse,
+from src.base.routers import create_crud_router
+from src.modules.memory.dependencies import (
+    get_conversation_service,
+    get_message_service,
+    get_summary_state_service,
+    get_vector_record_service,
+)
+from src.modules.memory.schemas.public import (
+    ConversationCreateRequest,
     ConversationResponse,
+    ConversationUpdateRequest,
+    MessageCreateRequest,
+    MessageResponse,
+    MessageUpdateRequest,
+    SummaryStateCreateRequest,
+    SummaryStateResponse,
+    SummaryStateUpdateRequest,
+    VectorRecordCreateRequest,
+    VectorRecordResponse,
+    VectorRecordUpdateRequest,
 )
 
 router = APIRouter(prefix="/memory", tags=["memory"])
-
-
-async def get_repo(session: AsyncSession = Depends(get_async_session)) -> MemoryRepository:
-    """Get memory repository."""
-    return MemoryRepository(session=session)
-
-
-@router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
-async def get_conversation(
-    conversation_id: UUID,
-    repo: MemoryRepository = Depends(get_repo),
-) -> ConversationResponse:
-    """Get conversation by ID."""
-    conversation = await repo.get_conversation_by_id(conversation_id)
-    if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found",
-        )
-    return ConversationResponse.model_validate(conversation)
-
-
-@router.get("/conversations", response_model=ConversationListResponse)
-async def list_conversations(
-    repo: MemoryRepository = Depends(get_repo),
-) -> ConversationListResponse:
-    """List all conversations (simplified)."""
-    # In real app, would implement proper listing with pagination
-    return ConversationListResponse(conversations=[], total=0)
+router.include_router(
+    create_crud_router(
+        get_service=get_conversation_service,
+        create_schema=ConversationCreateRequest,
+        update_schema=ConversationUpdateRequest,
+        response_schema=ConversationResponse,
+        prefix="/conversations",
+        tags=["memory"],
+        entity_name="Conversation",
+    )
+)
+router.include_router(
+    create_crud_router(
+        get_service=get_message_service,
+        create_schema=MessageCreateRequest,
+        update_schema=MessageUpdateRequest,
+        response_schema=MessageResponse,
+        prefix="/messages",
+        tags=["memory"],
+        entity_name="Message",
+    )
+)
+router.include_router(
+    create_crud_router(
+        get_service=get_summary_state_service,
+        create_schema=SummaryStateCreateRequest,
+        update_schema=SummaryStateUpdateRequest,
+        response_schema=SummaryStateResponse,
+        prefix="/summary-states",
+        tags=["memory"],
+        entity_name="SummaryState",
+    )
+)
+router.include_router(
+    create_crud_router(
+        get_service=get_vector_record_service,
+        create_schema=VectorRecordCreateRequest,
+        update_schema=VectorRecordUpdateRequest,
+        response_schema=VectorRecordResponse,
+        prefix="/vector-records",
+        tags=["memory"],
+        entity_name="VectorRecord",
+    )
+)

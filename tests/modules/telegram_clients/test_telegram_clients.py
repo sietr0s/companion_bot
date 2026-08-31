@@ -163,7 +163,7 @@ class TestTelegramClientServiceGetAccounts:
                 "session_file": "/tmp/s4",
             },
         )
-        accounts, total = await tg_service.get_accounts(db_session)
+        accounts, total = await tg_service.get_list(db_session)
         assert len(accounts) == 1
         assert accounts[0].phone == "+79004444444"
         assert total == 1

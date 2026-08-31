@@ -1,28 +1,11 @@
-"""Специфичные исключения модуля users."""
+"""Исключения модуля users."""
 
 from src.core.exceptions import ConflictError, NotFoundError
 
 
-class ProfileNotFoundError(NotFoundError):
-    """Профиль пользователя не найден."""
-
+class UserNotFoundError(NotFoundError):
     pass
 
 
-class ProfileAlreadyExistsError(ConflictError):
-    """Профиль пользователя уже существует."""
-
+class UserAlreadyExistsError(ConflictError):
     pass
-
-
-class TelegramAlreadyLinkedError(ConflictError):
-    """Telegram уже привязан к другому пользователю."""
-
-    pass
-
-
-class TelegramNotFoundError(NotFoundError):
-    """Telegram профиль не найден."""
-
-    pass
-

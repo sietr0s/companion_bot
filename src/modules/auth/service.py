@@ -4,7 +4,7 @@
 Содержит бизнес-логику регистрации и входа.
 Модуль auth полностью изолирован — он не создаёт профиль
 пользователя и не зависит от модуля users.
-Профиль создаётся отдельным запросом через роут /users/.
+Профиль собеседника Telegram живёт в модуле users и не связан с auth.
 """
 
 import uuid
@@ -19,9 +19,9 @@ from src.core.security import create_access_token, hash_password, verify_passwor
 from src.modules.auth.constants import ERROR_MESSAGES
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
+from src.modules.auth.schemas.events import UserDeleted, UserLoggedIn, UserRegistered
 from src.modules.auth.schemas.internal import AuthRead, VerifyTokenResponse
-from src.modules.auth.schemas_api import TokenResponse, AccountResponse
-from src.modules.auth.schemas_bus import UserDeleted, UserLoggedIn, UserRegistered
+from src.modules.auth.schemas.public import TokenResponse
 
 
 class AuthService(BaseService[AuthRepository, Auth]):
@@ -181,30 +181,6 @@ class AuthService(BaseService[AuthRepository, Auth]):
         # Публикуем событие в шину
         event = UserDeleted(auth_id=auth_id)
         await self.message_bus.publish(BusTopics.USER_DELETED, event.to_bus_dict())
-
-    async def list_accounts(
-        self,
-        session: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
-        order_by: str | None = "-created_at",
-    ) -> tuple[list[AccountResponse], int]:
-        """Получить список всех аккаунтов с пагинацией."""
-        accounts, total = await self.repository.get_list(
-            session, skip=skip, limit=limit, order_by=order_by
-        )
-        return [AccountResponse.model_validate(acc) for acc in accounts], total
-
-    async def get_account(
-        self,
-        session: AsyncSession,
-        account_id: uuid.UUID,
-    ) -> AccountResponse:
-        """Получить аккаунт по ID."""
-        account = await self.repository.get_by_id(session, account_id)
-        if not account:
-            raise UnauthorizedError(detail="Учётная запись не найдена")
-        return AccountResponse.model_validate(account)
 
     async def create_account(
         self,

@@ -20,7 +20,7 @@ class TestConfig:
             DATABASE_URL="sqlite+aiosqlite:///test.db",
         )
         assert s.JWT_ALGORITHM == "HS256"
-        assert s.ACCESS_TOKEN_EXPIRE_MINUTES == 15
+        assert s.ACCESS_TOKEN_EXPIRE_MINUTES == 60 * 24
         assert s.MESSAGE_BUS == "in_memory"
         assert s.DATABASE_POOL_SIZE == 5
         assert s.DEBUG is False

@@ -23,7 +23,7 @@ from telethon.errors import (
 
 from src.core.config import settings
 from src.core.exceptions import NotFoundError
-from src.modules.telegram_clients.domain import Media, Message, Sender
+from src.modules.telegram_clients.schemas.events import Media, Sender, TgMessageReceived
 from src.modules.telegram_clients.qr_auth import QrAuthManager
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,6 @@ class TelegramClientManager:
 
     Хранит:
     - _clients: реестр подключённых TelegramClient
-    - _service: сервис для обработки входящих сообщений
     - _phone_code_hashes, _phones: данные SMS-авторизации
     - _qr_auth: отдельный координатор QR-сессий
     """
@@ -44,7 +43,6 @@ class TelegramClientManager:
         self._clients: dict[uuid.UUID, TelegramClient] = {}
         self._phone_code_hashes: dict[uuid.UUID, str] = {}
         self._phones: dict[uuid.UUID, str] = {}
-        self._service = None
         self._qr_auth = QrAuthManager(
             create_client=self.create_client,
             get_session_path=self.get_session_path,
@@ -70,14 +68,6 @@ class TelegramClientManager:
     def get_all_client_ids(self) -> list[uuid.UUID]:
         """Получить список всех ID клиентов."""
         return list(self._clients.keys())
-
-    def get_service(self) -> Any:
-        """Получить сервис для обработки входящих сообщений."""
-        return self._service
-
-    def set_service(self, service: Any) -> None:
-        """Установить сервис для обработки входящих сообщений."""
-        self._service = service
 
     def get_session_path(self, account_id: uuid.UUID) -> str:
         """Формирует путь к session-файлу."""
@@ -288,7 +278,7 @@ class TelegramClientManager:
         last_read_message_id: int | None = None,
         limit: int = 50,
         offset_id: int = 0,
-    ) -> list[Message]:
+    ) -> list[TgMessageReceived]:
         """
         Получить непрочитанные сообщения чата.
         """
@@ -298,7 +288,7 @@ class TelegramClientManager:
 
         effective_offset = last_read_message_id or offset_id
 
-        messages: list[Message] = []
+        messages: list[TgMessageReceived] = []
         async for msg in client.iter_messages(chat_id, limit=limit, offset_id=effective_offset):
             if last_read_message_id and msg.id <= last_read_message_id:
                 break
@@ -306,7 +296,7 @@ class TelegramClientManager:
             media = await self.extract_media(client, msg)
             telegram_sender = await msg.get_sender()
             messages.append(
-                Message(
+                TgMessageReceived(
                     account_id=account_id,
                     chat_id=chat_id,
                     message_id=msg.id,

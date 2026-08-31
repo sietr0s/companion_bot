@@ -36,7 +36,7 @@ async def get_accounts(
     service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> PaginatedResponse[AccountRead]:
     parsed = parse_filters(filters, allowed_fields=ACCOUNT_FILTER_FIELDS)
-    accounts, total = await service.get_accounts(
+    accounts, total = await service.get_list(
         session,
         parsed,
         (page - 1) * limit,

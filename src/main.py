@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -16,14 +15,18 @@ from src.core.container import ApplicationContainer
 from src.core.database import create_async_session, init_db
 from src.core.exceptions import AppException
 from src.core.seed import seed_admin
-from src.modules.auth.routers import internal_router as auth_internal_router
 from src.modules.auth.routers import public_router as auth_router
+from src.modules.batching.handlers import register_handlers as register_batching_handlers
+from src.modules.llm.handlers import register_handlers as register_llm_handlers
+from src.modules.memory.handlers import register_handlers as register_memory_handlers
+from src.modules.batching.routers import messages_router as batching_messages_router
+from src.modules.batching.routers import router as batching_router
+from src.modules.memory.routers import router as memory_router
+from src.modules.orchestrator.handlers import register_handlers as register_orchestrator_handlers
 from src.modules.telegram_clients.dependencies import get_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
-from src.modules.telegram_clients.routers import internal_router as tg_internal_router
 from src.modules.telegram_clients.routers import public_router as tg_router
 from src.modules.users.handlers import register_handlers as register_users_handlers
-from src.modules.users.routers import internal_router as users_internal_router
 from src.modules.users.routers import public_router as users_router
 
 logger = logging.getLogger(__name__)
@@ -38,10 +41,14 @@ logging.getLogger("aiokafka").setLevel(logging.WARNING)
 
 def _register_bus_handlers(container: ApplicationContainer) -> None:
     consumer = container.consumer
+    producer = container.producer
 
-    register_users_handlers(consumer)
-    register_tg_handlers(consumer, container.telegram_client_manager)
-    register_notification_handlers(consumer)
+    register_users_handlers(consumer, producer)
+    register_tg_handlers(consumer, container.telegram_client_manager, producer)
+    register_batching_handlers(consumer, producer)
+    register_memory_handlers(consumer, producer)
+    register_llm_handlers(consumer, producer)
+    register_orchestrator_handlers(consumer, producer)
 
     @consumer.subscribe(BusTopics.DLQ)
     async def handle_dlq(message: dict) -> None:
@@ -63,19 +70,12 @@ def _create_lifespan(container: ApplicationContainer):
         client_manager = container.telegram_client_manager
         telegram_service = container.telegram_service
 
-        bot = create_bot()
-        bot_service = create_bot_service(bot)
-        dispatcher = create_dispatcher(producer, consumer, bot_service)
-
         await init_db()
         await producer.start()
         await consumer.start()
 
         async with create_async_session() as session:
             await seed_admin(session, producer)
-
-        if settings.MEDIA_STORAGE_PROVIDER == "local":
-            LocalStorage().ensure_base_path()
 
         async with create_async_session() as session:
             await telegram_service.restore_tg_sessions(session)
@@ -85,27 +85,10 @@ def _create_lifespan(container: ApplicationContainer):
             for account in accounts:
                 await telegram_service.read_unread_messages(session, account.id)
 
-        polling_task: asyncio.Task[None] | None = None
-        if settings.TG_BOT_MODE == "webhook":
-            webhook_url = f"{settings.APP_URL}/webhook/bot"
-            await bot.set_webhook(
-                url=webhook_url,
-                secret_token=settings.TG_BOT_WEBHOOK_SECRET,
-            )
-            logger.info("Бот запущен в режиме webhook: %s", webhook_url)
-        else:
-            polling_task = asyncio.create_task(dispatcher.start_polling(bot))
-            logger.info("Бот запущен в режиме polling")
-
         logger.info("Приложение запущено, шина: %s", settings.MESSAGE_BUS)
 
         yield
 
-        if polling_task is not None:
-            polling_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await polling_task
-        await bot.session.close()
         await client_manager.stop_all()
         await consumer.stop()
         await producer.stop()
@@ -146,13 +129,11 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.add_api_route("/health", health_check, methods=["GET"], tags=["Health"])
 
     application.include_router(auth_router)
-    application.include_router(auth_internal_router)
     application.include_router(users_router)
-    application.include_router(users_internal_router)
     application.include_router(tg_router)
-    application.include_router(tg_internal_router)
-    application.include_router(media_router)
-    application.include_router(media_internal_router)
+    application.include_router(memory_router)
+    application.include_router(batching_router)
+    application.include_router(batching_messages_router)
 
     return application
 

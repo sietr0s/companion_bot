@@ -15,7 +15,11 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
     TelegramSettingsRepository,
 )
-from src.modules.telegram_clients.services import TelegramAccountService, TelegramSettingsService
+from src.modules.telegram_clients.services import (
+    TelegramAccountService,
+    TelegramChatStateService,
+    TelegramSettingsService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,10 +75,13 @@ def get_telegram_settings_service(
     repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsService:
     """Фабрика сервиса Telegram-Настроек."""
-    return TelegramSettingsService(
-        repository=repo,
-        message_bus=get_producer(),
-    )
+    return TelegramSettingsService(repository=repo)
+
+
+def get_telegram_chat_state_service(
+    repo: TelegramChatStateRepository = Depends(get_telegram_chat_state_repository),
+) -> TelegramChatStateService:
+    return TelegramChatStateService(repository=repo)
 
 
 def get_telegram_client_service_factory(

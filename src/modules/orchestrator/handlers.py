@@ -1,18 +1,10 @@
-"""Orchestrator module bus event handlers.
+"""Orchestrator bus registration."""
 
-Note: Orchestrator registers its handlers directly in the service
-via register_all_handlers() method, so this file is minimal.
-"""
-
-from src.bus.interface import MessageConsumer
+from src.bus.interface import MessageConsumer, MessageProducer
 from src.modules.orchestrator.service import OrchestratorService
 
 
-def register_handlers(consumer: MessageConsumer, service: OrchestratorService) -> None:
-    """Register orchestrator event handlers.
-
-    Orchestrator handlers are registered internally via service.register_all_handlers().
-    This function is provided for API compatibility.
-    """
-    # Handlers are already registered in get_orchestrator_service dependency
-    pass
+def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> OrchestratorService:
+    service = OrchestratorService(consumer, producer)
+    service.register_all_handlers()
+    return service

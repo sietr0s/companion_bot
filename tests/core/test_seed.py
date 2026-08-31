@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
+from src.core.config import settings
 from src.core.seed import seed_admin
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
@@ -24,7 +25,7 @@ async def test_seed_admin_creates_admin(db_session: AsyncSession):
     await seed_admin(db_session)
 
     repo = AuthRepository()
-    admin = await repo.get_by_identifier(db_session, "admin@example.com")
+    admin = await repo.get_by_identifier(db_session, settings.ADMIN_EMAIL)
 
     assert admin is not None
     assert admin.role == "admin"
@@ -39,7 +40,7 @@ async def test_seed_admin_idempotent(db_session: AsyncSession):
     await seed_admin(db_session)
 
     repo = AuthRepository()
-    admin = await repo.get_by_identifier(db_session, "admin@example.com")
+    admin = await repo.get_by_identifier(db_session, settings.ADMIN_EMAIL)
     assert admin is not None
     assert admin.role == "admin"
 
@@ -56,7 +57,7 @@ async def test_seed_admin_idempotent(db_session: AsyncSession):
     assert count == 1
 
     # ID не изменился
-    same_admin = await repo.get_by_identifier(db_session, "admin@example.com")
+    same_admin = await repo.get_by_identifier(db_session, settings.ADMIN_EMAIL)
     assert same_admin is not None
     assert same_admin.id == admin_id
 
@@ -67,10 +68,10 @@ async def test_seed_admin_password_is_hashed(db_session: AsyncSession):
     await seed_admin(db_session)
 
     repo = AuthRepository()
-    admin = await repo.get_by_identifier(db_session, "admin@example.com")
+    admin = await repo.get_by_identifier(db_session, settings.ADMIN_EMAIL)
 
     assert admin is not None
-    assert admin.hashed_password != "admin123"
+    assert admin.hashed_password != settings.ADMIN_PASSWORD
     assert admin.hashed_password.startswith("$2b$")  # bcrypt hash
 
 
@@ -83,7 +84,7 @@ async def test_seed_admin_can_login(db_session: AsyncSession):
     service = AuthService(repository=AuthRepository(), message_bus=get_producer())
     response = await service.login(
         db_session,
-        {"identifier": "admin@example.com", "password": "admin123"},
+        {"identifier": settings.ADMIN_EMAIL, "password": settings.ADMIN_PASSWORD},
     )
 
     assert response.access_token is not None

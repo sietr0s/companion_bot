@@ -4,7 +4,7 @@
 
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.repository import BaseRepository
@@ -86,31 +86,16 @@ class TelegramChatStateRepository(BaseRepository[TelegramChatState]):
         """
         # Пытаемся найти существующую запись
         existing = await self.get_by_account_and_chat(session, account_id, chat_id)
-
         if existing:
-            # Обновляем существующую
-            stmt = (
-                update(self.model)
-                .where(
-                    self.model.account_id == account_id,
-                    self.model.chat_id == chat_id,
-                )
-                .values(last_read_message_id=message_id)
-                .returning(self.model)
-            )
-            result = await session.execute(stmt)
-            return result.scalar_one()
-        else:
-            # Создаём новую
-            new_state = self.model(
-                account_id=account_id,
-                chat_id=chat_id,
-                last_read_message_id=message_id,
-            )
-            session.add(new_state)
-            await session.commit()
-            await session.refresh(new_state)
-            return new_state
+            return await self.update(session, existing, {"last_read_message_id": message_id})
+        return await self.create(
+            session,
+            {
+                "account_id": account_id,
+                "chat_id": chat_id,
+                "last_read_message_id": message_id,
+            },
+        )
 
     async def get_all_by_account(
         self,

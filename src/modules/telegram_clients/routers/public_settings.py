@@ -12,7 +12,7 @@ from src.modules.telegram_clients.dependencies import (
     get_telegram_settings_service,
 )
 from src.modules.telegram_clients.repository import TelegramSettingsRepository
-from src.modules.telegram_clients.schemas.internal.settings import (
+from src.modules.telegram_clients.schemas.public import (
     TelegramSettingsCreate,
     TelegramSettingsRead,
     TelegramSettingsUpdate,
@@ -41,8 +41,10 @@ async def create_settings(
     session: AsyncSession = Depends(get_db_session),
     service: TelegramSettingsService = Depends(get_telegram_settings_service),
 ) -> TelegramSettingsRead:
-    await service.create_default_settings(session, account_id)
-    settings = await service.update(session, account_id, data.model_dump(exclude_unset=True))
+    settings = await service.create_default_settings(session, account_id)
+    payload = data.model_dump(exclude_unset=True)
+    if payload:
+        settings = await service.update(session, settings.id, payload)
     return TelegramSettingsRead.model_validate(settings)
 
 
@@ -52,8 +54,14 @@ async def update_settings(
     data: TelegramSettingsUpdate,
     session: AsyncSession = Depends(get_db_session),
     service: TelegramSettingsService = Depends(get_telegram_settings_service),
+    repository: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsRead:
-    settings = await service.update(session, account_id, data.model_dump(exclude_unset=True))
+    settings_obj = await repository.get_by_account_id(session, account_id)
+    if not settings_obj:
+        raise NotFoundError(detail="Настройки не найдены")
+    settings = await service.update(
+        session, settings_obj.id, data.model_dump(exclude_unset=True)
+    )
     return TelegramSettingsRead.model_validate(settings)
 
 
