@@ -1,11 +1,26 @@
-"""Memory module business logic service."""
+"""Memory module business logic."""
 
+import logging
+from datetime import datetime
+from uuid import uuid4
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.base.service import BaseService
 from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
+from src.modules.llm.service import LLMService
+from src.modules.memory.constants import SUMMARY_THRESHOLD
 from src.modules.memory.exceptions import ConversationNotFoundError
-from src.modules.memory.repository import MemoryRepository
-from src.modules.memory.schemas_bus import (
+from src.modules.memory.formatting import glue_batch
+from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
+from src.modules.memory.repository import (
+    ConversationRepository,
+    MessageRepository,
+    SummaryStateRepository,
+    VectorRecordRepository,
+)
+from src.modules.memory.schemas.events import (
     BatchProcessedEvent,
     BuildContextCommand,
     ContextBuiltEvent,
@@ -14,169 +29,202 @@ from src.modules.memory.schemas_bus import (
     UpdateMemoryCommand,
 )
 
+logger = logging.getLogger(__name__)
+
+
+class ConversationService(BaseService[ConversationRepository, Conversation]):
+    def __init__(self, repository: ConversationRepository) -> None:
+        super().__init__(repository)
+
+
+class MessageService(BaseService[MessageRepository, Message]):
+    def __init__(self, repository: MessageRepository) -> None:
+        super().__init__(repository)
+
+
+class SummaryStateService(BaseService[SummaryStateRepository, SummaryState]):
+    def __init__(self, repository: SummaryStateRepository) -> None:
+        super().__init__(repository)
+
+
+class VectorRecordService(BaseService[VectorRecordRepository, VectorRecord]):
+    def __init__(self, repository: VectorRecordRepository) -> None:
+        super().__init__(repository)
+
 
 class MemoryService:
-    """Service for memory-related business logic."""
-
     def __init__(
         self,
-        repository: MemoryRepository,
+        conversations: ConversationRepository,
+        messages: MessageRepository,
+        summaries: SummaryStateRepository,
+        vectors: VectorRecordRepository,
         message_bus: MessageProducer,
-    ):
-        self._repo = repository
+        llm: LLMService,
+    ) -> None:
+        self._conversations = conversations
+        self._messages = messages
+        self._summaries = summaries
+        self._vectors = vectors
         self._message_bus = message_bus
+        self._llm = llm
 
     async def process_batch(
-        self,
-        command: ProcessBatchCommand,
+        self, session: AsyncSession, command: ProcessBatchCommand
     ) -> BatchProcessedEvent:
-        """Process a batch of messages and save to conversation."""
-        # Get or create conversation
-        conversation = await self._repo.get_or_create_conversation(
+        conversation = await self._conversations.get_or_create(
+            session,
             telegram_chat_id=command.telegram_chat_id,
-            user_id=command.conversation_id,  # In real app, this would be different
+            user_id=command.conversation_id or uuid4(),
         )
+        if command.telegram_account_id is not None:
+            conversation = await self._conversations.update(
+                session,
+                conversation,
+                {"telegram_account_id": command.telegram_account_id},
+            )
 
-        # Prepare messages data
         current_sequence = conversation.last_sequence_number
-        messages_data = []
         sequence_numbers = []
-
-        for _, text in enumerate(command.messages):
+        for text in command.messages:
             current_sequence += 1
-            messages_data.append({
-                "text": text,
-                "direction": command.direction,
-                "message_type": command.message_type,
-                "sequence_number": current_sequence,
-                "batch_id": command.batch_id,
-            })
+            await self._messages.create(
+                session,
+                {
+                    "conversation_id": conversation.id,
+                    "text": text,
+                    "direction": command.direction,
+                    "message_type": command.message_type,
+                    "sequence_number": current_sequence,
+                    "batch_id": command.batch_id,
+                },
+            )
             sequence_numbers.append(current_sequence)
 
-        # Save messages
-        await self._repo.save_messages(conversation.id, messages_data)
-
-        # Update conversation activity
-        await self._repo.update_conversation_activity(
-            conversation.id,
-            current_sequence,
+        await self._conversations.update(
+            session,
+            conversation,
+            {
+                "last_sequence_number": current_sequence,
+                "last_activity_at": datetime.utcnow(),
+            },
         )
 
-        # Publish event
+        if sequence_numbers:
+            glued = glue_batch(command.messages, command.direction)
+            try:
+                embeddings = await self._llm.embed([glued], role="document")
+                await self._vectors.create(
+                    session,
+                    {
+                        "conversation_id": conversation.id,
+                        "text": glued,
+                        "embedding": embeddings[0],
+                        "extra_data": {
+                            "batch_id": str(command.batch_id) if command.batch_id is not None else None,
+                            "direction": command.direction,
+                            "seq_from": sequence_numbers[0],
+                            "seq_to": sequence_numbers[-1],
+                        },
+                    },
+                )
+            except Exception:
+                logger.exception("failed to index batch embedding")
+
+        summary_state = await self._summaries.get_by_conversation_id(session, conversation.id)
+        checkpoint = summary_state.checkpoint if summary_state else 0
+        current_summary = summary_state.current_summary if summary_state else None
+        if current_sequence - checkpoint >= SUMMARY_THRESHOLD:
+            try:
+                after = await self._messages.get_after_checkpoint(
+                    session, conversation.id, checkpoint
+                )
+                new_summary = await self._llm.summarize(
+                    current_summary, [m.text for m in after]
+                )
+                await self._summaries.upsert(
+                    session,
+                    conversation.id,
+                    new_summary,
+                    current_sequence,
+                )
+            except Exception:
+                logger.exception("failed to summarize conversation")
+
         event = BatchProcessedEvent(
             conversation_id=conversation.id,
             telegram_chat_id=conversation.telegram_chat_id,
+            telegram_account_id=conversation.telegram_account_id,
             sequence_numbers=sequence_numbers,
+            messages=list(command.messages),
         )
-
-        await self._message_bus.publish(
-            topic=BusTopics.MEMORY_OUT,
-            action="batch_processed",
-            payload=event.model_dump(),
-        )
-
+        await self._message_bus.publish(BusTopics.MEMORY_BATCH_PROCESSED, event.to_bus_dict())
         return event
 
     async def build_context(
-        self,
-        command: BuildContextCommand,
+        self, session: AsyncSession, command: BuildContextCommand
     ) -> ContextBuiltEvent:
-        """Build context for LLM from conversation history."""
-        # Get last messages
-        messages = await self._repo.get_last_messages(
+        messages = await self._messages.get_last_messages(
+            session,
             conversation_id=command.conversation_id,
             limit=command.last_n_messages,
         )
-
-        # Get summary state
-        summary_state = await self._repo.get_summary_state(command.conversation_id)
+        summary_state = await self._summaries.get_by_conversation_id(session, command.conversation_id)
         summary = summary_state.current_summary if summary_state else None
 
-        # Build context (simplified - in real app would use RAG)
         context_parts = []
         if summary:
             context_parts.append(f"Summary: {summary}")
-
         for msg in messages:
-            direction_label = "User" if msg.direction == "incoming" else "Assistant"
-            context_parts.append(f"{direction_label}: {msg.text}")
-
+            label = "User" if msg.direction == "incoming" else "Assistant"
+            context_parts.append(f"{label}: {msg.text}")
         context = "\n".join(context_parts)
 
-        # Publish event
         event = ContextBuiltEvent(
             conversation_id=command.conversation_id,
             telegram_chat_id=command.telegram_chat_id,
+            telegram_account_id=command.telegram_account_id,
             context=context,
             retrieved_count=len(messages),
         )
-
-        await self._message_bus.publish(
-            topic=BusTopics.MEMORY_OUT,
-            action="context_built",
-            payload=event.model_dump(),
-        )
-
+        await self._message_bus.publish(BusTopics.MEMORY_CONTEXT_BUILT, event.to_bus_dict())
         return event
 
     async def update_memory(
-        self,
-        command: UpdateMemoryCommand,
+        self, session: AsyncSession, command: UpdateMemoryCommand
     ) -> MemoryUpdatedEvent:
-        """Update memory after message delivery."""
-        # Get conversation
-        conversation = await self._repo.get_conversation_by_id(
-            command.conversation_id
-        )
+        conversation = await self._conversations.get_by_id(session, command.conversation_id)
         if not conversation:
-            raise ConversationNotFoundError(
-                f"Conversation {command.conversation_id} not found"
-            )
+            raise ConversationNotFoundError(f"Conversation {command.conversation_id} not found")
 
-        # Save outgoing messages if delivered
         messages_saved = 0
         if command.delivery_status == "delivered":
             current_sequence = conversation.last_sequence_number
-            messages_data = []
-
             for text in command.outgoing_messages:
                 current_sequence += 1
-                messages_data.append({
-                    "text": text,
-                    "direction": "outgoing",
-                    "message_type": "text",
-                    "sequence_number": current_sequence,
-                })
+                await self._messages.create(
+                    session,
+                    {
+                        "conversation_id": conversation.id,
+                        "text": text,
+                        "direction": "outgoing",
+                        "message_type": "text",
+                        "sequence_number": current_sequence,
+                    },
+                )
                 messages_saved += 1
-
-            if messages_data:
-                await self._repo.save_messages(conversation.id, messages_data)
-                await self._repo.update_conversation_activity(
-                    conversation.id,
-                    current_sequence,
+            if messages_saved:
+                await self._conversations.update(
+                    session,
+                    conversation,
+                    {"last_sequence_number": current_sequence},
                 )
 
-        # Check if summarization is needed (threshold: 100 messages)
-        message_count = await self._repo.get_message_count(conversation.id)
-        summary_updated = False
-
-        if message_count >= 100:
-            # In real app, would call LLM to summarize
-            # For now, just mark as needing update
-            summary_updated = True
-
-        # Publish event
         event = MemoryUpdatedEvent(
-            conversation_id=command.conversation_id,
+            conversation_id=conversation.id,
             telegram_chat_id=conversation.telegram_chat_id,
             messages_count=messages_saved,
-            summary_updated=summary_updated,
+            summary_updated=False,
         )
-
-        await self._message_bus.publish(
-            topic=BusTopics.MEMORY_OUT,
-            action="memory_updated",
-            payload=event.model_dump(),
-        )
-
+        await self._message_bus.publish(BusTopics.MEMORY_UPDATED, event.to_bus_dict())
         return event
