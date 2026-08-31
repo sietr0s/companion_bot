@@ -22,6 +22,7 @@ class BuildContextCommand(BaseModel):
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
+    batch_messages: list[str] = []
     last_n_messages: int = 50
 
 

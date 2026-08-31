@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
 from src.modules.memory.constants import EMBEDDING_DIM
+from src.modules.memory.formatting import glue_batch
 from src.modules.memory.models import VectorRecord
 from src.modules.memory.repository import (
     ConversationRepository,
@@ -13,7 +14,7 @@ from src.modules.memory.repository import (
     SummaryStateRepository,
     VectorRecordRepository,
 )
-from src.modules.memory.schemas.events import ProcessBatchCommand
+from src.modules.memory.schemas.events import BuildContextCommand, ProcessBatchCommand
 from src.modules.memory.service import MemoryService
 
 
@@ -112,3 +113,128 @@ async def test_process_batch_skips_vector_if_embed_fails(db_session):
         await db_session.execute(select(func.count()).select_from(VectorRecord))
     ).scalar()
     assert count == 0
+
+
+def _vec(seed: float) -> list[float]:
+    return [seed] * EMBEDDING_DIM
+
+
+async def _seed_retrieve(db_session, telegram_chat_id: int, vector_rows: list[tuple[str, float]]):
+    conv = await ConversationRepository().create(
+        db_session,
+        {"telegram_chat_id": telegram_chat_id, "user_id": uuid.uuid4()},
+    )
+    await MessageRepository().create(
+        db_session,
+        {
+            "conversation_id": conv.id,
+            "text": "recent",
+            "direction": "incoming",
+            "message_type": "text",
+            "sequence_number": 1,
+        },
+    )
+    await SummaryStateRepository().create(
+        db_session,
+        {"conversation_id": conv.id, "current_summary": "past", "checkpoint": 0},
+    )
+    vec_repo = VectorRecordRepository()
+    for text, seed in vector_rows:
+        await vec_repo.create(
+            db_session,
+            {"conversation_id": conv.id, "text": text, "embedding": _vec(seed)},
+        )
+    return conv
+
+
+def _retrieved_items(context: str) -> list[str]:
+    if "Retrieved:" not in context:
+        return []
+    items = []
+    for line in context.split("Retrieved:", 1)[1].splitlines():
+        if line.startswith("- "):
+            items.append(line[2:])
+        elif line.startswith("User:") or line.startswith("Assistant:"):
+            break
+    return items
+
+
+@pytest.mark.asyncio
+async def test_build_context_includes_ranked_hits(db_session):
+    conv = await _seed_retrieve(
+        db_session, 20, [("old A", 0.9), ("old B", -1.0)]
+    )
+
+    class ReversePost(RecordingLLM):
+        async def retrieve_post(self, query, hits):
+            return list(reversed(hits))
+
+    llm = ReversePost()
+    svc = _service(llm)
+    event = await svc.build_context(
+        db_session,
+        BuildContextCommand(
+            conversation_id=conv.id,
+            telegram_chat_id=20,
+            batch_messages=["now"],
+            last_n_messages=50,
+        ),
+    )
+    assert "Retrieved:" in event.context
+    assert "old A" in event.context
+    assert "old B" in event.context
+    assert _retrieved_items(event.context) == ["old B", "old A"]
+    assert event.retrieved_count >= 1
+    assert event.retrieved_count == 2
+    assert llm.embed_calls[-1][1] == "query"
+    assert "Summary: past" in event.context
+    assert "User: recent" in event.context
+
+
+@pytest.mark.asyncio
+async def test_build_context_drops_current_batch_hit(db_session):
+    glued = glue_batch(["now"], "incoming")
+    conv = await _seed_retrieve(
+        db_session, 21, [(glued, 0.9), ("kept batch", 0.5)]
+    )
+    llm = RecordingLLM()
+    svc = _service(llm)
+    event = await svc.build_context(
+        db_session,
+        BuildContextCommand(
+            conversation_id=conv.id,
+            telegram_chat_id=21,
+            batch_messages=["now"],
+            last_n_messages=50,
+        ),
+    )
+    retrieved = event.context.split("Retrieved:")[-1].split("User:")[0]
+    assert glued not in retrieved
+    assert glued not in _retrieved_items(event.context)
+    assert "kept batch" in _retrieved_items(event.context)
+    assert "User: recent" in event.context
+
+
+@pytest.mark.asyncio
+async def test_build_context_omits_retrieved_on_pre_failure(db_session):
+    conv = await _seed_retrieve(db_session, 22, [("old batch", 0.9)])
+
+    class BoomPre(RecordingLLM):
+        async def retrieve_pre(self, batch_messages):
+            raise RuntimeError("llm")
+
+    llm = BoomPre()
+    svc = _service(llm)
+    event = await svc.build_context(
+        db_session,
+        BuildContextCommand(
+            conversation_id=conv.id,
+            telegram_chat_id=22,
+            batch_messages=["now"],
+            last_n_messages=50,
+        ),
+    )
+    assert "Retrieved" not in event.context
+    assert event.retrieved_count == 0
+    assert "User: recent" in event.context
+    assert "Summary: past" in event.context

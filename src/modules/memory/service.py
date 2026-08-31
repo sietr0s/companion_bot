@@ -10,9 +10,9 @@ from src.base.service import BaseService
 from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.modules.llm.service import LLMService
-from src.modules.memory.constants import SUMMARY_THRESHOLD
+from src.modules.memory.constants import SUMMARY_THRESHOLD, VECTOR_TOP_K
 from src.modules.memory.exceptions import ConversationNotFoundError
-from src.modules.memory.formatting import glue_batch
+from src.modules.memory.formatting import assemble_context, glue_batch
 from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
 from src.modules.memory.repository import (
     ConversationRepository,
@@ -172,20 +172,32 @@ class MemoryService:
         summary_state = await self._summaries.get_by_conversation_id(session, command.conversation_id)
         summary = summary_state.current_summary if summary_state else None
 
-        context_parts = []
-        if summary:
-            context_parts.append(f"Summary: {summary}")
-        for msg in messages:
-            label = "User" if msg.direction == "incoming" else "Assistant"
-            context_parts.append(f"{label}: {msg.text}")
-        context = "\n".join(context_parts)
+        retrieved: list[str] = []
+        try:
+            query = await self._llm.retrieve_pre(command.batch_messages)
+            qvec = (await self._llm.embed([query], role="query"))[0]
+            hits = await self._vectors.search_similar(
+                session, command.conversation_id, qvec, VECTOR_TOP_K
+            )
+            current = glue_batch(command.batch_messages, "incoming")
+            hit_texts = [h.text for h in hits if h.text != current]
+            retrieved = await self._llm.retrieve_post(query, hit_texts)
+        except Exception:
+            logger.exception("retrieve failed")
+            retrieved = []
+
+        context = assemble_context(
+            summary=summary,
+            retrieved=retrieved,
+            recent=[(msg.direction, msg.text) for msg in messages],
+        )
 
         event = ContextBuiltEvent(
             conversation_id=command.conversation_id,
             telegram_chat_id=command.telegram_chat_id,
             telegram_account_id=command.telegram_account_id,
             context=context,
-            retrieved_count=len(messages),
+            retrieved_count=len(retrieved),
         )
         await self._message_bus.publish(BusTopics.MEMORY_CONTEXT_BUILT, event.to_bus_dict())
         return event
