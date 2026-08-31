@@ -18,6 +18,7 @@ python-multipart>=0.0.6
 aiosqlite>=0.20.0
 aiogram>=3.5.0
 backoff>=2.2.0
+pgvector>=0.3.0
 gliclass>=0.1.19
 transformers>=5.13.1
 torch>=2.0.0
