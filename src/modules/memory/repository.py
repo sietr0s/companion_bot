@@ -1,194 +1,163 @@
-"""Memory module SQLAlchemy repository."""
+"""Memory module repositories."""
 
-from datetime import datetime
+import math
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.modules.memory.models import (
-    Conversation,
-    Message,
-    SummaryState,
-    VectorRecord,
-)
+from src.base.repository import BaseRepository
+from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
 
 
-class MemoryRepository:
-    """Repository for memory-related database operations."""
+def _cosine_distance(a: list[float], b: list[float]) -> float | None:
+    """Return 1 - cosine similarity, or None if either vector has zero length."""
+    if len(a) != len(b):
+        return None
+    dot = 0.0
+    n1 = 0.0
+    n2 = 0.0
+    for x, y in zip(a, b, strict=True):
+        dot += x * y
+        n1 += x * x
+        n2 += y * y
+    if n1 == 0.0 or n2 == 0.0:
+        return None
+    return 1.0 - (dot / (math.sqrt(n1) * math.sqrt(n2)))
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
 
-    async def get_or_create_conversation(
+class ConversationRepository(BaseRepository[Conversation]):
+    def __init__(self) -> None:
+        super().__init__(Conversation)
+
+    async def get_by_telegram_chat_id(
+        self, session: AsyncSession, telegram_chat_id: int
+    ) -> Conversation | None:
+        result = await session.execute(
+            select(Conversation).where(Conversation.telegram_chat_id == telegram_chat_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_or_create(
         self,
+        session: AsyncSession,
         telegram_chat_id: int,
         user_id: UUID,
     ) -> Conversation:
-        """Get existing conversation or create a new one."""
-        result = await self._session.execute(
-            select(Conversation).where(Conversation.telegram_chat_id == telegram_chat_id)
+        conversation = await self.get_by_telegram_chat_id(session, telegram_chat_id)
+        if conversation:
+            return conversation
+        return await self.create(
+            session,
+            {"telegram_chat_id": telegram_chat_id, "user_id": user_id},
         )
-        conversation = result.scalar_one_or_none()
 
-        if not conversation:
-            conversation = Conversation(
-                telegram_chat_id=telegram_chat_id,
-                user_id=user_id,
-            )
-            self._session.add(conversation)
-            await self._session.flush()
 
-        return conversation
-
-    async def get_conversation_by_id(
-        self,
-        conversation_id: UUID,
-    ) -> Conversation | None:
-        """Get conversation by ID."""
-        result = await self._session.execute(
-            select(Conversation)
-            .options(selectinload(Conversation.messages))
-            .where(Conversation.id == conversation_id)
-        )
-        return result.scalar_one_or_none()
-
-    async def get_conversation_by_telegram_id(
-        self,
-        telegram_chat_id: int,
-    ) -> Conversation | None:
-        """Get conversation by Telegram chat ID."""
-        result = await self._session.execute(
-            select(Conversation).where(Conversation.telegram_chat_id == telegram_chat_id)
-        )
-        return result.scalar_one_or_none()
-
-    async def save_messages(
-        self,
-        conversation_id: UUID,
-        messages_data: list[dict],
-    ) -> list[Message]:
-        """Save multiple messages to a conversation."""
-        messages = []
-        for msg_data in messages_data:
-            message = Message(
-                conversation_id=conversation_id,
-                **msg_data,
-            )
-            self._session.add(message)
-            messages.append(message)
-
-        await self._session.flush()
-        return messages
-
-    async def update_conversation_activity(
-        self,
-        conversation_id: UUID,
-        sequence_number: int,
-    ) -> None:
-        """Update conversation last activity and sequence number."""
-        result = await self._session.execute(
-            select(Conversation).where(Conversation.id == conversation_id)
-        )
-        conversation = result.scalar_one()
-        conversation.last_sequence_number = sequence_number
-        conversation.last_activity_at = datetime.utcnow()
+class MessageRepository(BaseRepository[Message]):
+    def __init__(self) -> None:
+        super().__init__(Message)
 
     async def get_last_messages(
         self,
+        session: AsyncSession,
         conversation_id: UUID,
         limit: int = 50,
     ) -> list[Message]:
-        """Get last N messages from conversation."""
-        result = await self._session.execute(
+        result = await session.execute(
             select(Message)
             .where(Message.conversation_id == conversation_id)
             .order_by(Message.sequence_number.desc())
             .limit(limit)
         )
-        messages = result.scalars().all()
-        return list(reversed(messages))
+        return list(reversed(list(result.scalars().all())))
 
-    async def get_summary_state(
+    async def get_message_count(self, session: AsyncSession, conversation_id: UUID) -> int:
+        result = await session.execute(
+            select(func.count()).select_from(Message).where(Message.conversation_id == conversation_id)
+        )
+        return result.scalar() or 0
+
+    async def get_after_checkpoint(
         self,
+        session: AsyncSession,
         conversation_id: UUID,
+        checkpoint: int,
+    ) -> list[Message]:
+        result = await session.execute(
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.sequence_number > checkpoint,
+            )
+            .order_by(Message.sequence_number.asc())
+        )
+        return list(result.scalars().all())
+
+
+class SummaryStateRepository(BaseRepository[SummaryState]):
+    def __init__(self) -> None:
+        super().__init__(SummaryState)
+
+    async def get_by_conversation_id(
+        self, session: AsyncSession, conversation_id: UUID
     ) -> SummaryState | None:
-        """Get summary state for conversation."""
-        result = await self._session.execute(
+        result = await session.execute(
             select(SummaryState).where(SummaryState.conversation_id == conversation_id)
         )
         return result.scalar_one_or_none()
 
-    async def upsert_summary_state(
+    async def upsert(
         self,
+        session: AsyncSession,
         conversation_id: UUID,
         current_summary: str | None,
         checkpoint: int,
     ) -> SummaryState:
-        """Create or update summary state."""
-        result = await self._session.execute(
-            select(SummaryState).where(SummaryState.conversation_id == conversation_id)
-        )
-        summary_state = result.scalar_one_or_none()
+        existing = await self.get_by_conversation_id(session, conversation_id)
+        data = {"current_summary": current_summary, "checkpoint": checkpoint}
+        if existing:
+            return await self.update(session, existing, data)
+        return await self.create(session, {"conversation_id": conversation_id, **data})
 
-        if not summary_state:
-            summary_state = SummaryState(
-                conversation_id=conversation_id,
-                current_summary=current_summary,
-                checkpoint=checkpoint,
-            )
-            self._session.add(summary_state)
-        else:
-            summary_state.current_summary = current_summary
-            summary_state.checkpoint = checkpoint
-            summary_state.updated_at = datetime.utcnow()
 
-        await self._session.flush()
-        return summary_state
+class VectorRecordRepository(BaseRepository[VectorRecord]):
+    def __init__(self) -> None:
+        super().__init__(VectorRecord)
 
-    async def add_vector_record(
+    async def search_similar(
         self,
-        conversation_id: UUID,
-        text: str,
-        embedding: list[float] | None = None,
-        metadata: dict | None = None,
-    ) -> VectorRecord:
-        """Add vector record for semantic search."""
-        vector_record = VectorRecord(
-            conversation_id=conversation_id,
-            text=text,
-            embedding=embedding,
-            metadata=metadata or {},
-        )
-        self._session.add(vector_record)
-        await self._session.flush()
-        return vector_record
-
-    async def search_similar_vectors(
-        self,
+        session: AsyncSession,
         conversation_id: UUID,
         query_embedding: list[float],
         top_k: int = 10,
     ) -> list[VectorRecord]:
-        """Search similar vectors using pgvector."""
-        # This requires pgvector extension
-        result = await self._session.execute(
-            select(VectorRecord)
-            .where(VectorRecord.conversation_id == conversation_id)
-            .order_by(VectorRecord.embedding.cosine_distance(query_embedding))
-            .limit(top_k)
-        )
-        return list(result.scalars().all())
+        dialect = session.bind.dialect.name if session.bind is not None else ""
+        if dialect == "postgresql":
+            result = await session.execute(
+                select(VectorRecord)
+                .where(
+                    VectorRecord.conversation_id == conversation_id,
+                    VectorRecord.embedding.is_not(None),
+                )
+                .order_by(VectorRecord.embedding.cosine_distance(query_embedding))
+                .limit(top_k)
+            )
+            return list(result.scalars().all())
 
-    async def get_message_count(
-        self,
-        conversation_id: UUID,
-    ) -> int:
-        """Get total message count in conversation."""
-        result = await self._session.execute(
-            select(func.count()).select_from(Message).where(
-                Message.conversation_id == conversation_id
+        result = await session.execute(
+            select(VectorRecord).where(
+                VectorRecord.conversation_id == conversation_id,
+                VectorRecord.embedding.is_not(None),
             )
         )
-        return result.scalar() or 0
+        rows = list(result.scalars().all())
+        scored: list[tuple[float, VectorRecord]] = []
+        for row in rows:
+            if row.embedding is None:
+                continue
+            dist = _cosine_distance(query_embedding, row.embedding)
+            if dist is None:
+                continue
+            scored.append((dist, row))
+        scored.sort(key=lambda item: item[0])
+        return [row for _, row in scored[:top_k]]
