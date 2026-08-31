@@ -1,42 +1,19 @@
 """LLM module bus event handlers."""
 
-from src.bus.interface import MessageConsumer
-from src.modules.llm.schemas_bus import (
-    GenerateReplyCommand,
-    PostRetrieveCommand,
-    PreRetrieveCommand,
-    SummarizeCommand,
-)
+from src.bus.interface import MessageConsumer, MessageProducer
+from src.core.bus_topics import BusTopics
+from src.modules.llm.dependencies import get_embedder
+from src.modules.llm.schemas.events import GenerateReplyCommand, SummarizeCommand
 from src.modules.llm.service import LLMService
 
 
-def register_handlers(consumer: MessageConsumer, service: LLMService) -> None:
-    """Register LLM module event handlers."""
+def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
+    service = LLMService(producer, get_embedder())
 
-    consumer.subscribe(
-        topic="llm.in",
-        action="generate_reply",
-        schema=GenerateReplyCommand,
-        handler=service.generate_reply,
-    )
+    @consumer.subscribe(BusTopics.LLM_GENERATE_REPLY)
+    async def handle_generate_reply(message: dict) -> None:
+        await service.generate_reply(GenerateReplyCommand.model_validate(message))
 
-    consumer.subscribe(
-        topic="llm.in",
-        action="summarize",
-        schema=SummarizeCommand,
-        handler=service.summarize,
-    )
-
-    consumer.subscribe(
-        topic="llm.in",
-        action="pre_retrieve",
-        schema=PreRetrieveCommand,
-        handler=service.pre_retrieve,
-    )
-
-    consumer.subscribe(
-        topic="llm.in",
-        action="post_retrieve",
-        schema=PostRetrieveCommand,
-        handler=service.post_retrieve,
-    )
+    @consumer.subscribe(BusTopics.LLM_SUMMARIZE)
+    async def handle_summarize(message: dict) -> None:
+        await service.summarize_command(SummarizeCommand.model_validate(message))

@@ -1,14 +1,15 @@
-"""LLM module business logic service."""
+"""LLM module business logic (stub provider)."""
 
+from __future__ import annotations
+
+import asyncio
+from typing import Literal
 
 from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
-from src.modules.llm.schemas_bus import (
+from src.modules.llm.embedder import Embedder
+from src.modules.llm.schemas.events import (
     GenerateReplyCommand,
-    PostRetrieveCommand,
-    PostRetrieveResultEvent,
-    PreRetrieveCommand,
-    PreRetrieveResultEvent,
     ReplyGeneratedEvent,
     ReplySuppressedEvent,
     SummarizeCommand,
@@ -17,117 +18,64 @@ from src.modules.llm.schemas_bus import (
 
 
 class LLMService:
-    """Service for LLM-related business logic (stateless)."""
-
-    def __init__(self, message_bus: MessageProducer):
+    def __init__(self, message_bus: MessageProducer, embedder: Embedder) -> None:
         self._message_bus = message_bus
+        self._embedder = embedder
 
     async def generate_reply(
         self,
         command: GenerateReplyCommand,
     ) -> ReplyGeneratedEvent | ReplySuppressedEvent:
-        """Generate a reply based on context."""
-        # In real app, would call LLM provider with persona prompt
-        # For now, simplified implementation
-
-        # Decide whether to respond or suppress
-        # (In real app, LLM would decide based on context)
-        should_respond = len(command.context.strip()) > 0
-
+        should_respond = bool(command.context.strip())
         if not should_respond:
-            event = ReplySuppressedEvent(
+            event: ReplyGeneratedEvent | ReplySuppressedEvent = ReplySuppressedEvent(
                 conversation_id=command.conversation_id,
                 telegram_chat_id=command.telegram_chat_id,
+                telegram_account_id=command.telegram_account_id,
                 reason="empty_context",
             )
-        else:
-            # Generate 1-3 messages (simplified)
-            messages = [f"Response to: {command.context[:100]}..."]
+            await self._message_bus.publish(BusTopics.LLM_REPLY_SUPPRESSED, event.to_bus_dict())
+            return event
 
-            event = ReplyGeneratedEvent(
-                conversation_id=command.conversation_id,
-                telegram_chat_id=command.telegram_chat_id,
-                messages=messages,
-            )
-
-        action = "reply_generated" if isinstance(event, ReplyGeneratedEvent) else "reply_suppressed"
-
-        await self._message_bus.publish(
-            topic=BusTopics.LLM_OUT,
-            action=action,
-            payload=event.model_dump(),
+        last_line = command.context.strip().splitlines()[-1]
+        event = ReplyGeneratedEvent(
+            conversation_id=command.conversation_id,
+            telegram_chat_id=command.telegram_chat_id,
+            telegram_account_id=command.telegram_account_id,
+            messages=[f"Got it: {last_line}"],
         )
-
+        await self._message_bus.publish(BusTopics.LLM_REPLY_GENERATED, event.to_bus_dict())
         return event
+
+    async def embed(
+        self, texts: list[str], *, role: Literal["query", "document"]
+    ) -> list[list[float]]:
+        return await asyncio.to_thread(self._embedder.embed, texts, role=role)
+
+    async def retrieve_pre(self, batch_messages: list[str]) -> str:
+        return "\n".join(batch_messages)
+
+    async def retrieve_post(self, query: str, hits: list[str]) -> list[str]:
+        return hits
 
     async def summarize(
         self,
-        command: SummarizeCommand,
-    ) -> SummaryGeneratedEvent:
-        """Summarize conversation messages."""
-        # In real app, would call LLM with summarization prompt
-        # For now, simplified implementation
+        current_summary: str | None,
+        messages: list[str],
+        max_chars: int = 1000,
+    ) -> str:
+        parts: list[str] = []
+        if current_summary:
+            parts.append(current_summary)
+        parts.extend(messages)
+        return "\n".join(parts)[:max_chars]
 
-        full_text = "\n".join(command.messages)
-        summary = full_text[:command.max_chars] if len(full_text) > command.max_chars else full_text
-
+    async def summarize_command(self, command: SummarizeCommand) -> SummaryGeneratedEvent:
+        summary = await self.summarize(None, command.messages, command.max_chars)
         event = SummaryGeneratedEvent(
             conversation_id=command.conversation_id,
             summary=summary,
             char_count=len(summary),
         )
-
-        await self._message_bus.publish(
-            topic=BusTopics.LLM_OUT,
-            action="summary_generated",
-            payload=event.model_dump(),
-        )
-
-        return event
-
-    async def pre_retrieve(
-        self,
-        command: PreRetrieveCommand,
-    ) -> PreRetrieveResultEvent:
-        """Generate search query for RAG (pre-retriever)."""
-        # In real app, would use LLM to generate optimal search query
-        # For now, simplified implementation
-
-        search_query = command.context[:200]  # Use first 200 chars as query
-
-        event = PreRetrieveResultEvent(
-            conversation_id=command.conversation_id,
-            search_query=search_query,
-        )
-
-        await self._message_bus.publish(
-            topic=BusTopics.LLM_OUT,
-            action="pre_retrieve_result",
-            payload=event.model_dump(),
-        )
-
-        return event
-
-    async def post_retrieve(
-        self,
-        command: PostRetrieveCommand,
-    ) -> PostRetrieveResultEvent:
-        """Re-rank retrieved candidates (post-retriever)."""
-        # In real app, would use LLM to re-rank and select best candidates
-        # For now, simplified implementation
-
-        selected = command.candidates[:command.top_k]
-
-        event = PostRetrieveResultEvent(
-            conversation_id=command.conversation_id,
-            selected_candidates=selected,
-            total_candidates=len(command.candidates),
-        )
-
-        await self._message_bus.publish(
-            topic=BusTopics.LLM_OUT,
-            action="post_retrieve_result",
-            payload=event.model_dump(),
-        )
-
+        await self._message_bus.publish(BusTopics.LLM_SUMMARY_GENERATED, event.to_bus_dict())
         return event

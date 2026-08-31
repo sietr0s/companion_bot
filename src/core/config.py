@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     CLASSIFIER_DEVICE: int = -1  # -1 = CPU, 0 = GPU
     CLASSIFIER_THRESHOLD: float = 0.5
 
+    # Embeddings (local sentence-transformers)
+    EMBEDDING_MODEL: str = "Qwen/Qwen3-Embedding-0.6B"
+
     # Admin (seed-пользователь) — обязательные поля, без дефолтов
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
