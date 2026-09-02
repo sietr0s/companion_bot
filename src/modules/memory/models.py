@@ -1,6 +1,6 @@
 """Memory module SQLAlchemy models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -22,7 +22,9 @@ class Conversation(BaseModel):
     telegram_account_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
     last_sequence_number: Mapped[int] = mapped_column(Integer, default=0)
-    last_activity_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_activity_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
@@ -62,6 +64,7 @@ class SummaryState(BaseModel):
     )
     current_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     checkpoint: Mapped[int] = mapped_column(Integer, default=0)
+    cluster_checkpoint: Mapped[int] = mapped_column(Integer, default=0)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="summary_state")
 

@@ -2,11 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Запрос на авторизацию.
- */
 export type LoginRequest = {
     identifier: string;
     password: string;
+    identifier_type?: (string | null);
 };
 

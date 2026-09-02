@@ -5,10 +5,7 @@ Kafka-реализация консьюмера шины сообщений.
 обработчики при получении сообщений.
 При старте ждёт готовности Kafka с экспоненциальным backoff.
 
-Ошибки в обработчиках обрабатываются через BusErrorHandler:
-- Бизнес-исключения (AppException) — публикуются в DLQ
-- Сетевые ошибки — логируются и публикуются в DLQ
-- Неожиданные ошибки — логируются с traceback
+Ошибки в обработчиках логируются через safe_handle и не роняют консьюмер.
 """
 
 import asyncio
@@ -22,7 +19,7 @@ import backoff
 from aiokafka import AIOKafkaConsumer
 
 from src.bus.error_handler import safe_handle
-from src.bus.interface import MessageProducer
+from src.bus.trace import log_received
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -42,8 +39,7 @@ class KafkaConsumerRouter:
 
     MAX_RETRIES = 10
 
-    def __init__(self, producer: MessageProducer) -> None:
-        self._producer = producer
+    def __init__(self) -> None:
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
         self._consumer: AIOKafkaConsumer | None = None
         self._task: asyncio.Task | None = None
@@ -153,7 +149,12 @@ class KafkaConsumerRouter:
                 topic = msg.topic
                 handlers = self._subscribers.get(topic, [])
                 for handler in handlers:
-                    await safe_handle(handler, topic, msg.value, self._producer.publish)
+                    log_received(
+                        topic,
+                        getattr(handler, "__name__", str(handler)),
+                        msg.value,
+                    )
+                    await safe_handle(handler, topic, msg.value)
         except asyncio.CancelledError:
             logger.info("KafkaConsumerRouter: задача чтения отменена")
             raise

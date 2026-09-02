@@ -104,7 +104,7 @@ export function TelegramAccountsPage() {
     mutationFn: () => TelegramClientsService.authQrStartApiV1PublicTelegramAuthQrPost(),
     onSuccess: (response) => {
       setQrAccountId(response.account_id);
-      setQrUrl(response.qr_url);
+      setQrUrl(response.qr_url ?? null);
       setQrStatus('pending');
       setQrMessage(null);
     },

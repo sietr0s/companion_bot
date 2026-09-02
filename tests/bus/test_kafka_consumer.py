@@ -8,17 +8,6 @@ import pytest
 from src.bus.kafka.consumer import KafkaConsumerRouter
 
 
-class ProducerStub:
-    async def publish(self, topic: str, message: dict) -> None:
-        pass
-
-    async def start(self) -> None:
-        pass
-
-    async def stop(self) -> None:
-        pass
-
-
 class BrokenConsumer:
     def __init__(self) -> None:
         self.stop = AsyncMock()
@@ -56,7 +45,7 @@ async def test_runtime_failure_recreates_consumer(monkeypatch) -> None:
     monkeypatch.setattr("src.bus.kafka.consumer.AIOKafkaConsumer", factory)
     monkeypatch.setattr("src.bus.kafka.consumer.asyncio.sleep", AsyncMock())
 
-    router = KafkaConsumerRouter(ProducerStub())
+    router = KafkaConsumerRouter()
     router._topics = ("events",)
     router._consumer = broken
 

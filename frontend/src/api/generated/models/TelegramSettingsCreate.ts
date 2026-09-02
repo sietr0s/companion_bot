@@ -2,11 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Создание настроек Telegram-аккаунта (internal).
- */
 export type TelegramSettingsCreate = {
+    account_id?: (string | null);
     use_whitelist?: boolean;
-    whitelist_chat_ids?: Array<(string | number)>;
+    whitelist_chat_ids?: Array<number>;
 };
 

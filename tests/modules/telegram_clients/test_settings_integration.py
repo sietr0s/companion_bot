@@ -13,7 +13,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.dependencies import get_db_session
-from src.core.config import settings
 from src.main import app
 
 
@@ -44,7 +43,6 @@ async def test_client_with_db() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=transport,
         base_url="http://test",
-        headers={"X-Internal-Service-Key": settings.INTERNAL_SERVICE_KEY},
     ) as client:
         yield client
 

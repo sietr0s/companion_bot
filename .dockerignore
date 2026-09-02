@@ -67,6 +67,10 @@ docs/
 sessions/
 *.session
 
+# Local HF / torch weights (volume ./models at runtime). HF cache uses
+# Windows reparse points that BuildKit cannot send as build context.
+models/
+
 # Misc
 .DS_Store
 Thumbs.db

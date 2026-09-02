@@ -45,21 +45,21 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class AccountCreate(BaseModel):
+class AuthAccountCreate(BaseModel):
     identifier: str
     identifier_type: str
     hashed_password: str
     role: str = "user"
 
 
-class AccountUpdate(BaseModel):
+class AuthAccountUpdate(BaseModel):
     identifier: str | None = None
     identifier_type: str | None = None
     hashed_password: str | None = None
     role: str | None = None
 
 
-class AccountResponse(BaseModel):
+class AuthAccountRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

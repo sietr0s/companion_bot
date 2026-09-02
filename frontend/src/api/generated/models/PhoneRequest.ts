@@ -2,10 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Шаг 1: отправка номера телефона для получения SMS-кода.
- */
 export type PhoneRequest = {
+    /**
+     * Phone number in international format
+     */
     phone: string;
 };
 

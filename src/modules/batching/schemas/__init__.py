@@ -1,1 +1,1 @@
-"""Batching schemas: public, events."""
+"""Batching schemas: events."""

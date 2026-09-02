@@ -13,6 +13,7 @@ from typing import Any
 import backoff
 from aiokafka import AIOKafkaProducer
 
+from src.bus.trace import log_published
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -76,5 +77,5 @@ class KafkaProducerBus:
     async def _send_message(self, topic: str, message: dict[str, Any]) -> None:
         """Внутренний метод для асинхронной отправки."""
         if self._producer:
+            log_published(topic, message)
             await self._producer.send_and_wait(topic, message)
-            logger.info("Сообщение отправлено в топик '%s'", topic)

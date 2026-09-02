@@ -4,9 +4,7 @@
 По аналогии с глобальным exception_handler в FastAPI:
 - Ловит все исключения в обработчиках шины
 - Логирует структурированно (topic, handler_name, message_preview)
-- Для бизнес-исключений (AppException) — публикует в DLQ-топик
 - Для CancelledError — корректно пробрасывает
-- Для остальных — логирует traceback и публикует в DLQ
 """
 
 import asyncio
@@ -18,9 +16,6 @@ from typing import Any
 from src.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
-
-# Топик для сообщений, которые не удалось обработать
-DLQ_TOPIC = "bus.dlq"
 
 
 def _message_preview(message: dict[str, Any], max_len: int = 200) -> str:
@@ -35,7 +30,6 @@ async def safe_handle(
     handler: Callable,
     topic: str,
     message: dict[str, Any],
-    dlq_publisher: Callable | None = None,
 ) -> None:
     """
     Безопасно вызвать обработчик с обработкой всех исключений.
@@ -44,8 +38,6 @@ async def safe_handle(
         handler: Функция-обработчик (синхронная или асинхронная).
         topic: Топик, на который подписан обработчик.
         message: Сообщение для обработки.
-        dlq_publisher: Функция для публикации в DLQ (опционально).
-                       Должна принимать (topic, message).
     """
     handler_name = getattr(handler, "__name__", str(handler))
     msg_preview = _message_preview(message)
@@ -74,17 +66,6 @@ async def safe_handle(
             e.status_code,
             msg_preview,
         )
-        if dlq_publisher and topic != DLQ_TOPIC:
-            await dlq_publisher(
-                DLQ_TOPIC,
-                {
-                    "original_topic": topic,
-                    "handler": handler_name,
-                    "error_type": type(e).__name__,
-                    "error_detail": e.detail,
-                    "message": message,
-                },
-            )
 
     except (ConnectionError, TimeoutError) as e:
         logger.error(
@@ -95,17 +76,6 @@ async def safe_handle(
             e,
             msg_preview,
         )
-        if dlq_publisher and topic != DLQ_TOPIC:
-            await dlq_publisher(
-                DLQ_TOPIC,
-                {
-                    "original_topic": topic,
-                    "handler": handler_name,
-                    "error_type": type(e).__name__,
-                    "error_detail": str(e),
-                    "message": message,
-                },
-            )
 
     except Exception as e:
         tb = "".join(traceback.format_tb(e.__traceback__))
@@ -116,24 +86,11 @@ async def safe_handle(
             e,
             tb,
         )
-        if dlq_publisher and topic != DLQ_TOPIC:
-            await dlq_publisher(
-                DLQ_TOPIC,
-                {
-                    "original_topic": topic,
-                    "handler": handler_name,
-                    "error_type": type(e).__name__,
-                    "error_detail": str(e),
-                    "traceback": tb,
-                    "message": message,
-                },
-            )
 
 
 def wrap_handler(
     handler: Callable,
     topic: str,
-    dlq_publisher: Callable | None = None,
 ) -> Callable:
     """
     Обернуть обработчик в безопасный вызов.
@@ -144,14 +101,13 @@ def wrap_handler(
     Args:
         handler: Функция-обработчик.
         topic: Топик, на который подписан обработчик.
-        dlq_publisher: Функция для публикации в DLQ.
 
     Returns:
         Асинхронная функция-обёртка.
     """
 
     async def wrapper(message: dict[str, Any]) -> None:
-        await safe_handle(handler, topic, message, dlq_publisher)
+        await safe_handle(handler, topic, message)
 
     wrapper.__name__ = handler.__name__
     wrapper.__qualname__ = handler.__qualname__

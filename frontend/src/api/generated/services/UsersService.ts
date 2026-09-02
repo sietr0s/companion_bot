@@ -2,38 +2,33 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { src__base__schemas__PaginatedResponse_UserRead___1 } from '../models/src__base__schemas__PaginatedResponse_UserRead___1';
-import type { src__modules__users__schemas__public__telegram__TelegramRead } from '../models/src__modules__users__schemas__public__telegram__TelegramRead';
-import type { src__modules__users__schemas__public__user__UserCreate } from '../models/src__modules__users__schemas__public__user__UserCreate';
-import type { src__modules__users__schemas__public__user__UserRead } from '../models/src__modules__users__schemas__public__user__UserRead';
-import type { src__modules__users__schemas__public__user__UserUpdate } from '../models/src__modules__users__schemas__public__user__UserUpdate';
+import type { PaginatedResponse_UserRead_ } from '../models/PaginatedResponse_UserRead_';
+import type { UserCreate } from '../models/UserCreate';
+import type { UserRead } from '../models/UserRead';
+import type { UserUpdate } from '../models/UserUpdate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class UsersService {
     /**
-     * Получить пользователей для администратора
-     * Вернуть список профилей только авторизованному администратору.
-     * @param filters field+operator+value
+     * Get List
      * @param page
-     * @param limit
-     * @param orderBy Поле сортировки; '-' = DESC
-     * @returns src__base__schemas__PaginatedResponse_UserRead___1 Successful Response
+     * @param pageSize
+     * @param orderBy
+     * @returns PaginatedResponse_UserRead_ Successful Response
      * @throws ApiError
      */
-    public static getUsersAdminApiV1PublicUsersGet(
-        filters?: Array<string>,
+    public static getListApiV1PublicUsersGet(
         page: number = 1,
-        limit: number = 100,
-        orderBy: string = '-created_at',
-    ): CancelablePromise<src__base__schemas__PaginatedResponse_UserRead___1> {
+        pageSize: number = 100,
+        orderBy?: (string | null),
+    ): CancelablePromise<PaginatedResponse_UserRead_> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/public/users/',
             query: {
-                'filters': filters,
                 'page': page,
-                'limit': limit,
+                'page_size': pageSize,
                 'order_by': orderBy,
             },
             errors: {
@@ -42,18 +37,14 @@ export class UsersService {
         });
     }
     /**
-     * Создание профиля пользователя
-     * Создаёт профиль пользователя.
-     *
-     * auth_id берётся из JWT-токена (авторизованный пользователь).
-     * В теле запроса можно передать first_name, last_name и т.д.
+     * Create
      * @param requestBody
-     * @returns src__modules__users__schemas__public__user__UserRead Successful Response
+     * @returns UserRead Successful Response
      * @throws ApiError
      */
-    public static createProfileApiV1PublicUsersPost(
-        requestBody: src__modules__users__schemas__public__user__UserCreate,
-    ): CancelablePromise<src__modules__users__schemas__public__user__UserRead> {
+    public static createApiV1PublicUsersPost(
+        requestBody: UserCreate,
+    ): CancelablePromise<UserRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/users/',
@@ -65,42 +56,42 @@ export class UsersService {
         });
     }
     /**
-     * Получение профиля текущего пользователя
-     * Возвращает профиль авторизованного пользователя.
-     * @returns src__modules__users__schemas__public__user__UserRead Successful Response
+     * Get By Id
+     * @param itemId
+     * @returns UserRead Successful Response
      * @throws ApiError
      */
-    public static getMeApiV1PublicUsersMeGet(): CancelablePromise<src__modules__users__schemas__public__user__UserRead> {
+    public static getByIdApiV1PublicUsersItemIdGet(
+        itemId: string,
+    ): CancelablePromise<UserRead> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/public/users/me',
+            url: '/api/v1/public/users/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
-     * Удаление профиля текущего пользователя
-     * Удаляет профиль авторизованного пользователя.
-     * @returns void
-     * @throws ApiError
-     */
-    public static deleteMeApiV1PublicUsersMeDelete(): CancelablePromise<void> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/public/users/me',
-        });
-    }
-    /**
-     * Обновление профиля текущего пользователя
-     * Обновляет профиль авторизованного пользователя (partial update).
+     * Update
+     * @param itemId
      * @param requestBody
-     * @returns src__modules__users__schemas__public__user__UserRead Successful Response
+     * @returns UserRead Successful Response
      * @throws ApiError
      */
-    public static updateMeApiV1PublicUsersMePatch(
-        requestBody: src__modules__users__schemas__public__user__UserUpdate,
-    ): CancelablePromise<src__modules__users__schemas__public__user__UserRead> {
+    public static updateApiV1PublicUsersItemIdPut(
+        itemId: string,
+        requestBody: UserUpdate,
+    ): CancelablePromise<UserRead> {
         return __request(OpenAPI, {
-            method: 'PATCH',
-            url: '/api/v1/public/users/me',
+            method: 'PUT',
+            url: '/api/v1/public/users/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -109,37 +100,20 @@ export class UsersService {
         });
     }
     /**
-     * Получить Telegram профиль текущего пользователя
-     * Получить связанный Telegram профиль текущего пользователя.
-     * @returns src__modules__users__schemas__public__telegram__TelegramRead Successful Response
+     * Delete
+     * @param itemId
+     * @returns void
      * @throws ApiError
      */
-    public static getMyTelegramApiV1PublicUsersMeTelegramGet(): CancelablePromise<src__modules__users__schemas__public__telegram__TelegramRead> {
+    public static deleteApiV1PublicUsersItemIdDelete(
+        itemId: string,
+    ): CancelablePromise<void> {
         return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/users/me/telegram',
-        });
-    }
-    /**
-     * Обновить пользователя администратором
-     * Обновить профиль пользователя из административного интерфейса.
-     * @param profileId
-     * @param requestBody
-     * @returns src__modules__users__schemas__public__user__UserRead Successful Response
-     * @throws ApiError
-     */
-    public static updateUserAdminApiV1PublicUsersProfileIdPatch(
-        profileId: string,
-        requestBody: src__modules__users__schemas__public__user__UserUpdate,
-    ): CancelablePromise<src__modules__users__schemas__public__user__UserRead> {
-        return __request(OpenAPI, {
-            method: 'PATCH',
-            url: '/api/v1/public/users/{profile_id}',
+            method: 'DELETE',
+            url: '/api/v1/public/users/{item_id}',
             path: {
-                'profile_id': profileId,
+                'item_id': itemId,
             },
-            body: requestBody,
-            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

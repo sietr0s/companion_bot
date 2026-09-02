@@ -1,18 +1,17 @@
 """Batching module bus handlers."""
 
-from src.bus.interface import MessageConsumer
-from src.core.database import create_async_session
-from src.modules.batching.repository import BatchMessageRepository, BatchRepository
+from typing import Any
+
+from src.bus.interface import MessageConsumer, MessageProducer
+from src.core.bus_topics import BusTopics
 from src.modules.batching.schemas.events import AddMessageCommand
 from src.modules.batching.service import BatchService
 
 
-def register_handlers(consumer: MessageConsumer, producer) -> None:
-    from src.core.bus_topics import BusTopics
+def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
+    service = BatchService(producer)
 
     @consumer.subscribe(BusTopics.BATCH_ADD_MESSAGE)
-    async def handle_add_message(message: dict) -> None:
+    async def handle_add_message(message: dict[str, Any]) -> None:
         command = AddMessageCommand.model_validate(message)
-        async with create_async_session() as session:
-            service = BatchService(BatchRepository(), producer, BatchMessageRepository())
-            await service.add_incoming_message(session, command)
+        await service.add_incoming_message(command)

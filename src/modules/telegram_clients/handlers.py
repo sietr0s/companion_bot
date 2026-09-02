@@ -7,11 +7,12 @@
 
 import logging
 import uuid
+from typing import Any
 
 from src.bus import get_consumer, get_producer
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
-from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.dependencies import get_telegram_client_manager
 from src.modules.telegram_clients.schemas.events import TgMessageSent
 
@@ -23,16 +24,11 @@ def register_handlers(
     client_manager: TelegramClientManager | None = None,
     producer: MessageProducer | None = None,
 ) -> None:
-    """
-    Регистрация обработчиков событий на шину.
-
-    client_manager передаётся явно, т.к. он не является
-    частью DI-контейнера FastAPI.
-    """
+    """Регистрация обработчиков. client_manager — из контейнера, либо fallback DI."""
     bus = consumer or get_consumer()
 
     @bus.subscribe(BusTopics.TG_MESSAGE_SEND)
-    async def handle_send_message(message: dict) -> None:
+    async def handle_send_message(message: dict[str, Any]) -> None:
         """Отправить сообщение через Telegram-аккаунт."""
         account_id = message.get("account_id") or message.get("telegram_account_id")
         chat_id = message.get("chat_id")

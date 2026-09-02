@@ -1,4 +1,4 @@
-"""Generate the frontend contract without exposing internal module endpoints."""
+"""Generate the frontend OpenAPI contract."""
 
 import json
 import sys

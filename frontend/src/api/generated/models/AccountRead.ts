@@ -2,18 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Схема чтения Telegram-аккаунта.
- */
 export type AccountRead = {
     id: string;
     phone: string;
-    is_connected: boolean;
+    telegram_id?: (number | null);
+    is_connected?: boolean;
     first_name?: (string | null);
     last_name?: (string | null);
     username?: (string | null);
-    telegram_id?: (number | null);
-    created_at: string;
-    updated_at: string;
+    created_at?: (string | null);
+    updated_at?: (string | null);
 };
 

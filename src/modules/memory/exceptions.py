@@ -1,6 +1,6 @@
 """Memory module specific exceptions."""
 
-from src.core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import AppException, NotFoundError, ValidationError
 
 
 class ConversationNotFoundError(NotFoundError):
@@ -21,7 +21,8 @@ class BatchValidationError(ValidationError):
     pass
 
 
-class ContextBuildError(Exception):
+class ContextBuildError(AppException):
     """Raised when context building fails."""
 
-    pass
+    def __init__(self, detail: str = "Не удалось собрать контекст"):
+        super().__init__(status_code=500, detail=detail)

@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Modular Monolith",
+    "title": "Companion Bot",
     "version": "0.1.0"
   },
   "paths": {
@@ -36,7 +36,6 @@
           "Auth"
         ],
         "summary": "Регистрация нового пользователя",
-        "description": "Регистрация: создаёт учётную запись авторизации и возвращает JWT.\n\nПрофиль пользователя создаётся отдельным запросом POST /users/.",
         "operationId": "register_api_v1_public_auth_register_post",
         "requestBody": {
           "content": {
@@ -78,7 +77,6 @@
           "Auth"
         ],
         "summary": "Авторизация пользователя",
-        "description": "Авторизация: проверяет email/пароль и возвращает JWT-токен.",
         "operationId": "login_api_v1_public_auth_login_post",
         "requestBody": {
           "content": {
@@ -114,34 +112,265 @@
         }
       }
     },
+    "/api/v1/public/auth/accounts/": {
+      "get": {
+        "tags": [
+          "Auth",
+          "Auth Accounts"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_auth_accounts__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_AuthAccountRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Auth",
+          "Auth Accounts"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_auth_accounts__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAccountCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/auth/accounts/{item_id}": {
+      "get": {
+        "tags": [
+          "Auth",
+          "Auth Accounts"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_auth_accounts__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Auth",
+          "Auth Accounts"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_auth_accounts__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthAccountUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Auth",
+          "Auth Accounts"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_auth_accounts__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/users/": {
       "get": {
         "tags": [
+          "Users",
           "Users"
         ],
-        "summary": "Получить пользователей для администратора",
-        "description": "Вернуть список профилей только авторизованному администратору.",
-        "operationId": "get_users_admin_api_v1_public_users__get",
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_users__get",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
         "parameters": [
-          {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
           {
             "name": "page",
             "in": "query",
@@ -154,15 +383,15 @@
             }
           },
           {
-            "name": "limit",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 500,
+              "maximum": 1000,
               "minimum": 1,
               "default": 100,
-              "title": "Limit"
+              "title": "Page Size"
             }
           },
           {
@@ -170,12 +399,17 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "default": "-created_at",
               "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
+            }
           }
         ],
         "responses": {
@@ -184,7 +418,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__base__schemas__PaginatedResponse_UserRead___1"
+                  "$ref": "#/components/schemas/PaginatedResponse_UserRead_"
                 }
               }
             }
@@ -203,11 +437,11 @@
       },
       "post": {
         "tags": [
+          "Users",
           "Users"
         ],
-        "summary": "Создание профиля пользователя",
-        "description": "Создаёт профиль пользователя.\n\nauth_id берётся из JWT-токена (авторизованный пользователь).\nВ теле запроса можно передать first_name, last_name и т.д.",
-        "operationId": "create_profile_api_v1_public_users__post",
+        "summary": "Create",
+        "operationId": "create_api_v1_public_users__post",
         "security": [
           {
             "HTTPBearer": []
@@ -218,7 +452,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserCreate"
+                "$ref": "#/components/schemas/UserCreate"
               }
             }
           }
@@ -229,7 +463,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
+                  "$ref": "#/components/schemas/UserRead"
                 }
               }
             }
@@ -247,74 +481,38 @@
         }
       }
     },
-    "/api/v1/public/users/me": {
+    "/api/v1/public/users/{item_id}": {
       "get": {
         "tags": [
+          "Users",
           "Users"
         ],
-        "summary": "Получение профиля текущего пользователя",
-        "description": "Возвращает профиль авторизованного пользователя.",
-        "operationId": "get_me_api_v1_public_users_me_get",
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_users__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Удаление профиля текущего пользователя",
-        "description": "Удаляет профиль авторизованного пользователя.",
-        "operationId": "delete_me_api_v1_public_users_me_delete",
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Обновление профиля текущего пользователя",
-        "description": "Обновляет профиль авторизованного пользователя (partial update).",
-        "operationId": "update_me_api_v1_public_users_me_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
+                  "$ref": "#/components/schemas/UserRead"
                 }
               }
             }
@@ -329,49 +527,15 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/public/users/me/telegram": {
-      "get": {
+        }
+      },
+      "put": {
         "tags": [
+          "Users",
           "Users"
         ],
-        "summary": "Получить Telegram профиль текущего пользователя",
-        "description": "Получить связанный Telegram профиль текущего пользователя.",
-        "operationId": "get_my_telegram_api_v1_public_users_me_telegram_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__public__telegram__TelegramRead"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/public/users/{profile_id}": {
-      "patch": {
-        "tags": [
-          "Users"
-        ],
-        "summary": "Обновить пользователя администратором",
-        "description": "Обновить профиль пользователя из административного интерфейса.",
-        "operationId": "update_user_admin_api_v1_public_users__profile_id__patch",
+        "summary": "Update",
+        "operationId": "update_api_v1_public_users__item_id__put",
         "security": [
           {
             "HTTPBearer": []
@@ -379,13 +543,13 @@
         ],
         "parameters": [
           {
-            "name": "profile_id",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Profile Id"
+              "title": "Item Id"
             }
           }
         ],
@@ -394,7 +558,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserUpdate"
+                "$ref": "#/components/schemas/UserUpdate"
               }
             }
           }
@@ -405,246 +569,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/notifications/templates/": {
-      "post": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Создать шаблон уведомления",
-        "description": "Создать шаблон уведомления.",
-        "operationId": "create_template_api_v1_public_notifications_templates__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TemplateCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TemplateRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Список шаблонов",
-        "description": "Получить список шаблонов с фильтрацией и пагинацией.",
-        "operationId": "get_templates_api_v1_public_notifications_templates__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 500,
-              "minimum": 1,
-              "default": 100,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "order_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
-              "default": "-created_at",
-              "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_TemplateRead_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/notifications/templates/{template_id}": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Получить шаблон по ID",
-        "description": "Получить шаблон по ID.",
-        "operationId": "get_template_api_v1_public_notifications_templates__template_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "template_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Template Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TemplateRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Обновить шаблон",
-        "description": "Обновить шаблон.",
-        "operationId": "update_template_api_v1_public_notifications_templates__template_id__patch",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "template_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Template Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TemplateUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TemplateRead"
+                  "$ref": "#/components/schemas/UserRead"
                 }
               }
             }
@@ -663,11 +588,11 @@
       },
       "delete": {
         "tags": [
-          "Notifications"
+          "Users",
+          "Users"
         ],
-        "summary": "Удалить шаблон",
-        "description": "Удалить шаблон.",
-        "operationId": "delete_template_api_v1_public_notifications_templates__template_id__delete",
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_users__item_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -675,156 +600,19 @@
         ],
         "parameters": [
           {
-            "name": "template_id",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Template Id"
+              "title": "Item Id"
             }
           }
         ],
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/notifications/history/": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "История уведомлений",
-        "description": "Получить историю уведомлений с фильтрацией и пагинацией.",
-        "operationId": "get_history_api_v1_public_notifications_history__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 200,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "order_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
-              "default": "-created_at",
-              "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_NotificationLogRead_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/notifications/history/{log_id}": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Детальный просмотр лога уведомления",
-        "description": "Получить детальную информацию о уведомлении.",
-        "operationId": "get_history_entry_api_v1_public_notifications_history__log_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "log_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Log Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationLogRead"
-                }
-              }
-            }
           },
           "422": {
             "description": "Validation Error",
@@ -1427,7 +1215,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -1478,7 +1266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -1529,7 +1317,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -1605,7 +1393,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WhitelistChatCreate"
+                "$ref": "#/components/schemas/WhitelistEntryCreate"
               }
             }
           }
@@ -1616,7 +1404,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -1668,7 +1456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -1686,34 +1474,15 @@
         }
       }
     },
-    "/api/v1/public/media/": {
+    "/api/v1/public/telegram/accounts/": {
       "get": {
         "tags": [
-          "Media"
+          "Telegram Clients",
+          "Telegram Accounts"
         ],
-        "summary": "Получить файлы для администратора",
-        "description": "Вернуть список файлов авторизованному администратору.",
-        "operationId": "list_files_admin_api_v1_public_media__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_telegram_accounts__get",
         "parameters": [
-          {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
           {
             "name": "page",
             "in": "query",
@@ -1726,15 +1495,15 @@
             }
           },
           {
-            "name": "limit",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 500,
+              "maximum": 1000,
               "minimum": 1,
               "default": 100,
-              "title": "Limit"
+              "title": "Page Size"
             }
           },
           {
@@ -1742,12 +1511,17 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "default": "-created_at",
               "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
+            }
           }
         ],
         "responses": {
@@ -1756,7 +1530,47 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_FileRead_"
+                  "$ref": "#/components/schemas/PaginatedResponse_AccountRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telegram Clients",
+          "Telegram Accounts"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_telegram_accounts__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRead"
                 }
               }
             }
@@ -1774,31 +1588,33 @@
         }
       }
     },
-    "/api/v1/public/media/upload": {
-      "post": {
+    "/api/v1/public/telegram/accounts/{item_id}": {
+      "get": {
         "tags": [
-          "Media"
+          "Telegram Clients",
+          "Telegram Accounts"
         ],
-        "summary": "Загрузить файл",
-        "description": "Загрузить файл (требует JWT).",
-        "operationId": "upload_file_api_v1_public_media_upload_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_file_api_v1_public_media_upload_post"
-              }
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_telegram_accounts__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
             }
-          },
-          "required": true
-        },
+          }
+        ],
         "responses": {
-          "201": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileUploadResponse"
+                  "$ref": "#/components/schemas/AccountRead"
                 }
               }
             }
@@ -1813,41 +1629,44 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/public/media/{file_id}": {
-      "get": {
+        }
+      },
+      "put": {
         "tags": [
-          "Media"
+          "Telegram Clients",
+          "Telegram Accounts"
         ],
-        "summary": "Метаданные файла",
-        "description": "Получить метаданные файла.\n\nПубличные файлы (is_public=True) доступны без авторизации.\nПриватные файлы возвращают 404.",
-        "operationId": "get_file_api_v1_public_media__file_id__get",
+        "summary": "Update",
+        "operationId": "update_api_v1_public_telegram_accounts__item_id__put",
         "parameters": [
           {
-            "name": "file_id",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "File Id"
+              "title": "Item Id"
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FileRead"
+                  "$ref": "#/components/schemas/AccountRead"
                 }
               }
             }
@@ -1866,25 +1685,20 @@
       },
       "delete": {
         "tags": [
-          "Media"
+          "Telegram Clients",
+          "Telegram Accounts"
         ],
-        "summary": "Удалить файл",
-        "description": "Удалить файл (требует JWT).",
-        "operationId": "delete_file_api_v1_public_media__file_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_telegram_accounts__item_id__delete",
         "parameters": [
           {
-            "name": "file_id",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "File Id"
+              "title": "Item Id"
             }
           }
         ],
@@ -1905,23 +1719,53 @@
         }
       }
     },
-    "/api/v1/public/media/{file_id}/download": {
+    "/api/v1/public/telegram/settings/": {
       "get": {
         "tags": [
-          "Media"
+          "Telegram Clients",
+          "Telegram Settings"
         ],
-        "summary": "Скачать файл",
-        "description": "Скачать файл (потоком).\n\nПубличные файлы (is_public=True) доступны без авторизации.\nПриватные файлы возвращают 404.",
-        "operationId": "download_file_api_v1_public_media__file_id__download_get",
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_telegram_settings__get",
         "parameters": [
           {
-            "name": "file_id",
-            "in": "path",
-            "required": true,
+            "name": "page",
+            "in": "query",
+            "required": false,
             "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "File Id"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
             }
           }
         ],
@@ -1930,53 +1774,8 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/classifier/categories": {
-      "post": {
-        "tags": [
-          "Classifier"
-        ],
-        "summary": "Создать категорию",
-        "description": "Создать новую категорию для классификации.",
-        "operationId": "create_category_api_v1_public_classifier_categories_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CategoryCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryRead"
+                  "$ref": "#/components/schemas/PaginatedResponse_TelegramSettingsRead_"
                 }
               }
             }
@@ -1993,38 +1792,30 @@
           }
         }
       },
-      "get": {
+      "post": {
         "tags": [
-          "Classifier"
+          "Telegram Clients",
+          "Telegram Settings"
         ],
-        "summary": "Список категорий",
-        "description": "Получить список всех категорий.",
-        "operationId": "get_categories_api_v1_public_classifier_categories_get",
-        "parameters": [
-          {
-            "name": "order_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
-              "default": "-created_at",
-              "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
+        "summary": "Create",
+        "operationId": "create_api_v1_public_telegram_settings__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramSettingsCreate"
+              }
+            }
           }
-        ],
+        },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryRead"
-                  },
-                  "title": "Response Get Categories Api V1 Public Classifier Categories Get"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -2042,27 +1833,65 @@
         }
       }
     },
-    "/api/v1/public/classifier/categories/{slug}": {
-      "patch": {
+    "/api/v1/public/telegram/settings/{item_id}": {
+      "get": {
         "tags": [
-          "Classifier"
+          "Telegram Clients",
+          "Telegram Settings"
         ],
-        "summary": "Обновить категорию",
-        "description": "Обновить категорию по slug.",
-        "operationId": "update_category_api_v1_public_classifier_categories__slug__patch",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_telegram_settings__item_id__get",
         "parameters": [
           {
-            "name": "slug",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Slug"
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Telegram Clients",
+          "Telegram Settings"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_telegram_settings__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
             }
           }
         ],
@@ -2071,7 +1900,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CategoryUpdate"
+                "$ref": "#/components/schemas/TelegramSettingsUpdate"
               }
             }
           }
@@ -2082,7 +1911,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CategoryRead"
+                  "$ref": "#/components/schemas/TelegramSettingsRead"
                 }
               }
             }
@@ -2101,24 +1930,20 @@
       },
       "delete": {
         "tags": [
-          "Classifier"
+          "Telegram Clients",
+          "Telegram Settings"
         ],
-        "summary": "Удалить категорию",
-        "description": "Удалить категорию по slug.",
-        "operationId": "delete_category_api_v1_public_classifier_categories__slug__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_telegram_settings__item_id__delete",
         "parameters": [
           {
-            "name": "slug",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Slug"
+              "format": "uuid",
+              "title": "Item Id"
             }
           }
         ],
@@ -2139,34 +1964,15 @@
         }
       }
     },
-    "/api/v1/public/job-matcher/subscriptions": {
+    "/api/v1/public/telegram/chat-states/": {
       "get": {
         "tags": [
-          "Job Matcher"
+          "Telegram Clients",
+          "Telegram Chat States"
         ],
-        "summary": "Получить подписки для администратора",
-        "description": "Вернуть подписки только авторизованному администратору.",
-        "operationId": "get_subscriptions_admin_api_v1_public_job_matcher_subscriptions_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_telegram_chat_states__get",
         "parameters": [
-          {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
           {
             "name": "page",
             "in": "query",
@@ -2179,15 +1985,15 @@
             }
           },
           {
-            "name": "limit",
+            "name": "page_size",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 500,
+              "maximum": 1000,
               "minimum": 1,
               "default": 100,
-              "title": "Limit"
+              "title": "Page Size"
             }
           },
           {
@@ -2195,12 +2001,17 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "default": "-created_at",
               "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
+            }
           }
         ],
         "responses": {
@@ -2209,7 +2020,47 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_SubscriptionAdminRead_"
+                  "$ref": "#/components/schemas/PaginatedResponse_ChatStateRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telegram Clients",
+          "Telegram Chat States"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_telegram_chat_states__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStateRead"
                 }
               }
             }
@@ -2227,116 +2078,1097 @@
         }
       }
     },
-    "/api/v1/public/job-matcher/offers": {
+    "/api/v1/public/telegram/chat-states/{item_id}": {
       "get": {
         "tags": [
-          "Job Matcher"
+          "Telegram Clients",
+          "Telegram Chat States"
         ],
-        "summary": "Получить вакансии для администратора",
-        "description": "Вернуть сохранённые вакансии авторизованному администратору.",
-        "operationId": "get_offers_admin_api_v1_public_job_matcher_offers_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_telegram_chat_states__item_id__get",
         "parameters": [
           {
-            "name": "filters",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "field+operator+value",
-              "title": "Filters"
-            },
-            "description": "field+operator+value"
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 500,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "order_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Поле сортировки; '-' = DESC",
-              "default": "-created_at",
-              "title": "Order By"
-            },
-            "description": "Поле сортировки; '-' = DESC"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_JobOfferAdminRead_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/public/job-matcher/users/{auth_id}": {
-      "delete": {
-        "tags": [
-          "Job Matcher"
-        ],
-        "summary": "Удалить пользователя и его подписку",
-        "description": "Удалить подписку и через межмодульные клиенты удалить user и auth.",
-        "operationId": "delete_user_admin_api_v1_public_job_matcher_users__auth_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "auth_id",
+            "name": "item_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Auth Id"
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Telegram Clients",
+          "Telegram Chat States"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_telegram_chat_states__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Telegram Clients",
+          "Telegram Chat States"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_telegram_chat_states__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/conversations/": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_memory_conversations__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_ConversationRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_memory_conversations__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/conversations/{item_id}": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_memory_conversations__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_memory_conversations__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_memory_conversations__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/messages/": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_memory_messages__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MemoryMessageRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_memory_messages__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryMessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryMessageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/messages/{item_id}": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_memory_messages__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryMessageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_memory_messages__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryMessageUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryMessageRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_memory_messages__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/summary-states/": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_memory_summary_states__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_SummaryStateRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_memory_summary_states__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryStateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/summary-states/{item_id}": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_memory_summary_states__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_memory_summary_states__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_memory_summary_states__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/vector-records/": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_memory_vector_records__get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_VectorRecordRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_memory_vector_records__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorRecordCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorRecordRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/vector-records/{item_id}": {
+      "get": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_memory_vector_records__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorRecordRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_memory_vector_records__item_id__put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorRecordUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorRecordRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory",
+          "Memory"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_memory_vector_records__item_id__delete",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
             }
           }
         ],
@@ -2360,6 +3192,73 @@
   },
   "components": {
     "schemas": {
+      "AccountCreate": {
+        "properties": {
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "session_file": {
+            "type": "string",
+            "title": "Session File",
+            "default": ""
+          },
+          "is_connected": {
+            "type": "boolean",
+            "title": "Is Connected",
+            "default": false
+          },
+          "telegram_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Id"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone"
+        ],
+        "title": "AccountCreate"
+      },
       "AccountRead": {
         "properties": {
           "id": {
@@ -2371,8 +3270,109 @@
             "type": "string",
             "title": "Phone"
           },
+          "telegram_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Id"
+          },
           "is_connected": {
             "type": "boolean",
+            "title": "Is Connected",
+            "default": false
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "phone"
+        ],
+        "title": "AccountRead"
+      },
+      "AccountUpdate": {
+        "properties": {
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "is_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Is Connected"
           },
           "first_name": {
@@ -2408,16 +3408,67 @@
             ],
             "title": "Username"
           },
-          "telegram_id": {
+          "session_file": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Telegram Id"
+            "title": "Session File"
+          }
+        },
+        "type": "object",
+        "title": "AccountUpdate"
+      },
+      "AuthAccountCreate": {
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "identifier_type": {
+            "type": "string",
+            "title": "Identifier Type"
+          },
+          "hashed_password": {
+            "type": "string",
+            "title": "Hashed Password"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier",
+          "identifier_type",
+          "hashed_password"
+        ],
+        "title": "AuthAccountCreate"
+      },
+      "AuthAccountRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "identifier_type": {
+            "type": "string",
+            "title": "Identifier Type"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
           },
           "created_at": {
             "type": "string",
@@ -2433,13 +3484,63 @@
         "type": "object",
         "required": [
           "id",
-          "phone",
-          "is_connected",
+          "identifier",
+          "identifier_type",
+          "role",
           "created_at",
           "updated_at"
         ],
-        "title": "AccountRead",
-        "description": "Схема чтения Telegram-аккаунта."
+        "title": "AuthAccountRead"
+      },
+      "AuthAccountUpdate": {
+        "properties": {
+          "identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "identifier_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier Type"
+          },
+          "hashed_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hashed Password"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "title": "AuthAccountUpdate"
       },
       "AuthStep1Response": {
         "properties": {
@@ -2448,18 +3549,28 @@
             "format": "uuid",
             "title": "Account Id"
           },
-          "status": {
+          "phone_code_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Code Hash"
+          },
+          "message": {
             "type": "string",
-            "title": "Status",
-            "default": "code_sent"
+            "title": "Message",
+            "default": "Code sent to your phone"
           }
         },
         "type": "object",
         "required": [
           "account_id"
         ],
-        "title": "AuthStep1Response",
-        "description": "Ответ после отправки номера телефона."
+        "title": "AuthStep1Response"
       },
       "AuthStep2Response": {
         "properties": {
@@ -2469,17 +3580,27 @@
             "title": "Account Id"
           },
           "status": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Authentication successful"
           }
         },
         "type": "object",
         "required": [
-          "account_id",
-          "status"
+          "account_id"
         ],
-        "title": "AuthStep2Response",
-        "description": "Ответ после ввода SMS-кода."
+        "title": "AuthStep2Response"
       },
       "AuthStep3Response": {
         "properties": {
@@ -2489,177 +3610,42 @@
             "title": "Account Id"
           },
           "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "message": {
             "type": "string",
-            "title": "Status",
-            "default": "connected"
+            "title": "Message",
+            "default": "2FA authentication successful"
           }
         },
         "type": "object",
         "required": [
           "account_id"
         ],
-        "title": "AuthStep3Response",
-        "description": "Ответ после ввода 2FA пароля."
-      },
-      "Body_upload_file_api_v1_public_media_upload_post": {
-        "properties": {
-          "file": {
-            "type": "string",
-            "contentMediaType": "application/octet-stream",
-            "title": "File"
-          },
-          "is_public": {
-            "type": "boolean",
-            "title": "Is Public",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "file"
-        ],
-        "title": "Body_upload_file_api_v1_public_media_upload_post"
-      },
-      "CategoryCreate": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "title": "Name"
-          },
-          "slug": {
-            "type": "string",
-            "maxLength": 100,
-            "pattern": "^[a-z0-9_]+$",
-            "title": "Slug"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active",
-            "default": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "slug"
-        ],
-        "title": "CategoryCreate",
-        "description": "Создание категории."
-      },
-      "CategoryRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "slug": {
-            "type": "string",
-            "title": "Slug"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "description",
-          "is_active",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "CategoryRead",
-        "description": "Просмотр категории."
-      },
-      "CategoryUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Active"
-          }
-        },
-        "type": "object",
-        "title": "CategoryUpdate",
-        "description": "Обновление категории (partial update)."
+        "title": "AuthStep3Response"
       },
       "ChatRead": {
         "properties": {
           "id": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Id"
           },
-          "name": {
+          "title": {
             "anyOf": [
               {
                 "type": "string"
@@ -2668,11 +3654,18 @@
                 "type": "null"
               }
             ],
-            "title": "Name"
+            "title": "Title"
           },
-          "chat_type": {
-            "type": "string",
-            "title": "Chat Type"
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
           },
           "username": {
             "anyOf": [
@@ -2686,18 +3679,115 @@
             "title": "Username"
           },
           "is_in_whitelist": {
-            "type": "boolean",
-            "title": "Is In Whitelist",
-            "default": false
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is In Whitelist"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "ChatRead"
+      },
+      "ChatStateCreate": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "chat_id": {
+            "type": "integer",
+            "title": "Chat Id"
+          },
+          "last_read_message_id": {
+            "type": "integer",
+            "title": "Last Read Message Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "chat_id",
+          "last_read_message_id"
+        ],
+        "title": "ChatStateCreate"
+      },
+      "ChatStateRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "chat_id": {
+            "type": "integer",
+            "title": "Chat Id"
+          },
+          "last_read_message_id": {
+            "type": "integer",
+            "title": "Last Read Message Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "chat_type"
+          "account_id",
+          "chat_id",
+          "last_read_message_id"
         ],
-        "title": "ChatRead",
-        "description": "Схема чтения чата из Telegram API."
+        "title": "ChatStateRead"
+      },
+      "ChatStateUpdate": {
+        "properties": {
+          "last_read_message_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Read Message Id"
+          }
+        },
+        "type": "object",
+        "title": "ChatStateUpdate"
       },
       "CodeRequest": {
         "properties": {
@@ -2708,7 +3798,6 @@
           },
           "code": {
             "type": "string",
-            "maxLength": 10,
             "title": "Code"
           }
         },
@@ -2717,35 +3806,97 @@
           "account_id",
           "code"
         ],
-        "title": "CodeRequest",
-        "description": "Шаг 2: ввод SMS-кода подтверждения."
+        "title": "CodeRequest"
       },
-      "FileRead": {
+      "ConversationCreate": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "telegram_chat_id": {
+            "type": "integer",
+            "title": "Telegram Chat Id"
+          },
+          "telegram_account_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Account Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram_chat_id"
+        ],
+        "title": "ConversationCreate"
+      },
+      "ConversationRead": {
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "title": "Id"
           },
-          "filename": {
-            "type": "string",
-            "title": "Filename"
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
           },
-          "content_type": {
-            "type": "string",
-            "title": "Content Type"
-          },
-          "size_bytes": {
+          "telegram_chat_id": {
             "type": "integer",
-            "title": "Size Bytes"
+            "title": "Telegram Chat Id"
           },
-          "storage_key": {
+          "telegram_account_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Account Id"
+          },
+          "status": {
             "type": "string",
-            "title": "Storage Key"
+            "title": "Status"
           },
-          "is_public": {
-            "type": "boolean",
-            "title": "Is Public"
+          "last_sequence_number": {
+            "type": "integer",
+            "title": "Last Sequence Number"
+          },
+          "last_activity_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Activity At"
           },
           "created_at": {
             "type": "string",
@@ -2761,68 +3912,65 @@
         "type": "object",
         "required": [
           "id",
-          "filename",
-          "content_type",
-          "size_bytes",
-          "storage_key",
-          "is_public",
+          "telegram_chat_id",
+          "status",
+          "last_sequence_number",
+          "last_activity_at",
           "created_at",
           "updated_at"
         ],
-        "title": "FileRead",
-        "description": "Ответ с метаданными файла."
+        "title": "ConversationRead"
       },
-      "FileUploadResponse": {
+      "ConversationUpdate": {
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           },
-          "filename": {
-            "type": "string",
-            "title": "Filename"
+          "telegram_chat_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Chat Id"
           },
-          "content_type": {
-            "type": "string",
-            "title": "Content Type"
+          "telegram_account_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Account Id"
           },
-          "size_bytes": {
-            "type": "integer",
-            "title": "Size Bytes"
-          },
-          "storage_key": {
-            "type": "string",
-            "title": "Storage Key"
-          },
-          "is_public": {
-            "type": "boolean",
-            "title": "Is Public"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
+          "last_sequence_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sequence Number"
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "filename",
-          "content_type",
-          "size_bytes",
-          "storage_key",
-          "is_public",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "FileUploadResponse",
-        "description": "Ответ после загрузки файла."
+        "title": "ConversationUpdate"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2837,141 +3985,138 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "JobOfferAdminRead": {
+      "LoginRequest": {
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "title": "Identifier"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "identifier_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "MediaItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "title": "MediaItem"
+      },
+      "MemoryMessageCreate": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "message_type": {
+            "type": "string",
+            "title": "Message Type",
+            "default": "text"
+          },
+          "sequence_number": {
+            "type": "integer",
+            "title": "Sequence Number"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "text",
+          "direction",
+          "sequence_number"
+        ],
+        "title": "MemoryMessageCreate"
+      },
+      "MemoryMessageRead": {
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "title": "Id"
           },
-          "title": {
+          "conversation_id": {
             "type": "string",
-            "title": "Title"
+            "format": "uuid",
+            "title": "Conversation Id"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+          "text": {
+            "type": "string",
+            "title": "Text"
           },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tags"
+          "direction": {
+            "type": "string",
+            "title": "Direction"
           },
-          "salary_from": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Salary From"
+          "message_type": {
+            "type": "string",
+            "title": "Message Type"
           },
-          "salary_to": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Salary To"
-          },
-          "location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location"
-          },
-          "source_chat_id": {
+          "sequence_number": {
             "type": "integer",
-            "title": "Source Chat Id"
+            "title": "Sequence Number"
           },
-          "source_message_id": {
-            "type": "integer",
-            "title": "Source Message Id"
-          },
-          "telegram_sender_id": {
+          "batch_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string",
+                "format": "uuid"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Telegram Sender Id"
-          },
-          "telegram_username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Username"
-          },
-          "telegram_first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram First Name"
-          },
-          "telegram_last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Last Name"
-          },
-          "category_ids": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Ids"
+            "title": "Batch Id"
           },
           "created_at": {
             "type": "string",
@@ -2987,45 +4132,19 @@
         "type": "object",
         "required": [
           "id",
-          "title",
-          "source_chat_id",
-          "source_message_id",
+          "conversation_id",
+          "text",
+          "direction",
+          "message_type",
+          "sequence_number",
           "created_at",
           "updated_at"
         ],
-        "title": "JobOfferAdminRead",
-        "description": "Вакансия, доступная администратору frontend."
+        "title": "MemoryMessageRead"
       },
-      "LoginRequest": {
+      "MemoryMessageUpdate": {
         "properties": {
-          "identifier": {
-            "type": "string",
-            "title": "Identifier"
-          },
-          "password": {
-            "type": "string",
-            "title": "Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "identifier",
-          "password"
-        ],
-        "title": "LoginRequest",
-        "description": "Запрос на авторизацию."
-      },
-      "MediaItem": {
-        "properties": {
-          "type": {
-            "type": "string",
-            "title": "Type"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "file_id": {
+          "text": {
             "anyOf": [
               {
                 "type": "string"
@@ -3034,21 +4153,49 @@
                 "type": "null"
               }
             ],
-            "title": "File Id"
+            "title": "Text"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "message_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Type"
           }
         },
         "type": "object",
-        "required": [
-          "type",
-          "id"
-        ],
-        "title": "MediaItem",
-        "description": "Элемент media в сообщении — заложено на будущее."
+        "title": "MemoryMessageUpdate"
       },
       "MessageRead": {
         "properties": {
           "id": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Id"
           },
           "chat_id": {
@@ -3085,99 +4232,23 @@
             "title": "Media"
           },
           "date": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Date"
           }
         },
         "type": "object",
         "required": [
-          "id",
-          "chat_id",
-          "date"
+          "chat_id"
         ],
-        "title": "MessageRead",
-        "description": "Схема чтения сообщения из Telegram API."
-      },
-      "NotificationLogRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "auth_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Auth Id"
-          },
-          "channel": {
-            "type": "string",
-            "title": "Channel"
-          },
-          "template_name": {
-            "type": "string",
-            "title": "Template Name"
-          },
-          "recipient": {
-            "type": "string",
-            "title": "Recipient"
-          },
-          "subject": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subject"
-          },
-          "body": {
-            "type": "string",
-            "title": "Body"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "auth_id",
-          "channel",
-          "template_name",
-          "recipient",
-          "body",
-          "status",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "NotificationLogRead",
-        "description": "Лог отправки уведомления."
+        "title": "MessageRead"
       },
       "PaginatedResponse_AccountRead_": {
         "properties": {
@@ -3215,11 +4286,11 @@
         ],
         "title": "PaginatedResponse[AccountRead]"
       },
-      "PaginatedResponse_FileRead_": {
+      "PaginatedResponse_AuthAccountRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/FileRead"
+              "$ref": "#/components/schemas/AuthAccountRead"
             },
             "type": "array",
             "title": "Items"
@@ -3249,13 +4320,13 @@
           "page_size",
           "total_pages"
         ],
-        "title": "PaginatedResponse[FileRead]"
+        "title": "PaginatedResponse[AuthAccountRead]"
       },
-      "PaginatedResponse_JobOfferAdminRead_": {
+      "PaginatedResponse_ChatStateRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/JobOfferAdminRead"
+              "$ref": "#/components/schemas/ChatStateRead"
             },
             "type": "array",
             "title": "Items"
@@ -3285,13 +4356,13 @@
           "page_size",
           "total_pages"
         ],
-        "title": "PaginatedResponse[JobOfferAdminRead]"
+        "title": "PaginatedResponse[ChatStateRead]"
       },
-      "PaginatedResponse_NotificationLogRead_": {
+      "PaginatedResponse_ConversationRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/NotificationLogRead"
+              "$ref": "#/components/schemas/ConversationRead"
             },
             "type": "array",
             "title": "Items"
@@ -3321,13 +4392,13 @@
           "page_size",
           "total_pages"
         ],
-        "title": "PaginatedResponse[NotificationLogRead]"
+        "title": "PaginatedResponse[ConversationRead]"
       },
-      "PaginatedResponse_SubscriptionAdminRead_": {
+      "PaginatedResponse_MemoryMessageRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/SubscriptionAdminRead"
+              "$ref": "#/components/schemas/MemoryMessageRead"
             },
             "type": "array",
             "title": "Items"
@@ -3357,13 +4428,13 @@
           "page_size",
           "total_pages"
         ],
-        "title": "PaginatedResponse[SubscriptionAdminRead]"
+        "title": "PaginatedResponse[MemoryMessageRead]"
       },
-      "PaginatedResponse_TemplateRead_": {
+      "PaginatedResponse_SummaryStateRead_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/TemplateRead"
+              "$ref": "#/components/schemas/SummaryStateRead"
             },
             "type": "array",
             "title": "Items"
@@ -3393,7 +4464,115 @@
           "page_size",
           "total_pages"
         ],
-        "title": "PaginatedResponse[TemplateRead]"
+        "title": "PaginatedResponse[SummaryStateRead]"
+      },
+      "PaginatedResponse_TelegramSettingsRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TelegramSettingsRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[TelegramSettingsRead]"
+      },
+      "PaginatedResponse_UserRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UserRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[UserRead]"
+      },
+      "PaginatedResponse_VectorRecordRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VectorRecordRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[VectorRecordRead]"
       },
       "PasswordRequest": {
         "properties": {
@@ -3412,34 +4591,21 @@
           "account_id",
           "password"
         ],
-        "title": "PasswordRequest",
-        "description": "Шаг 3: ввод пароля облачного шифрования (2FA)."
+        "title": "PasswordRequest"
       },
       "PhoneRequest": {
         "properties": {
           "phone": {
             "type": "string",
-            "maxLength": 20,
-            "title": "Phone"
+            "title": "Phone",
+            "description": "Phone number in international format"
           }
         },
         "type": "object",
         "required": [
           "phone"
         ],
-        "title": "PhoneRequest",
-        "description": "Шаг 1: отправка номера телефона для получения SMS-кода."
-      },
-      "QrAuthStatus": {
-        "type": "string",
-        "enum": [
-          "pending",
-          "connected",
-          "expired",
-          "error"
-        ],
-        "title": "QrAuthStatus",
-        "description": "Статусы QR-авторизации."
+        "title": "PhoneRequest"
       },
       "QrStartResponse": {
         "properties": {
@@ -3449,35 +4615,6 @@
             "title": "Account Id"
           },
           "qr_url": {
-            "type": "string",
-            "title": "Qr Url"
-          },
-          "expires_at": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "account_id",
-          "qr_url"
-        ],
-        "title": "QrStartResponse",
-        "description": "Ответ на старт QR-авторизации."
-      },
-      "QrStatusResponse": {
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/QrAuthStatus"
-          },
-          "message": {
             "anyOf": [
               {
                 "type": "string"
@@ -3486,15 +4623,52 @@
                 "type": "null"
               }
             ],
-            "title": "Message"
+            "title": "Qr Url"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "QR code generated, scan it with Telegram app"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id"
+        ],
+        "title": "QrStartResponse"
+      },
+      "QrStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
           }
         },
         "type": "object",
         "required": [
           "status"
         ],
-        "title": "QrStatusResponse",
-        "description": "Текущий статус QR-сессии."
+        "title": "QrStatusResponse"
       },
       "RegisterRequest": {
         "properties": {
@@ -3504,11 +4678,6 @@
           },
           "identifier_type": {
             "type": "string",
-            "enum": [
-              "email",
-              "phone",
-              "telegram"
-            ],
             "title": "Identifier Type"
           },
           "password": {
@@ -3523,89 +4692,64 @@
           "identifier_type",
           "password"
         ],
-        "title": "RegisterRequest",
-        "description": "Запрос на регистрацию нового пользователя."
+        "title": "RegisterRequest"
       },
-      "SubscriptionAdminRead": {
+      "SummaryStateCreate": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "current_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Summary"
+          },
+          "checkpoint": {
+            "type": "integer",
+            "title": "Checkpoint",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id"
+        ],
+        "title": "SummaryStateCreate"
+      },
+      "SummaryStateRead": {
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "title": "Id"
           },
-          "auth_id": {
+          "conversation_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Auth Id"
+            "title": "Conversation Id"
           },
-          "keywords": {
+          "current_summary": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Keywords"
+            "title": "Current Summary"
           },
-          "category_ids": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Ids"
-          },
-          "min_salary": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Min Salary"
-          },
-          "max_salary": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Salary"
-          },
-          "locations": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Locations"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
+          "checkpoint": {
+            "type": "integer",
+            "title": "Checkpoint"
           },
           "created_at": {
             "type": "string",
@@ -3621,16 +4765,55 @@
         "type": "object",
         "required": [
           "id",
-          "auth_id",
-          "is_active",
+          "conversation_id",
+          "checkpoint",
           "created_at",
           "updated_at"
         ],
-        "title": "SubscriptionAdminRead",
-        "description": "Подписка пользователя, доступная администратору frontend."
+        "title": "SummaryStateRead"
+      },
+      "SummaryStateUpdate": {
+        "properties": {
+          "current_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Summary"
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint"
+          }
+        },
+        "type": "object",
+        "title": "SummaryStateUpdate"
       },
       "TelegramSettingsCreate": {
         "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
           "use_whitelist": {
             "type": "boolean",
             "title": "Use Whitelist",
@@ -3638,22 +4821,51 @@
           },
           "whitelist_chat_ids": {
             "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
+              "type": "integer"
             },
             "type": "array",
             "title": "Whitelist Chat Ids"
           }
         },
         "type": "object",
-        "title": "TelegramSettingsCreate",
-        "description": "Создание настроек Telegram-аккаунта (internal)."
+        "title": "TelegramSettingsCreate"
+      },
+      "TelegramSettingsRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "use_whitelist": {
+            "type": "boolean",
+            "title": "Use Whitelist"
+          },
+          "whitelist_chat_ids": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whitelist Chat Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "use_whitelist"
+        ],
+        "title": "TelegramSettingsRead"
       },
       "TelegramSettingsUpdate": {
         "properties": {
@@ -3672,14 +4884,7 @@
             "anyOf": [
               {
                 "items": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ]
+                  "type": "integer"
                 },
                 "type": "array"
               },
@@ -3691,175 +4896,7 @@
           }
         },
         "type": "object",
-        "title": "TelegramSettingsUpdate",
-        "description": "Обновление настроек Telegram-аккаунта (internal)."
-      },
-      "TemplateCreate": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "title": "Name",
-            "description": "Название шаблона"
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 20,
-            "title": "Channel",
-            "description": "Канал отправки (email, sms, push)"
-          },
-          "subject_template": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subject Template"
-          },
-          "body_template": {
-            "type": "string",
-            "title": "Body Template",
-            "description": "Тело шаблона (Jinja2)"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active",
-            "default": true
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "channel",
-          "body_template"
-        ],
-        "title": "TemplateCreate",
-        "description": "Создание шаблона уведомления."
-      },
-      "TemplateRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "channel": {
-            "type": "string",
-            "title": "Channel"
-          },
-          "subject_template": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subject Template"
-          },
-          "body_template": {
-            "type": "string",
-            "title": "Body Template"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "channel",
-          "body_template",
-          "is_active",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TemplateRead",
-        "description": "Просмотр шаблона."
-      },
-      "TemplateUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "channel": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 20
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Channel"
-          },
-          "subject_template": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subject Template"
-          },
-          "body_template": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body Template"
-          },
-          "is_active": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Active"
-          }
-        },
-        "type": "object",
-        "title": "TemplateUpdate",
-        "description": "Обновление шаблона (partial update)."
+        "title": "TelegramSettingsUpdate"
       },
       "TokenResponse": {
         "properties": {
@@ -3877,8 +4914,207 @@
         "required": [
           "access_token"
         ],
-        "title": "TokenResponse",
-        "description": "Ответ с JWT-токеном."
+        "title": "TokenResponse"
+      },
+      "UserCreate": {
+        "properties": {
+          "telegram_id": {
+            "type": "integer",
+            "title": "Telegram Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram_id"
+        ],
+        "title": "UserCreate"
+      },
+      "UserRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "telegram_id": {
+            "type": "integer",
+            "title": "Telegram Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "telegram_id"
+        ],
+        "title": "UserRead"
+      },
+      "UserUpdate": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "UserUpdate"
       },
       "ValidationError": {
         "properties": {
@@ -3920,7 +5156,152 @@
         ],
         "title": "ValidationError"
       },
-      "WhitelistChatCreate": {
+      "VectorRecordCreate": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding"
+          },
+          "extra_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "text"
+        ],
+        "title": "VectorRecordCreate"
+      },
+      "VectorRecordRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding"
+          },
+          "extra_data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Data",
+            "default": {}
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "text",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "VectorRecordRead"
+      },
+      "VectorRecordUpdate": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding"
+          },
+          "extra_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Data"
+          }
+        },
+        "type": "object",
+        "title": "VectorRecordUpdate"
+      },
+      "WhitelistEntryCreate": {
         "properties": {
           "chat_id": {
             "type": "integer",
@@ -3931,387 +5312,7 @@
         "required": [
           "chat_id"
         ],
-        "title": "WhitelistChatCreate"
-      },
-      "src__base__schemas__PaginatedResponse_UserRead___1": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/src__modules__users__schemas__public__user__UserRead"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "page_size": {
-            "type": "integer",
-            "title": "Page Size"
-          },
-          "total_pages": {
-            "type": "integer",
-            "title": "Total Pages"
-          }
-        },
-        "type": "object",
-        "required": [
-          "items",
-          "total",
-          "page",
-          "page_size",
-          "total_pages"
-        ],
-        "title": "PaginatedResponse[UserRead]"
-      },
-      "src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "account_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Account Id"
-          },
-          "use_whitelist": {
-            "type": "boolean",
-            "title": "Use Whitelist"
-          },
-          "whitelist_chat_ids": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Whitelist Chat Ids"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "account_id",
-          "use_whitelist",
-          "whitelist_chat_ids",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TelegramSettingsRead",
-        "description": "Чтение настроек Telegram-аккаунта (internal)."
-      },
-      "src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead": {
-        "properties": {
-          "use_whitelist": {
-            "type": "boolean",
-            "title": "Use Whitelist"
-          },
-          "whitelist_chat_ids": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Whitelist Chat Ids"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "use_whitelist",
-          "whitelist_chat_ids",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TelegramSettingsRead",
-        "description": "Чтение настроек Telegram-аккаунта (public)."
-      },
-      "src__modules__users__schemas__public__telegram__TelegramRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "telegram_id": {
-            "type": "string",
-            "title": "Telegram Id"
-          },
-          "telegram_username": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Username"
-          },
-          "telegram_first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram First Name"
-          },
-          "telegram_last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telegram Last Name"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "telegram_id",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TelegramRead",
-        "description": "Чтение Telegram-профиля текущего пользователя."
-      },
-      "src__modules__users__schemas__public__user__UserCreate": {
-        "properties": {
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          }
-        },
-        "type": "object",
-        "title": "UserCreate",
-        "description": "Схема создания профиля.\n\nauth_id НЕ входит в схему — он пробрасывается из JWT-токена.\nВсе остальные поля профиля опциональны."
-      },
-      "src__modules__users__schemas__public__user__UserRead": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "auth_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Auth Id"
-          },
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "auth_id",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "UserRead",
-        "description": "Схема чтения профиля пользователя."
-      },
-      "src__modules__users__schemas__public__user__UserUpdate": {
-        "properties": {
-          "first_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Name"
-          },
-          "last_name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 100
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Name"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 500
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "bio": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Bio"
-          }
-        },
-        "type": "object",
-        "title": "UserUpdate",
-        "description": "Схема обновления профиля.\n\nВсе поля опциональны — поддерживается partial update.\nexclude_unset=True в сервисе гарантирует, что неуказанные\nполя не будут перезаписаны None-значениями."
+        "title": "WhitelistEntryCreate"
       }
     },
     "securitySchemes": {

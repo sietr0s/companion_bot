@@ -1,11 +1,13 @@
 """Схемы событий шины модуля llm."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
+from src.domain.chat import Batch, Message
 
 
 class GenerateReplyCommand(BaseModel):
@@ -22,39 +24,28 @@ class SummarizeCommand(BaseModel):
     max_chars: int = 1000
 
 
-class ReplyGeneratedEvent(BaseModel):
+class ReplyGeneratedEvent(BaseEvent):
+    event_name: str = BusTopics.LLM_REPLY_GENERATED
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
-    messages: list[str]
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.LLM_REPLY_GENERATED
-        return data
+    messages: list[Message]
+    batch: Batch | None = None
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class ReplySuppressedEvent(BaseModel):
+class ReplySuppressedEvent(BaseEvent):
+    event_name: str = BusTopics.LLM_REPLY_SUPPRESSED
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
     reason: str = "no_response_needed"
-    suppressed_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.LLM_REPLY_SUPPRESSED
-        return data
+    suppressed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class SummaryGeneratedEvent(BaseModel):
+class SummaryGeneratedEvent(BaseEvent):
+    event_name: str = BusTopics.LLM_SUMMARY_GENERATED
     conversation_id: UUID
     summary: str
     char_count: int
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.LLM_SUMMARY_GENERATED
-        return data
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

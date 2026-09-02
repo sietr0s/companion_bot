@@ -4,6 +4,7 @@
 
 from src.core.exceptions import (
     AppException,
+    BadRequestError,
     ConflictError,
     NotFoundError,
     UnauthorizedError,
@@ -32,6 +33,11 @@ class TestExceptions:
     def test_unauthorized_error(self):
         exc = UnauthorizedError()
         assert exc.status_code == 401
+        assert isinstance(exc, AppException)
+
+    def test_bad_request_error(self):
+        exc = BadRequestError()
+        assert exc.status_code == 400
         assert isinstance(exc, AppException)
 
     def test_custom_detail(self):

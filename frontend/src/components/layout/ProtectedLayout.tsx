@@ -1,13 +1,10 @@
 import { useEffect } from 'react';
 import { Breadcrumb, Button, Layout, Menu, Space, Tag, Typography, message } from 'antd';
 import {
-  BellOutlined,
   DashboardOutlined,
-  FileOutlined,
-  FileTextOutlined,
+  DatabaseOutlined,
   LogoutOutlined,
   MessageOutlined,
-  RobotOutlined,
   SunOutlined,
   MoonOutlined,
   TeamOutlined,
@@ -39,12 +36,8 @@ export function ProtectedLayout() {
   const items: MenuProps['items'] = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/users', icon: <TeamOutlined />, label: 'Users' },
-    { key: '/media', icon: <FileOutlined />, label: 'Media' },
     { key: '/telegram', icon: <MessageOutlined />, label: 'Telegram' },
-    { key: '/categories', icon: <RobotOutlined />, label: 'Categories' },
-    { key: '/notifications/templates', icon: <BellOutlined />, label: 'Templates' },
-    { key: '/notifications/history', icon: <BellOutlined />, label: 'History' },
-    { key: '/offers', icon: <FileTextOutlined />, label: 'Offers' },
+    { key: '/memory', icon: <DatabaseOutlined />, label: 'Memory' },
   ];
 
   const selectedKey =
@@ -56,15 +49,10 @@ export function ProtectedLayout() {
   const breadcrumbMap: Record<string, string> = {
     dashboard: 'Dashboard',
     users: 'Users',
-    media: 'Media',
     telegram: 'Telegram',
-    categories: 'Categories',
-    notifications: 'Notifications',
-    templates: 'Templates',
-    history: 'History',
+    memory: 'Memory',
     chats: 'Chats',
     settings: 'Settings',
-    offers: 'Offers',
   };
 
   const breadcrumbs = location.pathname

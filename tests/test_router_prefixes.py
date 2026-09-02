@@ -11,7 +11,7 @@ def test_module_router_prefixes() -> None:
         "/api/v1/public/auth/login",
         "/api/v1/public/users/",
         "/api/v1/public/telegram/",
-        "/memory/conversations/",
+        "/api/v1/public/memory/conversations/",
     }
 
     assert expected_paths <= paths

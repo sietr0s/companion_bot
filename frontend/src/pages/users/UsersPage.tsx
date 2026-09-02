@@ -1,199 +1,96 @@
-import { useMemo, useState } from 'react';
-import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
+import { useState } from 'react';
+import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, Typography, message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageTitle } from '../../components/common/PageTitle';
-import {
-  CategoryRead,
-  ClassifierService,
-  JobMatcherService,
-  SubscriptionAdminRead,
-  UsersService,
-  src__modules__users__schemas__public__user__UserRead as UserRead,
-} from '../../api/generated';
+import { UserCreate, UserRead, UserUpdate, UsersService } from '../../api/generated';
 import { formatDate } from '../../utils/formatters';
 import { extractErrorMessage } from '../../utils/api';
 
-function normalizeCategories(response: unknown): CategoryRead[] {
-  if (Array.isArray(response)) return response as CategoryRead[];
-  if (response && typeof response === 'object') {
-    const payload = response as { items?: unknown; data?: unknown };
-    if (Array.isArray(payload.items)) return payload.items as CategoryRead[];
-    if (Array.isArray(payload.data)) return payload.data as CategoryRead[];
-  }
-  return [];
-}
-
 export function UsersPage() {
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<{
-    first_name?: string;
-    last_name?: string;
-    avatar_url?: string;
-    bio?: string;
-  }>();
+  const [form] = Form.useForm<UserCreate & UserUpdate>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [editingUser, setEditingUser] = useState<UserRead | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const updateMutation = useMutation({
-    mutationFn: (values: { first_name?: string; last_name?: string; avatar_url?: string; bio?: string }) => {
-      if (!editingUser) throw new Error('Пользователь не выбран');
-      return UsersService.updateUserAdminApiV1PublicUsersProfileIdPatch(editingUser.id, values);
+  const usersQuery = useQuery({
+    queryKey: ['users', page, pageSize],
+    queryFn: () => UsersService.getListApiV1PublicUsersGet(page, pageSize),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (values: UserCreate & UserUpdate) => {
+      if (editingUser) {
+        return UsersService.updateApiV1PublicUsersItemIdPut(editingUser.id, values);
+      }
+      return UsersService.createApiV1PublicUsersPost({
+        telegram_id: Number(values.telegram_id),
+        username: values.username,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        notes: values.notes,
+      });
     },
     onSuccess: () => {
       setEditingUser(null);
+      setCreating(false);
       form.resetFields();
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      void message.success('Пользователь обновлён');
+      void message.success(editingUser ? 'Пользователь обновлён' : 'Пользователь создан');
     },
     onError: (error: unknown) => void message.error(extractErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (authId: string) => JobMatcherService.deleteUserAdminApiV1PublicJobMatcherUsersAuthIdDelete(authId),
+    mutationFn: (userId: string) => UsersService.deleteApiV1PublicUsersItemIdDelete(userId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] });
-      void message.success('Пользователь, учётная запись и подписка удалены');
+      void message.success('Пользователь удалён');
     },
     onError: (error: unknown) => void message.error(extractErrorMessage(error)),
   });
 
-  const usersQuery = useQuery({
-    queryKey: ['users', 'all', page, pageSize],
-    queryFn: () => UsersService.getUsersAdminApiV1PublicUsersGet(undefined, page, pageSize),
-  });
-  const subscriptionsQuery = useQuery({
-    queryKey: ['job-matcher', 'subscriptions'],
-    queryFn: () => JobMatcherService.getSubscriptionsAdminApiV1PublicJobMatcherSubscriptionsGet(undefined, 1, 500),
-  });
-  const categoriesQuery = useQuery({
-    queryKey: ['categories', 'public'],
-    queryFn: () => ClassifierService.getCategoriesApiV1PublicClassifierCategoriesGet(),
-    select: normalizeCategories,
-  });
-
-  const subscriptionsByAuthId = useMemo(
-    () =>
-      new Map<string, SubscriptionAdminRead>(
-        (subscriptionsQuery.data?.items ?? []).map((subscription) => [subscription.auth_id, subscription])
-      ),
-    [subscriptionsQuery.data?.items]
-  );
-  const categoryNamesById = useMemo(
-    () => new Map((categoriesQuery.data ?? []).map((category) => [category.id, category.name])),
-    [categoriesQuery.data]
-  );
-
   const columns = [
     {
-      title: 'Пользователь',
+      title: 'Имя',
       render: (_: unknown, record: UserRead) => (
         <Space direction="vertical" size={0}>
           <Typography.Text strong>
             {[record.first_name, record.last_name].filter(Boolean).join(' ') || 'Без имени'}
           </Typography.Text>
-          <Typography.Text type="secondary">Создан {formatDate(record.created_at)}</Typography.Text>
+          <Typography.Text type="secondary">{record.username ? `@${record.username}` : 'без username'}</Typography.Text>
         </Space>
       ),
     },
+    { title: 'Telegram ID', dataIndex: 'telegram_id' },
+    { title: 'Заметки', dataIndex: 'notes', ellipsis: true },
     {
-      title: 'Auth ID',
-      dataIndex: 'auth_id',
-      render: (value: string) => (
-        <Typography.Text code copyable={{ text: value }}>
-          {value.slice(0, 8)}…
-        </Typography.Text>
-      ),
-    },
-    {
-      title: 'Категории подписки',
-      render: (_: unknown, record: UserRead) => {
-        const subscription = subscriptionsByAuthId.get(record.auth_id);
-        if (!subscription?.category_ids?.length) {
-          return <Typography.Text type="secondary">Нет подписки</Typography.Text>;
-        }
-        return (
-          <Space size={[0, 4]} wrap>
-            {subscription.category_ids.map((categoryId) => (
-              <Tag color="blue" key={categoryId}>
-                {categoryNamesById.get(categoryId) ?? `${categoryId.slice(0, 8)}…`}
-              </Tag>
-            ))}
-          </Space>
-        );
-      },
-    },
-    {
-      title: 'Условия',
-      render: (_: unknown, record: UserRead) => {
-        const subscription = subscriptionsByAuthId.get(record.auth_id);
-        if (!subscription) return '-';
-        const salary =
-          subscription.min_salary || subscription.max_salary
-            ? `${subscription.min_salary ? `от ${subscription.min_salary}` : ''}${
-                subscription.min_salary && subscription.max_salary ? ' ' : ''
-              }${subscription.max_salary ? `до ${subscription.max_salary}` : ''}`
-            : null;
-        return (
-          <Space direction="vertical" size={2}>
-            {subscription.keywords?.length ? (
-              <Typography.Text>Ключевые слова: {subscription.keywords.join(', ')}</Typography.Text>
-            ) : null}
-            {salary ? <Typography.Text>Зарплата: {salary}</Typography.Text> : null}
-            {subscription.locations?.length ? (
-              <Typography.Text>Локации: {subscription.locations.join(', ')}</Typography.Text>
-            ) : null}
-            {!subscription.keywords?.length && !salary && !subscription.locations?.length ? '-' : null}
-          </Space>
-        );
-      },
-    },
-    {
-      title: 'Статус',
-      render: (_: unknown, record: UserRead) => {
-        const subscription = subscriptionsByAuthId.get(record.auth_id);
-        if (!subscription) return <Tag>Нет</Tag>;
-        return (
-          <Tag color={subscription.is_active ? 'green' : 'default'}>
-            {subscription.is_active ? 'Активна' : 'Отключена'}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Обновлена',
-      render: (_: unknown, record: UserRead) => {
-        const subscription = subscriptionsByAuthId.get(record.auth_id);
-        return subscription ? formatDate(subscription.updated_at) : '-';
-      },
+      title: 'Создан',
+      dataIndex: 'created_at',
+      render: (value: string | null | undefined) => (value ? formatDate(value) : '—'),
     },
     {
       title: 'Действия',
-      fixed: 'right' as const,
       render: (_: unknown, record: UserRead) => (
         <Space>
           <Button
             size="small"
             onClick={() => {
+              setCreating(false);
               setEditingUser(record);
               form.setFieldsValue({
-                first_name: record.first_name ?? '',
-                last_name: record.last_name ?? '',
-                avatar_url: record.avatar_url ?? '',
-                bio: record.bio ?? '',
+                telegram_id: record.telegram_id,
+                username: record.username ?? undefined,
+                first_name: record.first_name ?? undefined,
+                last_name: record.last_name ?? undefined,
+                notes: record.notes ?? undefined,
               });
             }}
           >
             Редактировать
           </Button>
-          <Popconfirm
-            title="Удалить пользователя?"
-            description="Будут удалены профиль пользователя, учётная запись auth и подписка."
-            okText="Удалить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => deleteMutation.mutate(record.auth_id)}
-          >
+          <Popconfirm title="Удалить пользователя?" onConfirm={() => deleteMutation.mutate(record.id)}>
             <Button size="small" danger loading={deleteMutation.isPending}>
               Удалить
             </Button>
@@ -205,19 +102,26 @@ export function UsersPage() {
 
   return (
     <Space direction="vertical" size="large" className="page-stack">
-      <PageTitle title="Пользователи" subtitle="Пользователи, категории и параметры их подписок на вакансии" />
-      {subscriptionsQuery.isError ? (
-        <Alert
-          type="error"
-          showIcon
-          message="Не удалось загрузить подписки"
-          description={extractErrorMessage(subscriptionsQuery.error)}
-        />
-      ) : null}
-      <Card title={`Пользователи и подписки (${usersQuery.data?.total ?? 0})`}>
+      <PageTitle
+        title="Собеседники"
+        subtitle="Telegram-пользователи, с которыми работает companion"
+        extra={
+          <Button
+            type="primary"
+            onClick={() => {
+              setEditingUser(null);
+              setCreating(true);
+              form.resetFields();
+            }}
+          >
+            Добавить
+          </Button>
+        }
+      />
+      <Card title={`Пользователи (${usersQuery.data?.total ?? 0})`}>
         <Table
           rowKey="id"
-          loading={usersQuery.isLoading || subscriptionsQuery.isLoading || categoriesQuery.isLoading}
+          loading={usersQuery.isLoading}
           columns={columns}
           dataSource={usersQuery.data?.items ?? []}
           pagination={{
@@ -225,39 +129,40 @@ export function UsersPage() {
             pageSize,
             total: usersQuery.data?.total ?? 0,
             showSizeChanger: true,
-            pageSizeOptions: [20, 50, 100],
             onChange: (nextPage, nextPageSize) => {
               setPage(nextPageSize === pageSize ? nextPage : 1);
               setPageSize(nextPageSize);
             },
           }}
-          scroll={{ x: 1200 }}
         />
       </Card>
       <Modal
-        title="Редактирование пользователя"
-        open={editingUser !== null}
+        title={editingUser ? 'Редактирование пользователя' : 'Новый пользователь'}
+        open={creating || editingUser !== null}
         onCancel={() => {
           setEditingUser(null);
+          setCreating(false);
           form.resetFields();
         }}
         onOk={() => form.submit()}
-        confirmLoading={updateMutation.isPending}
+        confirmLoading={saveMutation.isPending}
         okText="Сохранить"
-        cancelText="Отмена"
       >
-        <Form layout="vertical" form={form} onFinish={(values) => updateMutation.mutate(values)}>
+        <Form layout="vertical" form={form} onFinish={(values) => saveMutation.mutate(values)}>
+          <Form.Item name="telegram_id" label="Telegram ID" rules={[{ required: !editingUser, message: 'Укажите telegram_id' }]}>
+            <InputNumber style={{ width: '100%' }} disabled={Boolean(editingUser)} />
+          </Form.Item>
+          <Form.Item name="username" label="Username">
+            <Input maxLength={100} />
+          </Form.Item>
           <Form.Item name="first_name" label="Имя">
             <Input maxLength={100} />
           </Form.Item>
           <Form.Item name="last_name" label="Фамилия">
             <Input maxLength={100} />
           </Form.Item>
-          <Form.Item name="avatar_url" label="URL аватара">
-            <Input maxLength={500} />
-          </Form.Item>
-          <Form.Item name="bio" label="О пользователе">
-            <Input.TextArea rows={4} />
+          <Form.Item name="notes" label="Заметки">
+            <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
       </Modal>

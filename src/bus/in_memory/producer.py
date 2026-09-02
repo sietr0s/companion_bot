@@ -3,6 +3,7 @@
 from typing import Any
 
 from src.bus.in_memory.transport import InMemoryMessage, InMemoryTransport
+from src.bus.trace import log_published
 
 
 class InMemoryProducer:
@@ -15,6 +16,7 @@ class InMemoryProducer:
         return self._transport
 
     async def publish(self, topic: str, message: dict[str, Any]) -> None:
+        log_published(topic, message)
         await self._transport.queue.put(InMemoryMessage(topic, message))
 
     async def start(self) -> None:

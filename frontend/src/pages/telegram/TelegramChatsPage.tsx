@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Button, Card, Col, Empty, List, Row, Space, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Empty, List, Row, Space, Tag, message } from 'antd';
 import { CheckOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
+import { MarkdownContent } from '../../components/common/MarkdownContent';
 import { PageTitle } from '../../components/common/PageTitle';
 import { ChatRead, TelegramClientsService } from '../../api/generated';
 import { formatDate } from '../../utils/formatters';
@@ -114,7 +115,7 @@ export function TelegramChatsPage() {
                     title={`#${item.id} / ${formatDate(item.date)}`}
                     description={
                       <Space direction="vertical" size={4}>
-                        <Typography.Text>{item.text ?? '(без текста)'}</Typography.Text>
+                        <MarkdownContent>{item.text}</MarkdownContent>
                         {item.media?.length ? <Tag color="blue">media: {item.media.length}</Tag> : null}
                       </Space>
                     }

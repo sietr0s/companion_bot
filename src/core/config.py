@@ -56,10 +56,6 @@ class Settings(BaseSettings):
     # В production использовать только Alembic миграции
     CREATE_TABLES_ON_STARTUP: bool = True
 
-    # Internal API (межмодульное взаимодействие)
-    INTERNAL_API_BASE_URL: str = "http://localhost:8000/internal"
-    INTERNAL_SERVICE_KEY: str
-
     # Telegram (Telethon)
     TG_API_ID: int = 0
     TG_API_HASH: str = ""
@@ -104,6 +100,35 @@ class Settings(BaseSettings):
 
     # Embeddings (local sentence-transformers)
     EMBEDDING_MODEL: str = "Qwen/Qwen3-Embedding-0.6B"
+    MODEL_CACHE_DIR: str = "models"
+
+    # LLM chat (LangChain). Embeddings stay local.
+    # mistral | openrouter | openai | openai_compat | stub
+    LLM_PROVIDER: str = "mistral"
+    MISTRAL_API_KEY: str = ""
+    MISTRAL_MODEL: str = "mistral-small-latest"
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = ""
+    LLM_MODEL: str = "openai/gpt-4o-mini"
+
+    # LangSmith tracing for LangChain calls
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_API_KEY: str = ""
+    LANGSMITH_PROJECT: str = "companion_bot"
+    LANGSMITH_ENDPOINT: str = ""
+
+    # Batching (in-memory debounce)
+    BATCH_MAX_SIZE: int = 20
+    BATCH_IDLE_SECONDS: float = 2.0
+
+    # STT / TTS
+    STT_PROVIDER: str = "faster_whisper"
+    WHISPER_MODEL: str = "base"
+    WHISPER_DEVICE: str = "cpu"
+    TTS_PROVIDER: str = "stub"
+    TTS_MODEL: str = "openai/gpt-4o-mini-tts-2025-12-15"
+    TTS_VOICE: str = "alloy"
+    TTS_RESPONSE_FORMAT: str = "mp3"
 
     # Admin (seed-пользователь) — обязательные поля, без дефолтов
     ADMIN_EMAIL: str

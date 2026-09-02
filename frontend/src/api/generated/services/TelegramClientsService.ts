@@ -2,23 +2,29 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AccountCreate } from '../models/AccountCreate';
 import type { AccountRead } from '../models/AccountRead';
+import type { AccountUpdate } from '../models/AccountUpdate';
 import type { AuthStep1Response } from '../models/AuthStep1Response';
 import type { AuthStep2Response } from '../models/AuthStep2Response';
 import type { AuthStep3Response } from '../models/AuthStep3Response';
 import type { ChatRead } from '../models/ChatRead';
+import type { ChatStateCreate } from '../models/ChatStateCreate';
+import type { ChatStateRead } from '../models/ChatStateRead';
+import type { ChatStateUpdate } from '../models/ChatStateUpdate';
 import type { CodeRequest } from '../models/CodeRequest';
 import type { MessageRead } from '../models/MessageRead';
 import type { PaginatedResponse_AccountRead_ } from '../models/PaginatedResponse_AccountRead_';
+import type { PaginatedResponse_ChatStateRead_ } from '../models/PaginatedResponse_ChatStateRead_';
+import type { PaginatedResponse_TelegramSettingsRead_ } from '../models/PaginatedResponse_TelegramSettingsRead_';
 import type { PasswordRequest } from '../models/PasswordRequest';
 import type { PhoneRequest } from '../models/PhoneRequest';
 import type { QrStartResponse } from '../models/QrStartResponse';
 import type { QrStatusResponse } from '../models/QrStatusResponse';
-import type { src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead } from '../models/src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead';
-import type { src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead } from '../models/src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead';
 import type { TelegramSettingsCreate } from '../models/TelegramSettingsCreate';
+import type { TelegramSettingsRead } from '../models/TelegramSettingsRead';
 import type { TelegramSettingsUpdate } from '../models/TelegramSettingsUpdate';
-import type { WhitelistChatCreate } from '../models/WhitelistChatCreate';
+import type { WhitelistEntryCreate } from '../models/WhitelistEntryCreate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -279,12 +285,12 @@ export class TelegramClientsService {
     /**
      * Настройки чтения аккаунта
      * @param accountId
-     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
+     * @returns TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static getSettingsApiV1PublicTelegramAccountIdSettingsGet(
         accountId: string,
-    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
+    ): CancelablePromise<TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -300,13 +306,13 @@ export class TelegramClientsService {
      * Создать настройки чтения
      * @param accountId
      * @param requestBody
-     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
+     * @returns TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static createSettingsApiV1PublicTelegramAccountIdSettingsPost(
         accountId: string,
         requestBody: TelegramSettingsCreate,
-    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
+    ): CancelablePromise<TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -324,13 +330,13 @@ export class TelegramClientsService {
      * Обновить настройки чтения
      * @param accountId
      * @param requestBody
-     * @returns src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead Successful Response
+     * @returns TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static updateSettingsApiV1PublicTelegramAccountIdSettingsPut(
         accountId: string,
         requestBody: TelegramSettingsUpdate,
-    ): CancelablePromise<src__modules__telegram_clients__schemas__internal__settings__TelegramSettingsRead> {
+    ): CancelablePromise<TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/public/telegram/{account_id}/settings',
@@ -368,13 +374,13 @@ export class TelegramClientsService {
      * Add Chat To Whitelist
      * @param accountId
      * @param requestBody
-     * @returns src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead Successful Response
+     * @returns TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static addChatToWhitelistApiV1PublicTelegramAccountIdWhitelistPost(
         accountId: string,
-        requestBody: WhitelistChatCreate,
-    ): CancelablePromise<src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead> {
+        requestBody: WhitelistEntryCreate,
+    ): CancelablePromise<TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/telegram/{account_id}/whitelist',
@@ -392,19 +398,346 @@ export class TelegramClientsService {
      * Remove Chat From Whitelist
      * @param accountId
      * @param chatId
-     * @returns src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead Successful Response
+     * @returns TelegramSettingsRead Successful Response
      * @throws ApiError
      */
     public static removeChatFromWhitelistApiV1PublicTelegramAccountIdWhitelistChatIdDelete(
         accountId: string,
         chatId: number,
-    ): CancelablePromise<src__modules__telegram_clients__schemas__public__settings__TelegramSettingsRead> {
+    ): CancelablePromise<TelegramSettingsRead> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/public/telegram/{account_id}/whitelist/{chat_id}',
             path: {
                 'account_id': accountId,
                 'chat_id': chatId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get List
+     * @param page
+     * @param pageSize
+     * @param orderBy
+     * @returns PaginatedResponse_AccountRead_ Successful Response
+     * @throws ApiError
+     */
+    public static getListApiV1PublicTelegramAccountsGet(
+        page: number = 1,
+        pageSize: number = 100,
+        orderBy?: (string | null),
+    ): CancelablePromise<PaginatedResponse_AccountRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/accounts/',
+            query: {
+                'page': page,
+                'page_size': pageSize,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create
+     * @param requestBody
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static createApiV1PublicTelegramAccountsPost(
+        requestBody: AccountCreate,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/accounts/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get By Id
+     * @param itemId
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static getByIdApiV1PublicTelegramAccountsItemIdGet(
+        itemId: string,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update
+     * @param itemId
+     * @param requestBody
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static updateApiV1PublicTelegramAccountsItemIdPut(
+        itemId: string,
+        requestBody: AccountUpdate,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete
+     * @param itemId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteApiV1PublicTelegramAccountsItemIdDelete(
+        itemId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get List
+     * @param page
+     * @param pageSize
+     * @param orderBy
+     * @returns PaginatedResponse_TelegramSettingsRead_ Successful Response
+     * @throws ApiError
+     */
+    public static getListApiV1PublicTelegramSettingsGet(
+        page: number = 1,
+        pageSize: number = 100,
+        orderBy?: (string | null),
+    ): CancelablePromise<PaginatedResponse_TelegramSettingsRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/settings/',
+            query: {
+                'page': page,
+                'page_size': pageSize,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create
+     * @param requestBody
+     * @returns TelegramSettingsRead Successful Response
+     * @throws ApiError
+     */
+    public static createApiV1PublicTelegramSettingsPost(
+        requestBody: TelegramSettingsCreate,
+    ): CancelablePromise<TelegramSettingsRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/settings/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get By Id
+     * @param itemId
+     * @returns TelegramSettingsRead Successful Response
+     * @throws ApiError
+     */
+    public static getByIdApiV1PublicTelegramSettingsItemIdGet(
+        itemId: string,
+    ): CancelablePromise<TelegramSettingsRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/settings/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update
+     * @param itemId
+     * @param requestBody
+     * @returns TelegramSettingsRead Successful Response
+     * @throws ApiError
+     */
+    public static updateApiV1PublicTelegramSettingsItemIdPut(
+        itemId: string,
+        requestBody: TelegramSettingsUpdate,
+    ): CancelablePromise<TelegramSettingsRead> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/public/telegram/settings/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete
+     * @param itemId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteApiV1PublicTelegramSettingsItemIdDelete(
+        itemId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/settings/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get List
+     * @param page
+     * @param pageSize
+     * @param orderBy
+     * @returns PaginatedResponse_ChatStateRead_ Successful Response
+     * @throws ApiError
+     */
+    public static getListApiV1PublicTelegramChatStatesGet(
+        page: number = 1,
+        pageSize: number = 100,
+        orderBy?: (string | null),
+    ): CancelablePromise<PaginatedResponse_ChatStateRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/chat-states/',
+            query: {
+                'page': page,
+                'page_size': pageSize,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create
+     * @param requestBody
+     * @returns ChatStateRead Successful Response
+     * @throws ApiError
+     */
+    public static createApiV1PublicTelegramChatStatesPost(
+        requestBody: ChatStateCreate,
+    ): CancelablePromise<ChatStateRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/chat-states/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get By Id
+     * @param itemId
+     * @returns ChatStateRead Successful Response
+     * @throws ApiError
+     */
+    public static getByIdApiV1PublicTelegramChatStatesItemIdGet(
+        itemId: string,
+    ): CancelablePromise<ChatStateRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/chat-states/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update
+     * @param itemId
+     * @param requestBody
+     * @returns ChatStateRead Successful Response
+     * @throws ApiError
+     */
+    public static updateApiV1PublicTelegramChatStatesItemIdPut(
+        itemId: string,
+        requestBody: ChatStateUpdate,
+    ): CancelablePromise<ChatStateRead> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/public/telegram/chat-states/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete
+     * @param itemId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteApiV1PublicTelegramChatStatesItemIdDelete(
+        itemId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/chat-states/{item_id}',
+            path: {
+                'item_id': itemId,
             },
             errors: {
                 422: `Validation Error`,

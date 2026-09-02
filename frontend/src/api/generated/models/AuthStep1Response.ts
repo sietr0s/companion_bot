@@ -2,11 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Ответ после отправки номера телефона.
- */
 export type AuthStep1Response = {
     account_id: string;
-    status?: string;
+    phone_code_hash?: (string | null);
+    message?: string;
 };
 

@@ -2,6 +2,8 @@
 Тесты конфигурации приложения.
 """
 
+import os
+
 from src.core.config import Settings, settings
 
 
@@ -16,7 +18,6 @@ class TestConfig:
         """Дефолтные значения корректны."""
         s = Settings(
             JWT_SECRET_KEY="test",
-            INTERNAL_SERVICE_KEY="internal-test-key",
             DATABASE_URL="sqlite+aiosqlite:///test.db",
         )
         assert s.JWT_ALGORITHM == "HS256"
@@ -34,7 +35,6 @@ class TestConfig:
         try:
             s = Settings(
                 JWT_SECRET_KEY="test",
-                INTERNAL_SERVICE_KEY="internal-test-key",
                 DATABASE_URL="sqlite+aiosqlite:///test.db",
             )
             assert s.DEBUG is True
@@ -42,3 +42,34 @@ class TestConfig:
         finally:
             del os.environ["DEBUG"]
             del os.environ["MESSAGE_BUS"]
+
+
+def test_configure_langsmith_sets_env(monkeypatch):
+    from types import SimpleNamespace
+
+    from src.core import langsmith as ls
+
+    monkeypatch.setattr(
+        ls,
+        "settings",
+        SimpleNamespace(
+            LANGSMITH_TRACING=True,
+            LANGSMITH_API_KEY="ls-test",
+            LANGSMITH_PROJECT="companion_bot",
+            LANGSMITH_ENDPOINT="",
+        ),
+    )
+    assert ls.configure_langsmith() is True
+    assert os.environ["LANGSMITH_TRACING"] == "true"
+    assert os.environ["LANGCHAIN_TRACING_V2"] == "true"
+    assert os.environ["LANGSMITH_PROJECT"] == "companion_bot"
+
+
+def test_apply_model_cache_sets_env(tmp_path, monkeypatch):
+    from src.core import model_cache as mc
+
+    monkeypatch.setattr(mc.settings, "MODEL_CACHE_DIR", str(tmp_path / "models"))
+    root = mc.apply_model_cache()
+    assert (root / "huggingface" / "hub").is_dir()
+    assert "huggingface" in os.environ["HF_HOME"]
+    assert "sentence-transformers" in os.environ["SENTENCE_TRANSFORMERS_HOME"]

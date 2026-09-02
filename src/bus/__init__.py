@@ -26,14 +26,12 @@ def create_bus(message_bus: str | None = None) -> tuple[MessageProducer, Message
         from src.bus.kafka.consumer import KafkaConsumerRouter
         from src.bus.kafka.producer import KafkaProducerBus
 
-        producer = KafkaProducerBus()
-        return producer, KafkaConsumerRouter(producer)
+        return KafkaProducerBus(), KafkaConsumerRouter()
 
     from src.bus.in_memory import InMemoryConsumer, InMemoryProducer, InMemoryTransport
 
     transport = InMemoryTransport()
-    producer = InMemoryProducer(transport)
-    return producer, InMemoryConsumer(transport, producer)
+    return InMemoryProducer(transport), InMemoryConsumer(transport)
 
 
 def _ensure_bus() -> None:

@@ -65,7 +65,7 @@ class TestInMemoryProducer:
         """Обработчик вызывается при публикации в топик."""
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
         received = []
 
         @consumer.subscribe("test.topic")
@@ -79,11 +79,31 @@ class TestInMemoryProducer:
         assert len(received) == 1
         assert received[0]["key"] == "value"
 
+    async def test_publish_and_receive_are_logged(self, caplog):
+        import logging
+
+        transport = InMemoryTransport()
+        producer = InMemoryProducer(transport)
+        consumer = InMemoryConsumer(transport)
+
+        @consumer.subscribe("test.topic")
+        async def handler(message):
+            return None
+
+        caplog.set_level(logging.INFO, logger="src.bus")
+        await consumer.start()
+        await producer.publish("test.topic", {"key": "value"})
+        await transport.queue.join()
+        await consumer.stop()
+        text = caplog.text
+        assert "опубликовано topic=test.topic" in text
+        assert "получено topic=test.topic handler=handler" in text
+
     def test_multiple_subscribers(self):
         """Несколько обработчиков на один топик."""
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
 
         @consumer.subscribe("multi")
         async def handler1(msg):
@@ -104,7 +124,7 @@ class TestInMemoryProducer:
         """Асинхронный обработчик получает сообщение."""
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
         received = []
 
         @consumer.subscribe("async.topic")
@@ -132,6 +152,6 @@ class TestInMemoryConsumer:
         """Consumer запускает и корректно останавливает чтение очереди."""
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
         await consumer.start()
         await consumer.stop()

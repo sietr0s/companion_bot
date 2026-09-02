@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 import uuid
-from fastapi import HTTPException
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from telethon.events import NewMessage
 
@@ -19,7 +19,9 @@ from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
 from src.core.exceptions import ConflictError, NotFoundError
-from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.exceptions import InvalidTelegramCodeError
+from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
+from src.modules.telegram_clients.adapters.quoted import quoted_from_telethon
 from src.modules.telegram_clients.constants import TgAuthStatus
 from src.modules.telegram_clients.models import (
     TelegramAccount,
@@ -122,7 +124,7 @@ class TelegramAccountService(
         status = await self.client_manager.sign_in_with_code(data["account_id"], data["code"])
 
         if status == TgAuthStatus.INVALID_CODE:
-            raise HTTPException(status_code=400, detail="Неверный или истёкший код подтверждения")
+            raise InvalidTelegramCodeError()
 
         if status == TgAuthStatus.CONNECTED:
             await self._update_account_info(session, account)
@@ -380,9 +382,10 @@ class TelegramAccountService(
         Прочитать непрочитанные сообщения для аккаунта.
 
         Для каждого чата с TelegramChatState:
-        1. Получаем непрочитанные сообщения (message_id > last_read_message_id)
-        2. Публикуем каждое сообщение в шину
-        3. Обновляем состояние чтения
+        1. Пропускаем чат, если whitelist его не разрешает
+        2. Получаем непрочитанные сообщения (message_id > last_read_message_id)
+        3. Публикуем каждое сообщение в шину
+        4. Обновляем состояние чтения
 
         Args:
             session: SQLAlchemy сессия
@@ -397,7 +400,9 @@ class TelegramAccountService(
         total_read = 0
 
         for state in chat_states:
-            # Получаем непрочитанные сообщения
+            if not await self.should_read_message(session, account_id, state.chat_id):
+                continue
+
             unread_messages = await self.client_manager.get_messages(
                 account_id=account_id,
                 chat_id=state.chat_id,
@@ -444,7 +449,10 @@ class TelegramAccountService(
         settings = await self.settings_repository.get_by_account_id(session, account_id)
         if not settings or not settings.use_whitelist:
             return True
-        return str(chat_id) in {str(value) for value in (settings.whitelist_chat_ids or [])}
+        allowed = {str(value) for value in (settings.whitelist_chat_ids or [])}
+        if not allowed:
+            return False
+        return str(chat_id) in allowed
 
     async def handle_incoming_message(
             self,
@@ -482,6 +490,7 @@ class TelegramAccountService(
             # Извлекаем медиа из сообщения
             media = await self.client_manager.extract_media(client, event.message)
             telegram_sender = await event.get_sender()
+            reply_to, forward_from = await quoted_from_telethon(event.message)
             msg_event = TgMessageReceived(
                 account_id=account_id,
                 chat_id=event.chat_id,
@@ -495,6 +504,8 @@ class TelegramAccountService(
                 text=event.message.text,
                 media=media,
                 date=event.message.date,
+                reply_to=reply_to,
+                forward_from=forward_from,
             )
             await self.message_bus.publish(BusTopics.TG_MESSAGE_RECEIVED, msg_event.to_bus_dict())
 

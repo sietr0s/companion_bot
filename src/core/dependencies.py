@@ -73,19 +73,3 @@ async def get_current_admin(
     except ValueError:
         raise UnauthorizedError(detail="Некорректный идентификатор в токене")
 
-
-# --- Клиенты для межмодульного взаимодействия (прямой вызов без HTTP) ---
-# Эти клиенты используются в обработчиках шины (не в HTTP-роутерах).
-# Они получают шину сообщений через DI, а не создают новую.
-
-
-def get_users_client():
-    """
-    Фабрика клиента пользователей для прямого вызова сервисов.
-
-    Прямой вызов UserService без HTTP.
-    """
-    from src.core.clients.users_client import UsersClient
-
-    return UsersClient()
-

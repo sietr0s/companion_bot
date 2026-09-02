@@ -2,12 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Ответ на старт QR-авторизации.
- */
 export type QrStartResponse = {
     account_id: string;
-    qr_url: string;
-    expires_at?: (number | null);
+    qr_url?: (string | null);
+    expires_at?: (string | null);
+    message?: string;
 };
 

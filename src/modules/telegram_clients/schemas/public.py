@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PhoneRequest(BaseModel):
@@ -61,7 +61,7 @@ class AccountRead(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AccountCreate(BaseModel):
@@ -90,7 +90,7 @@ class ChatRead(BaseModel):
     username: str | None = None
     is_in_whitelist: bool | None = None
 
-    model_config = {"from_attributes": True, "extra": "allow"}
+    model_config = ConfigDict(from_attributes=True, extra="allow")
 
 
 class MediaItem(BaseModel):
@@ -106,7 +106,7 @@ class MessageRead(BaseModel):
     media: list[MediaItem] = Field(default_factory=list)
     date: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatStateCreate(BaseModel):
@@ -127,7 +127,7 @@ class ChatStateRead(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TelegramSettingsCreate(BaseModel):
@@ -147,7 +147,7 @@ class TelegramSettingsRead(BaseModel):
     use_whitelist: bool
     whitelist_chat_ids: list | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WhitelistEntryCreate(BaseModel):

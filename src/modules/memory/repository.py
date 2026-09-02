@@ -93,6 +93,24 @@ class MessageRepository(BaseRepository[Message]):
         )
         return list(result.scalars().all())
 
+    async def get_between_inclusive(
+        self,
+        session: AsyncSession,
+        conversation_id: UUID,
+        seq_from: int,
+        seq_to: int,
+    ) -> list[Message]:
+        result = await session.execute(
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.sequence_number >= seq_from,
+                Message.sequence_number <= seq_to,
+            )
+            .order_by(Message.sequence_number.asc())
+        )
+        return list(result.scalars().all())
+
 
 class SummaryStateRepository(BaseRepository[SummaryState]):
     def __init__(self) -> None:
@@ -118,6 +136,25 @@ class SummaryStateRepository(BaseRepository[SummaryState]):
         if existing:
             return await self.update(session, existing, data)
         return await self.create(session, {"conversation_id": conversation_id, **data})
+
+    async def upsert_cluster_checkpoint(
+        self,
+        session: AsyncSession,
+        conversation_id: UUID,
+        cluster_checkpoint: int,
+    ) -> SummaryState:
+        existing = await self.get_by_conversation_id(session, conversation_id)
+        if existing:
+            return await self.update(session, existing, {"cluster_checkpoint": cluster_checkpoint})
+        return await self.create(
+            session,
+            {
+                "conversation_id": conversation_id,
+                "current_summary": None,
+                "checkpoint": 0,
+                "cluster_checkpoint": cluster_checkpoint,
+            },
+        )
 
 
 class VectorRecordRepository(BaseRepository[VectorRecord]):

@@ -1,11 +1,13 @@
 """Схемы событий шины модуля telegram_clients."""
 
-import uuid
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
+from src.domain.chat import QuotedMessage
 
 
 class Media(BaseModel):
@@ -20,51 +22,37 @@ class Sender(BaseModel):
     last_name: str | None = None
 
 
-class TgMessageReceived(BaseModel):
-    account_id: uuid.UUID
+class TgMessageReceived(BaseEvent):
+    event_name: str = BusTopics.TG_MESSAGE_RECEIVED
+    account_id: UUID
     chat_id: int
     message_id: int
     sender: Sender
     text: str | None = None
     media: list[Media] = Field(default_factory=list)
     date: datetime | None = None
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.TG_MESSAGE_RECEIVED
-        return data
+    reply_to: QuotedMessage | None = None
+    forward_from: QuotedMessage | None = None
 
 
-class TgMessageSent(BaseModel):
-    telegram_account_id: uuid.UUID
+class TgMessageSent(BaseEvent):
+    event_name: str = BusTopics.TG_MESSAGE_SENT
+    telegram_account_id: UUID
     chat_id: int
     message_id: int | None = None
     success: bool
     error: str | None = None
 
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.TG_MESSAGE_SENT
-        return data
 
-
-class TgAccountConnected(BaseModel):
-    account_id: uuid.UUID
+class TgAccountConnected(BaseEvent):
+    event_name: str = BusTopics.TG_ACCOUNT_CONNECTED
+    account_id: UUID
     phone: str
     status: str = "connected"
     telegram_id: int | None = None
 
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.TG_ACCOUNT_CONNECTED
-        return data
 
-
-class TgAccountDisconnected(BaseModel):
-    account_id: uuid.UUID
+class TgAccountDisconnected(BaseEvent):
+    event_name: str = BusTopics.TG_ACCOUNT_DISCONNECTED
+    account_id: UUID
     reason: str | None = None
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.TG_ACCOUNT_DISCONNECTED
-        return data

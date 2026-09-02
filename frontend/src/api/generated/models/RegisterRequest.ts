@@ -2,12 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Запрос на регистрацию нового пользователя.
- */
 export type RegisterRequest = {
     identifier: string;
-    identifier_type: 'email' | 'phone' | 'telegram';
+    identifier_type: string;
     password: string;
 };
 

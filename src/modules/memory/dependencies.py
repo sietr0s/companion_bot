@@ -3,6 +3,7 @@
 from fastapi import Depends
 
 from src.bus import get_producer
+from src.bus.interface import MessageProducer
 from src.modules.llm.dependencies import get_llm_service
 from src.modules.llm.service import LLMService
 from src.modules.memory.repository import (
@@ -58,6 +59,20 @@ def get_vector_record_service(
     repository: VectorRecordRepository = Depends(get_vector_record_repository),
 ) -> VectorRecordService:
     return VectorRecordService(repository)
+
+
+def build_memory_service(
+    message_bus: MessageProducer | None = None,
+    llm: LLMService | None = None,
+) -> MemoryService:
+    return MemoryService(
+        conversations=ConversationRepository(),
+        messages=MessageRepository(),
+        summaries=SummaryStateRepository(),
+        vectors=VectorRecordRepository(),
+        message_bus=message_bus or get_producer(),
+        llm=llm or get_llm_service(),
+    )
 
 
 def get_memory_service(

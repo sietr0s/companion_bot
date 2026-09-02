@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from src.bus.error_handler import safe_handle
 from src.bus.in_memory.transport import InMemoryMessage, InMemoryTransport
-from src.bus.interface import MessageProducer
+from src.bus.trace import log_received
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,9 @@ class InMemoryConsumer:
     def __init__(
         self,
         transport: InMemoryTransport,
-        producer: MessageProducer,
         max_concurrent: int = 100,
     ) -> None:
         self._transport = transport
-        self._producer = producer
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._task: asyncio.Task[None] | None = None
@@ -68,12 +66,12 @@ class InMemoryConsumer:
 
     async def _run_handler(self, handler: Callable, envelope: InMemoryMessage) -> None:
         async with self._semaphore:
-            await safe_handle(
-                handler,
+            log_received(
                 envelope.topic,
+                getattr(handler, "__name__", str(handler)),
                 envelope.payload,
-                self._producer.publish,
             )
+            await safe_handle(handler, envelope.topic, envelope.payload)
 
     async def stop(self) -> None:
         if self._task is not None:

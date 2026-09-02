@@ -1,15 +1,14 @@
 """
 DI-зависимости модуля telegram_clients.
 
-Фабрики для внедрения TelegramClientService и
-TelegramSettingsService через FastAPI Depends.
+Менеджер клиентов живёт в ApplicationContainer и
+регистрируется через configure_telegram_client_manager.
 """
-import logging
 
 from fastapi import Depends
 
 from src.bus import get_producer
-from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.repository import (
     TelegramAccountRepository,
     TelegramChatStateRepository,
@@ -21,33 +20,33 @@ from src.modules.telegram_clients.services import (
     TelegramSettingsService,
 )
 
-logger = logging.getLogger(__name__)
-
-# Глобальный экземпляр менеджера (singleton)
 _telegram_client_manager: TelegramClientManager | None = None
 
 
-def get_telegram_client_manager() -> TelegramClientManager:
-    """Создать или вернуть singleton TelegramClientManager по умолчанию."""
+def configure_telegram_client_manager(manager: TelegramClientManager) -> None:
+    """Зафиксировать экземпляр менеджера из контейнера приложения."""
     global _telegram_client_manager
+    _telegram_client_manager = manager
+
+
+def get_telegram_client_manager() -> TelegramClientManager:
     if _telegram_client_manager is None:
-        _telegram_client_manager = TelegramClientManager()
-        logger.info("Создан новый экземпляр TelegramClientManager")
+        raise RuntimeError(
+            "TelegramClientManager не сконфигурирован. "
+            "Создайте ApplicationContainer или вызовите configure_telegram_client_manager."
+        )
     return _telegram_client_manager
 
 
 def get_telegram_account_repository() -> TelegramAccountRepository:
-    """Фабрика репозитория Telegram-аккаунтов."""
     return TelegramAccountRepository()
 
 
 def get_telegram_settings_repository() -> TelegramSettingsRepository:
-    """Фабрика репозитория настроек Telegram."""
     return TelegramSettingsRepository()
 
 
 def get_telegram_chat_state_repository() -> TelegramChatStateRepository:
-    """Фабрика репозитория состояний чтения чатов Telegram."""
     return TelegramChatStateRepository()
 
 
@@ -61,7 +60,6 @@ def get_telegram_account_service(
     ),
     client_manager: TelegramClientManager = Depends(get_telegram_client_manager),
 ) -> TelegramAccountService:
-    """Фабрика сервиса Telegram-Aккаунтов."""
     return TelegramAccountService(
         repository=repo,
         message_bus=get_producer(),
@@ -74,7 +72,6 @@ def get_telegram_account_service(
 def get_telegram_settings_service(
     repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
 ) -> TelegramSettingsService:
-    """Фабрика сервиса Telegram-Настроек."""
     return TelegramSettingsService(repository=repo)
 
 
@@ -87,7 +84,6 @@ def get_telegram_chat_state_service(
 def get_telegram_client_service_factory(
     client_manager: TelegramClientManager | None = None,
 ) -> TelegramAccountService:
-    """Фабрика сервиса Telegram-клиентов."""
     return TelegramAccountService(
         repository=get_telegram_account_repository(),
         message_bus=get_producer(),

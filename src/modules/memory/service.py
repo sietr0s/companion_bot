@@ -1,7 +1,7 @@
 """Memory module business logic."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,9 +10,20 @@ from src.base.service import BaseService
 from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.modules.llm.service import LLMService
-from src.modules.memory.constants import SUMMARY_THRESHOLD, VECTOR_TOP_K
+from src.modules.memory.clustering import parse_cluster_json, split_closed_open
+from src.modules.memory.constants import (
+    CLUSTER_HARD_CAP,
+    CLUSTER_MIN_MESSAGES,
+    SUMMARY_THRESHOLD,
+    VECTOR_TOP_K,
+)
 from src.modules.memory.exceptions import ConversationNotFoundError
-from src.modules.memory.formatting import assemble_context, glue_batch
+from src.domain.chat import display_text, message_texts
+from src.modules.memory.formatting import (
+    assemble_context,
+    format_topic_snippet,
+    numbered_window,
+)
 from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
 from src.modules.memory.repository import (
     ConversationRepository,
@@ -69,38 +80,65 @@ class MemoryService:
         self._message_bus = message_bus
         self._llm = llm
 
-    async def _index_batch(
+    async def _maybe_cluster(
         self,
         session: AsyncSession,
         *,
         conversation_id: UUID,
-        messages: list[str],
-        direction: str,
-        sequence_numbers: list[int],
-        batch_id: UUID | None = None,
     ) -> None:
-        if not sequence_numbers:
+        summary_state = await self._summaries.get_by_conversation_id(
+            session, conversation_id
+        )
+        checkpoint = summary_state.cluster_checkpoint if summary_state else 0
+        window = await self._messages.get_after_checkpoint(
+            session, conversation_id, checkpoint
+        )
+        if len(window) < CLUSTER_MIN_MESSAGES:
             return
-        glued = glue_batch(messages, direction)
+        hard_cap = len(window) >= CLUSTER_HARD_CAP
+        if hard_cap:
+            window = window[:CLUSTER_HARD_CAP]
         try:
-            embeddings = await self._llm.embed([glued], role="document")
-            await self._vectors.create(
-                session,
-                {
-                    "conversation_id": conversation_id,
-                    "text": glued,
-                    "embedding": embeddings[0],
-                    "extra_data": {
-                        "batch_id": str(batch_id) if batch_id is not None else None,
-                        "direction": direction,
-                        "seq_from": sequence_numbers[0],
-                        "seq_to": sequence_numbers[-1],
+            raw = await self._llm.cluster_topics(numbered_window(window))
+            parsed = parse_cluster_json(raw)
+            if parsed is None:
+                return
+            split = split_closed_open(
+                parsed,
+                [m.sequence_number for m in window],
+                hard_cap=hard_cap,
+            )
+            if split is None:
+                return
+            closed, _open_ids = split
+            topics = [b.topic for b in closed if b.kind == "topic"]
+            embeddings = await self._llm.embed(topics, role="document") if topics else []
+            ei = 0
+            max_closed = checkpoint
+            for block in closed:
+                max_closed = max(max_closed, block.ids[-1])
+                if block.kind != "topic":
+                    continue
+                await self._vectors.create(
+                    session,
+                    {
+                        "conversation_id": conversation_id,
+                        "text": block.topic,
+                        "embedding": embeddings[ei],
+                        "extra_data": {
+                            "kind": "topic",
+                            "seq_from": block.ids[0],
+                            "seq_to": block.ids[-1],
+                            "partial": hard_cap,
+                        },
                     },
-                },
+                )
+                ei += 1
+            await self._summaries.upsert_cluster_checkpoint(
+                session, conversation_id, max_closed
             )
         except Exception:
-            logger.exception("failed to index batch embedding")
-            await session.rollback()
+            logger.exception("failed to cluster topics")
 
     async def _maybe_summarize(
         self,
@@ -152,15 +190,15 @@ class MemoryService:
 
         current_sequence = conversation.last_sequence_number
         sequence_numbers = []
-        for text in command.messages:
+        for msg in command.messages:
             current_sequence += 1
             await self._messages.create(
                 session,
                 {
                     "conversation_id": conversation.id,
-                    "text": text,
+                    "text": display_text(msg),
                     "direction": command.direction,
-                    "message_type": command.message_type,
+                    "message_type": msg.message_type,
                     "sequence_number": current_sequence,
                     "batch_id": command.batch_id,
                 },
@@ -172,7 +210,7 @@ class MemoryService:
             conversation,
             {
                 "last_sequence_number": current_sequence,
-                "last_activity_at": datetime.utcnow(),
+                "last_activity_at": datetime.now(UTC),
             },
         )
 
@@ -180,13 +218,9 @@ class MemoryService:
         telegram_chat_id = conversation.telegram_chat_id
         telegram_account_id = conversation.telegram_account_id
 
-        await self._index_batch(
+        await self._maybe_cluster(
             session,
             conversation_id=conversation_id,
-            messages=command.messages,
-            direction=command.direction,
-            sequence_numbers=sequence_numbers,
-            batch_id=command.batch_id,
         )
         await self._maybe_summarize(
             session,
@@ -218,14 +252,34 @@ class MemoryService:
 
         retrieved: list[str] = []
         try:
-            query = await self._llm.retrieve_pre(command.batch_messages)
+            query = await self._llm.retrieve_pre(message_texts(command.batch_messages))
             qvec = (await self._llm.embed([query], role="query"))[0]
             hits = await self._vectors.search_similar(
                 session, command.conversation_id, qvec, VECTOR_TOP_K
             )
-            current = glue_batch(command.batch_messages, "incoming")
-            hit_texts = [h.text for h in hits if h.text != current]
-            retrieved = await self._llm.retrieve_post(query, hit_texts)
+            ranked_topics = await self._llm.retrieve_post(
+                query, [h.text for h in hits]
+            )
+            by_topic = {h.text: h for h in hits}
+            for topic in ranked_topics:
+                hit = by_topic.get(topic)
+                if hit is None:
+                    retrieved.append(topic)
+                    continue
+                extra = hit.extra_data or {}
+                seq_from = extra.get("seq_from")
+                seq_to = extra.get("seq_to")
+                if seq_from is None or seq_to is None:
+                    retrieved.append(hit.text)
+                    continue
+                msgs = await self._messages.get_between_inclusive(
+                    session, command.conversation_id, int(seq_from), int(seq_to)
+                )
+                retrieved.append(
+                    format_topic_snippet(
+                        topic, [(m.direction, m.text) for m in msgs]
+                    )
+                )
         except Exception:
             logger.exception("retrieve failed")
             await session.rollback()
@@ -281,12 +335,9 @@ class MemoryService:
                     conversation,
                     {"last_sequence_number": current_sequence},
                 )
-                await self._index_batch(
+                await self._maybe_cluster(
                     session,
                     conversation_id=conversation_id,
-                    messages=command.outgoing_messages,
-                    direction="outgoing",
-                    sequence_numbers=sequence_numbers,
                 )
                 summary_updated = await self._maybe_summarize(
                     session,

@@ -1,12 +1,11 @@
 """
-Тесты BusErrorHandler — единого обработчика ошибок для шины сообщений.
+Тесты обработчика ошибок шины сообщений.
 
 Проверяет:
-- Обработка бизнес-исключений (AppException) → публикация в DLQ
-- Обработка сетевых ошибок (ConnectionError, TimeoutError) → публикация в DLQ
-- Обработка неожиданных ошибок → публикация в DLQ
+- Обработка бизнес-исключений (AppException) без падения
+- Обработка сетевых и неожиданных ошибок без падения
 - Проброс CancelledError
-- Успешный вызов обработчика без ошибок
+- Успешный вызов обработчика
 - wrap_handler — обёртка обработчика
 """
 
@@ -14,7 +13,7 @@ import asyncio
 
 import pytest
 
-from src.bus.error_handler import DLQ_TOPIC, safe_handle, wrap_handler
+from src.bus.error_handler import safe_handle, wrap_handler
 from src.core.exceptions import ConflictError, NotFoundError
 
 
@@ -22,22 +21,16 @@ class TestSafeHandle:
     """Тесты safe_handle — безопасного вызова обработчика."""
 
     async def test_successful_handler(self):
-        """Успешный вызов обработчика — без ошибок, без DLQ."""
+        """Успешный вызов обработчика — без ошибок."""
         received = []
 
         async def handler(message: dict) -> None:
             received.append(message)
 
-        dlq_calls = []
-
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {"key": "value"}, dlq_publisher)
+        await safe_handle(handler, "test.topic", {"key": "value"})
 
         assert len(received) == 1
         assert received[0]["key"] == "value"
-        assert len(dlq_calls) == 0
 
     async def test_sync_handler(self):
         """Синхронный обработчик тоже работает."""
@@ -50,133 +43,54 @@ class TestSafeHandle:
 
         assert len(received) == 1
 
-    async def test_app_exception_publishes_to_dlq(self):
-        """Бизнес-исключение (NotFoundError) → публикация в DLQ."""
+    async def test_app_exception_is_swallowed(self):
+        """Бизнес-исключение (NotFoundError) логируется и не пробрасывается."""
 
         async def handler(message: dict) -> None:
             raise NotFoundError(detail="Ресурс не найден")
 
-        dlq_calls = []
+        await safe_handle(handler, "test.topic", {"id": 42})
 
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {"id": 42}, dlq_publisher)
-
-        assert len(dlq_calls) == 1
-        topic, msg = dlq_calls[0]
-        assert topic == DLQ_TOPIC
-        assert msg["original_topic"] == "test.topic"
-        assert msg["error_type"] == "NotFoundError"
-        assert msg["error_detail"] == "Ресурс не найден"
-        assert msg["handler"] == "handler"
-        assert msg["message"] == {"id": 42}
-
-    async def test_conflict_error_publishes_to_dlq(self):
-        """ConflictError → публикация в DLQ."""
+    async def test_conflict_error_is_swallowed(self):
+        """ConflictError логируется и не пробрасывается."""
 
         async def handler(message: dict) -> None:
             raise ConflictError(detail="Дубликат")
 
-        dlq_calls = []
+        await safe_handle(handler, "test.topic", {})
 
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {}, dlq_publisher)
-
-        assert len(dlq_calls) == 1
-        assert dlq_calls[0][1]["error_type"] == "ConflictError"
-
-    async def test_connection_error_publishes_to_dlq(self):
-        """ConnectionError → публикация в DLQ."""
+    async def test_connection_error_is_swallowed(self):
+        """ConnectionError логируется и не пробрасывается."""
 
         async def handler(message: dict) -> None:
             raise ConnectionError("Connection refused")
 
-        dlq_calls = []
+        await safe_handle(handler, "test.topic", {})
 
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {}, dlq_publisher)
-
-        assert len(dlq_calls) == 1
-        assert dlq_calls[0][1]["error_type"] == "ConnectionError"
-
-    async def test_timeout_error_publishes_to_dlq(self):
-        """TimeoutError → публикация в DLQ."""
+    async def test_timeout_error_is_swallowed(self):
+        """TimeoutError логируется и не пробрасывается."""
 
         async def handler(message: dict) -> None:
             raise TimeoutError("Timed out")
 
-        dlq_calls = []
+        await safe_handle(handler, "test.topic", {})
 
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {}, dlq_publisher)
-
-        assert len(dlq_calls) == 1
-        assert dlq_calls[0][1]["error_type"] == "TimeoutError"
-
-    async def test_unexpected_error_publishes_to_dlq(self):
-        """Неожиданная ошибка (ValueError) → публикация в DLQ."""
+    async def test_unexpected_error_is_swallowed(self):
+        """Неожиданная ошибка (ValueError) логируется и не пробрасывается."""
 
         async def handler(message: dict) -> None:
             raise ValueError("Invalid value")
 
-        dlq_calls = []
-
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, "test.topic", {}, dlq_publisher)
-
-        assert len(dlq_calls) == 1
-        assert dlq_calls[0][1]["error_type"] == "ValueError"
-        # Для неожиданных ошибок должен быть traceback
-        assert "traceback" in dlq_calls[0][1]
+        await safe_handle(handler, "test.topic", {})
 
     async def test_cancelled_error_propagates(self):
-        """CancelledError пробрасывается наверх — не попадает в DLQ."""
+        """CancelledError пробрасывается наверх."""
 
         async def handler(message: dict) -> None:
             raise asyncio.CancelledError()
 
-        dlq_calls = []
-
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
         with pytest.raises(asyncio.CancelledError):
-            await safe_handle(handler, "test.topic", {}, dlq_publisher)
-
-        assert len(dlq_calls) == 0
-
-    async def test_no_dlq_publisher_no_crash(self):
-        """Без dlq_publisher ошибка логируется, но не падает."""
-
-        async def handler(message: dict) -> None:
-            raise NotFoundError(detail="Not found")
-
-        # Не должно быть исключения
-        await safe_handle(handler, "test.topic", {})
-
-    async def test_dlq_handler_error_is_not_republished(self):
-        """Ошибка DLQ-обработчика не создаёт бесконечный цикл DLQ."""
-
-        async def handler(message: dict) -> None:
-            raise ValueError("DLQ handler failed")
-
-        dlq_calls = []
-
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        await safe_handle(handler, DLQ_TOPIC, {}, dlq_publisher)
-
-        assert dlq_calls == []
+            await safe_handle(handler, "test.topic", {})
 
     async def test_handler_without_name(self):
         """Обработчик без __name__ (lambda) не вызывает ошибку."""
@@ -218,22 +132,14 @@ class TestWrapHandler:
         assert wrapped.__module__ == my_handler.__module__
         assert wrapped.__doc__ == "My docstring."
 
-    async def test_wrap_handler_app_exception_to_dlq(self):
-        """Обёрнутый обработчик публикует бизнес-ошибки в DLQ."""
+    async def test_wrap_handler_app_exception_is_swallowed(self):
+        """Обёрнутый обработчик глотает бизнес-ошибки."""
 
         async def handler(message: dict) -> None:
             raise NotFoundError(detail="Not found")
 
-        dlq_calls = []
-
-        async def dlq_publisher(topic: str, message: dict) -> None:
-            dlq_calls.append((topic, message))
-
-        wrapped = wrap_handler(handler, "test.topic", dlq_publisher)
+        wrapped = wrap_handler(handler, "test.topic")
         await wrapped({})
-
-        assert len(dlq_calls) == 1
-        assert dlq_calls[0][1]["error_type"] == "NotFoundError"
 
 
 class TestInMemoryConsumerWithErrors:
@@ -247,7 +153,7 @@ class TestInMemoryConsumerWithErrors:
 
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
         received = []
 
         @consumer.subscribe("test.topic")
@@ -263,7 +169,6 @@ class TestInMemoryConsumerWithErrors:
         await transport.queue.join()
         await consumer.stop()
 
-        # success_handler должен быть вызван, несмотря на ошибку в failing_handler
         assert len(received) == 1
 
     async def test_app_exception_in_handler_does_not_crash_producer(self):
@@ -274,13 +179,12 @@ class TestInMemoryConsumerWithErrors:
 
         transport = InMemoryTransport()
         producer = InMemoryProducer(transport)
-        consumer = InMemoryConsumer(transport, producer)
+        consumer = InMemoryConsumer(transport)
 
         @consumer.subscribe("test.topic")
         async def handler(message: dict) -> None:
             raise NotFoundError(detail="Not found")
 
-        # Не должно быть исключения
         await consumer.start()
         await producer.publish("test.topic", {"id": 1})
         await transport.queue.join()

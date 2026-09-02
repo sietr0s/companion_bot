@@ -99,6 +99,105 @@ body {
   background: rgba(22, 119, 255, 0.15);
 }
 
+.memory-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 56vh;
+  overflow: auto;
+  padding: 4px 2px 12px;
+}
+
+.memory-bubble-row {
+  display: flex;
+}
+
+.memory-bubble-row.in {
+  justify-content: flex-start;
+}
+
+.memory-bubble-row.out {
+  justify-content: flex-end;
+}
+
+.memory-bubble {
+  max-width: 78%;
+  padding: 8px 12px 4px;
+  border-radius: 14px;
+}
+
+.memory-bubble.in {
+  background: rgba(148, 163, 184, 0.16);
+  border-bottom-left-radius: 4px;
+}
+
+.memory-bubble.out {
+  background: rgba(22, 119, 255, 0.22);
+  border-bottom-right-radius: 4px;
+}
+
+.memory-bubble-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  opacity: 0.72;
+}
+
+.markdown-content {
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.markdown-content p,
+.markdown-content ul,
+.markdown-content ol,
+.markdown-content pre,
+.markdown-content blockquote {
+  margin: 0 0 8px;
+}
+
+.markdown-content p:last-child,
+.markdown-content ul:last-child,
+.markdown-content ol:last-child,
+.markdown-content pre:last-child,
+.markdown-content blockquote:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.25em;
+}
+
+.markdown-content pre {
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.markdown-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content :not(pre) > code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.markdown-content a {
+  color: #69b1ff;
+}
+
+.memory-bubble-text {
+  margin-bottom: 8px;
+}
+
 @media (max-width: 992px) {
   .app-header {
     flex-direction: column;

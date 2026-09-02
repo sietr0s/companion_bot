@@ -40,4 +40,10 @@ class BusTopics:
     LLM_REPLY_SUPPRESSED: str = "llm.event.reply.suppressed"
     LLM_SUMMARY_GENERATED: str = "llm.event.summary.generated"
 
-    DLQ: str = "bus.dlq"
+    STT_TRANSCRIBE: str = "stt.command.transcribe"
+    STT_TRANSCRIBED: str = "stt.event.transcribed"
+    STT_TRANSCRIBE_FAILED: str = "stt.event.transcribe_failed"
+
+    TTS_SYNTHESIZE: str = "tts.command.synthesize"
+    TTS_SYNTHESIZED: str = "tts.event.synthesized"
+    TTS_SYNTHESIZE_SKIPPED: str = "tts.event.synthesize_skipped"

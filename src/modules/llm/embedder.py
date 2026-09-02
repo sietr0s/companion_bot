@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Literal, Protocol
 
 from src.core.config import settings
+from src.core.model_cache import apply_model_cache
+
+logger = logging.getLogger(__name__)
 
 
 class Embedder(Protocol):
@@ -23,8 +27,14 @@ class QwenEmbedder:
         if self._model is None:
             from sentence_transformers import SentenceTransformer
 
+            apply_model_cache()
+            logger.info("Загрузка embedding-модели %s", settings.EMBEDDING_MODEL)
             self._model = SentenceTransformer(settings.EMBEDDING_MODEL)
+            logger.info("Embedding-модель %s готова", settings.EMBEDDING_MODEL)
         return self._model
+
+    def preload(self) -> None:
+        self._get_model()
 
     def embed(
         self, texts: list[str], *, role: Literal["query", "document"]

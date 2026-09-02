@@ -1,10 +1,11 @@
 """Upsert собеседника по входящему сообщению Telegram."""
 
+from typing import Any
+
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
-from src.modules.users.repository import UserRepository
-from src.modules.users.service import UserService
+from src.modules.users.dependencies import build_user_service
 
 
 def register_handlers(
@@ -12,17 +13,12 @@ def register_handlers(
     producer: MessageProducer | None = None,
 ) -> None:
     @consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
-    async def handle_telegram_message(message: dict) -> None:
+    async def handle_telegram_message(message: dict[str, Any]) -> None:
         sender = message.get("sender") or {}
         telegram_id = sender.get("sender_id")
         if telegram_id is None:
             return
-        from src.bus import get_producer
-
-        service = UserService(
-            repository=UserRepository(),
-            message_bus=producer or get_producer(),
-        )
+        service = build_user_service(producer)
         async with create_async_session() as session:
             await service.get_or_create_from_telegram(
                 session,

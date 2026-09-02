@@ -1,8 +1,8 @@
 """Внутренние схемы для модуля auth (internal API)."""
 
-import uuid
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AuthCreate(BaseModel):
@@ -17,14 +17,13 @@ class AuthCreate(BaseModel):
 class AuthRead(BaseModel):
     """Схема чтения учётной записи (internal)."""
 
-    id: uuid.UUID
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
     identifier: str
     identifier_type: str
     role: str
     is_active: bool = True
-
-    class Config:
-        from_attributes = True
 
 
 class AuthUpdate(BaseModel):
@@ -46,5 +45,5 @@ class VerifyTokenResponse(BaseModel):
     """Ответ проверки токена (internal)."""
 
     valid: bool
-    auth_id: uuid.UUID | None = None
+    auth_id: UUID | None = None
     role: str | None = None

@@ -1,50 +1,35 @@
 """Memory module bus event handlers."""
 
+from typing import Any
+
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
-from src.modules.llm.dependencies import get_embedder
-from src.modules.llm.service import LLMService
-from src.modules.memory.repository import (
-    ConversationRepository,
-    MessageRepository,
-    SummaryStateRepository,
-    VectorRecordRepository,
-)
+from src.modules.memory.dependencies import build_memory_service
 from src.modules.memory.schemas.events import (
     BuildContextCommand,
     ProcessBatchCommand,
     UpdateMemoryCommand,
 )
-from src.modules.memory.service import MemoryService
-
-
-def _service(producer: MessageProducer) -> MemoryService:
-    return MemoryService(
-        conversations=ConversationRepository(),
-        messages=MessageRepository(),
-        summaries=SummaryStateRepository(),
-        vectors=VectorRecordRepository(),
-        message_bus=producer,
-        llm=LLMService(producer, get_embedder()),
-    )
 
 
 def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
+    service = build_memory_service(producer)
+
     @consumer.subscribe(BusTopics.MEMORY_PROCESS_BATCH)
-    async def handle_process_batch(message: dict) -> None:
+    async def handle_process_batch(message: dict[str, Any]) -> None:
         command = ProcessBatchCommand.model_validate(message)
         async with create_async_session() as session:
-            await _service(producer).process_batch(session, command)
+            await service.process_batch(session, command)
 
     @consumer.subscribe(BusTopics.MEMORY_BUILD_CONTEXT)
-    async def handle_build_context(message: dict) -> None:
+    async def handle_build_context(message: dict[str, Any]) -> None:
         command = BuildContextCommand.model_validate(message)
         async with create_async_session() as session:
-            await _service(producer).build_context(session, command)
+            await service.build_context(session, command)
 
     @consumer.subscribe(BusTopics.MEMORY_UPDATE)
-    async def handle_update_memory(message: dict) -> None:
+    async def handle_update_memory(message: dict[str, Any]) -> None:
         command = UpdateMemoryCommand.model_validate(message)
         async with create_async_session() as session:
-            await _service(producer).update_memory(session, command)
+            await service.update_memory(session, command)

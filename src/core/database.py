@@ -58,6 +58,35 @@ async def init_db() -> None:
             if conn.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
+            if conn.dialect.name == "postgresql":
+                await conn.execute(
+                    text(
+                        """
+                        DO $$
+                        BEGIN
+                            IF EXISTS (
+                                SELECT 1
+                                FROM information_schema.columns
+                                WHERE table_name = 'conversations'
+                                  AND column_name = 'last_activity_at'
+                                  AND data_type = 'timestamp without time zone'
+                            ) THEN
+                                ALTER TABLE conversations
+                                ALTER COLUMN last_activity_at TYPE TIMESTAMP WITH TIME ZONE
+                                USING last_activity_at AT TIME ZONE 'UTC';
+                            END IF;
+                        END $$;
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        """
+                        ALTER TABLE summary_states
+                        ADD COLUMN IF NOT EXISTS cluster_checkpoint INTEGER NOT NULL DEFAULT 0
+                        """
+                    )
+                )
         logger.info("Таблицы БД созданы")
 
 

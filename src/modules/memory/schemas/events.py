@@ -1,20 +1,33 @@
 """Схемы событий шины модуля memory."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
+from src.domain.chat import Message as IncomingMessage
+from src.domain.chat import QuotedMessage
+
+__all__ = [
+    "IncomingMessage",
+    "QuotedMessage",
+    "ProcessBatchCommand",
+    "BuildContextCommand",
+    "UpdateMemoryCommand",
+    "BatchProcessedEvent",
+    "ContextBuiltEvent",
+    "MemoryUpdatedEvent",
+]
 
 
 class ProcessBatchCommand(BaseModel):
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
     conversation_id: UUID | None = None
-    messages: list[str]
+    messages: list[IncomingMessage]
     direction: str = "incoming"
-    message_type: str = "text"
     batch_id: UUID | None = None
 
 
@@ -22,7 +35,7 @@ class BuildContextCommand(BaseModel):
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
-    batch_messages: list[str] = []
+    batch_messages: list[IncomingMessage] = []
     last_n_messages: int = 50
 
 
@@ -33,42 +46,30 @@ class UpdateMemoryCommand(BaseModel):
     delivery_status: str = "delivered"
 
 
-class BatchProcessedEvent(BaseModel):
+class BatchProcessedEvent(BaseEvent):
+    event_name: str = BusTopics.MEMORY_BATCH_PROCESSED
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
     sequence_numbers: list[int]
-    messages: list[str]
-    processed_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.MEMORY_BATCH_PROCESSED
-        return data
+    messages: list[IncomingMessage]
+    processed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class ContextBuiltEvent(BaseModel):
+class ContextBuiltEvent(BaseEvent):
+    event_name: str = BusTopics.MEMORY_CONTEXT_BUILT
     conversation_id: UUID
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
     context: str
     retrieved_count: int = 0
-    built_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.MEMORY_CONTEXT_BUILT
-        return data
+    built_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class MemoryUpdatedEvent(BaseModel):
+class MemoryUpdatedEvent(BaseEvent):
+    event_name: str = BusTopics.MEMORY_UPDATED
     conversation_id: UUID
     telegram_chat_id: int
     messages_count: int
     summary_updated: bool = False
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    def to_bus_dict(self) -> dict:
-        data = self.model_dump(mode="json")
-        data["event_name"] = BusTopics.MEMORY_UPDATED
-        return data
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

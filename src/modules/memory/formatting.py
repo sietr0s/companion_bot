@@ -2,16 +2,32 @@
 
 from __future__ import annotations
 
+from src.domain.chat import message_texts
+
 _LABELS = {
     "incoming": "User",
     "outgoing": "Assistant",
 }
 
 
-def glue_batch(messages: list[str], direction: str) -> str:
+def glue_batch(messages: list, direction: str) -> str:
     """direction incoming -> User:, outgoing -> Assistant: each line."""
     label = _LABELS[direction]
-    return "\n".join(f"{label}: {msg}" for msg in messages)
+    return "\n".join(f"{label}: {msg}" for msg in message_texts(messages))
+
+
+def numbered_window(messages: list) -> str:
+    """ORM messages: sequence_number|User|text."""
+    lines = []
+    for msg in messages:
+        label = _LABELS[msg.direction]
+        lines.append(f"{msg.sequence_number}|{label}|{msg.text}")
+    return "\n".join(lines)
+
+
+def format_topic_snippet(topic: str, messages: list[tuple[str, str]]) -> str:
+    body = "\n".join(f"{_LABELS[direction]}: {text}" for direction, text in messages)
+    return f"{topic}\n{body}" if body else topic
 
 
 def assemble_context(

@@ -2,14 +2,4 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Схема чтения чата из Telegram API.
- */
-export type ChatRead = {
-    id: number;
-    name?: (string | null);
-    chat_type: string;
-    username?: (string | null);
-    is_in_whitelist?: boolean;
-};
-
+export type ChatRead = Record<string, any>;

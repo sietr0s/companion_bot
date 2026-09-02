@@ -9,9 +9,9 @@ from src.base.routers import create_crud_router
 from src.core.dependencies import get_current_user, get_db_session
 from src.modules.auth.dependencies import get_auth_service
 from src.modules.auth.schemas.public import (
-    AccountCreate,
-    AccountResponse,
-    AccountUpdate,
+    AuthAccountCreate,
+    AuthAccountRead,
+    AuthAccountUpdate,
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
@@ -79,9 +79,9 @@ async def delete_account(
 router.include_router(
     create_crud_router(
         get_service=get_auth_service,
-        create_schema=AccountCreate,
-        update_schema=AccountUpdate,
-        response_schema=AccountResponse,
+        create_schema=AuthAccountCreate,
+        update_schema=AuthAccountUpdate,
+        response_schema=AuthAccountRead,
         prefix="/accounts",
         tags=["Auth Accounts"],
         entity_name="Auth",

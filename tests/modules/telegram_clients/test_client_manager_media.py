@@ -13,7 +13,7 @@ import respx
 from httpx import Response
 from telethon.events.newmessage import NewMessage
 
-from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.services.account import TelegramAccountService
 
 
@@ -318,3 +318,33 @@ async def test_on_new_message_with_video_uploads_to_storage(
         await registered_handlers[0](mock_event)
 
         mock_service.handle_incoming_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_extract_media_voice_type():
+    manager = TelegramClientManager()
+    message = MagicMock()
+    message.voice = object()
+    message.audio = None
+    message.media = MagicMock()
+    message.media.photo = None
+    message.media.document = MagicMock(id=99)
+    media = await manager.extract_media(MagicMock(), message)
+    assert media[0].type == "voice"
+    assert media[0].telegram_id == 99
+
+
+@pytest.mark.asyncio
+async def test_download_voice_uses_telethon(tmp_path):
+    manager = TelegramClientManager()
+    account_id = uuid.uuid4()
+    client = AsyncMock()
+    target = tmp_path / "out.ogg"
+    target.write_bytes(b"ogg")
+    client.get_messages = AsyncMock(return_value=MagicMock())
+    client.download_media = AsyncMock(return_value=str(target))
+    manager._clients[account_id] = client
+    path = await manager.download_voice(account_id, 1, 5)
+    assert path == target
+    client.get_messages.assert_awaited()
+    client.download_media.assert_awaited()

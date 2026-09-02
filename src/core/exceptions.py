@@ -49,3 +49,10 @@ class ValidationError(AppException):
 
     def __init__(self, detail: str = "Ошибка валидации"):
         super().__init__(status_code=422, detail=detail)
+
+
+class BadRequestError(AppException):
+    """Некорректный запрос (400)."""
+
+    def __init__(self, detail: str = "Некорректный запрос"):
+        super().__init__(status_code=400, detail=detail)

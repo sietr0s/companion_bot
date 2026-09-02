@@ -1,32 +1,27 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libgomp1 \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Рабочая директория
 WORKDIR /app
 
-# Копирование зависимостей
 COPY requirements.txt .
-
-# Установка Python-зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование кода приложения
 COPY . .
 
-# Переменные окружения
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HOME=/app/.cache/huggingface
+    MODEL_CACHE_DIR=/app/models
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/docs')" || exit 1
+RUN chmod +x /app/scripts/docker-entrypoint.sh
 
-# Запуск приложения
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=5 \
+    CMD python -c "import httpx; r = httpx.get('http://localhost:8000/health'); r.raise_for_status()" || exit 1
+
+ENTRYPOINT ["sh", "/app/scripts/docker-entrypoint.sh"]
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

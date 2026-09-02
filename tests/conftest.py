@@ -53,6 +53,13 @@ TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_o
 
 
 @pytest.fixture(autouse=True)
+def _skip_embedding_download(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Не качать Qwen при lifespan HTTP-тестов."""
+    monkeypatch.setattr("src.modules.llm.embedder.QwenEmbedder.preload", lambda self: None)
+    monkeypatch.setattr("src.modules.llm.embedder.QwenEmbedder._get_model", lambda self: None)
+
+
+@pytest.fixture(autouse=True)
 def _isolated_message_bus():
     """Свежая in-memory шина на каждый тест, без MagicMock из DI-тестов."""
     producer, consumer = create_bus("in_memory")
@@ -205,6 +212,5 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=transport,
         base_url="http://test",
-        headers={"X-Internal-Service-Key": settings.INTERNAL_SERVICE_KEY},
     ) as c:
         yield c

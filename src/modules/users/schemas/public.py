@@ -1,7 +1,7 @@
 """HTTP-схемы собеседников Telegram."""
 
-import uuid
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,7 +24,7 @@ class UserUpdate(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: UUID
     telegram_id: int
     username: str | None = None
     first_name: str | None = None

@@ -5,6 +5,7 @@ Telethon мокается — реальные подключения к Telegra
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -14,7 +15,7 @@ from telethon.events import NewMessage
 from src.bus.in_memory.producer import InMemoryProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, NotFoundError
-from src.modules.telegram_clients.client_manager import TelegramClientManager
+from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.models import TelegramAccount
 from src.modules.telegram_clients.repository import (
     TelegramAccountRepository,
@@ -32,6 +33,7 @@ from src.modules.telegram_clients.schemas.public import (
     PasswordRequest,
 )
 from src.modules.telegram_clients.services.account import TelegramAccountService
+from src.modules.telegram_clients.services.settings import TelegramSettingsService
 
 # --- Фикстуры ---
 
@@ -550,6 +552,9 @@ class TestTelegramClientServiceChatsMessages:
         event.message.id = 42
         event.message.text = "Python vacancy"
         event.message.date = None
+        event.message.reply_to_msg_id = None
+        event.message.fwd_from = None
+        event.message.forward = None
 
         await service.handle_incoming_message(
             session=db_session,
@@ -566,9 +571,169 @@ class TestTelegramClientServiceChatsMessages:
             "first_name": "Иван",
             "last_name": "Иванов",
         }
+        assert payload["reply_to"] is None
+        assert payload["forward_from"] is None
 
+    async def test_incoming_message_publishes_reply_to(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+    ):
+        published = []
 
-# --- Тесты событий ---
+        class MockBus:
+            async def publish(self, topic, message):
+                published.append((topic, message))
+
+        manager = TelegramClientManager()
+        manager.get_client = MagicMock(return_value=MagicMock())
+        manager.extract_media = AsyncMock(return_value=[])
+        service = TelegramAccountService(
+            repository=TelegramAccountRepository(),
+            message_bus=MockBus(),
+            client_manager=manager,
+            settings_repository=TelegramSettingsRepository(),
+            chat_state_repository=TelegramChatStateRepository(),
+        )
+        service.should_read_message = AsyncMock(return_value=True)
+
+        quoted = SimpleNamespace(
+            id=10,
+            text="вчерашний план",
+            get_sender=AsyncMock(
+                return_value=SimpleNamespace(
+                    first_name="Alice", last_name=None, username=None, title=None
+                )
+            ),
+        )
+
+        event = MagicMock()
+        event.chat_id = 123
+        event.sender_id = 1
+        event.get_sender = AsyncMock(return_value=MagicMock(username=None, first_name="U", last_name=None))
+        event.message.id = 42
+        event.message.text = "ок"
+        event.message.date = None
+        event.message.reply_to_msg_id = 10
+        event.message.get_reply_message = AsyncMock(return_value=quoted)
+        event.message.fwd_from = None
+        event.message.forward = None
+
+        await service.handle_incoming_message(
+            session=db_session,
+            account_id=connected_tg_account.id,
+            event=event,
+        )
+
+        _, payload = published[0]
+        assert payload["reply_to"] == {
+            "message_id": 10,
+            "sender_name": "Alice",
+            "text": "вчерашний план",
+        }
+        assert payload["forward_from"] is None
+        assert payload["text"] == "ок"
+
+    async def test_read_unread_skips_chats_outside_whitelist(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+    ):
+        published = []
+
+        class MockBus:
+            async def publish(self, topic, message):
+                published.append((topic, message))
+
+        allowed = TgMessageReceived(
+            account_id=connected_tg_account.id,
+            chat_id=1,
+            message_id=10,
+            sender=Sender(sender_id=1),
+            text="ok",
+        )
+        blocked = TgMessageReceived(
+            account_id=connected_tg_account.id,
+            chat_id=2,
+            message_id=11,
+            sender=Sender(sender_id=2),
+            text="nope",
+        )
+
+        manager = TelegramClientManager()
+        manager.get_messages = AsyncMock(
+            side_effect=lambda account_id, chat_id, last_read_message_id=None, limit=50, offset_id=0: (
+                [allowed] if chat_id == 1 else [blocked]
+            )
+        )
+        service = TelegramAccountService(
+            repository=TelegramAccountRepository(),
+            message_bus=MockBus(),
+            client_manager=manager,
+            settings_repository=TelegramSettingsRepository(),
+            chat_state_repository=TelegramChatStateRepository(),
+        )
+        service.chat_state_repository.get_all_by_account = AsyncMock(
+            return_value=[
+                SimpleNamespace(chat_id=1, last_read_message_id=0),
+                SimpleNamespace(chat_id=2, last_read_message_id=0),
+            ]
+        )
+        service.should_read_message = AsyncMock(
+            side_effect=lambda session, account_id, chat_id: chat_id == 1
+        )
+        service.chat_state_repository.upsert_last_read = AsyncMock()
+
+        count = await service.read_unread_messages(db_session, connected_tg_account.id)
+
+        assert count == 1
+        assert len(published) == 1
+        assert published[0][1]["chat_id"] == 1
+        manager.get_messages.assert_awaited_once()
+        assert manager.get_messages.await_args.kwargs["chat_id"] == 1
+
+    async def test_whitelist_on_and_empty_reads_nothing(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+        tg_service: TelegramAccountService,
+    ):
+        settings_svc = TelegramSettingsService(TelegramSettingsRepository())
+        await settings_svc.create_default_settings(db_session, connected_tg_account.id)
+        assert await tg_service.should_read_message(
+            db_session, connected_tg_account.id, chat_id=123
+        ) is False
+
+    async def test_whitelist_on_with_ids_allows_only_listed(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+        tg_service: TelegramAccountService,
+    ):
+        settings_svc = TelegramSettingsService(TelegramSettingsRepository())
+        settings = await settings_svc.create_default_settings(db_session, connected_tg_account.id)
+        await settings_svc.repository.update(
+            db_session, settings, {"whitelist_chat_ids": [123]}
+        )
+        assert await tg_service.should_read_message(
+            db_session, connected_tg_account.id, chat_id=123
+        ) is True
+        assert await tg_service.should_read_message(
+            db_session, connected_tg_account.id, chat_id=999
+        ) is False
+
+    async def test_whitelist_off_reads_everything(
+        self,
+        db_session: AsyncSession,
+        connected_tg_account: TelegramAccount,
+        tg_service: TelegramAccountService,
+    ):
+        settings_svc = TelegramSettingsService(TelegramSettingsRepository())
+        settings = await settings_svc.create_default_settings(db_session, connected_tg_account.id)
+        await settings_svc.repository.update(db_session, settings, {"use_whitelist": False})
+        assert await tg_service.should_read_message(
+            db_session, connected_tg_account.id, chat_id=999
+        ) is True
 
 
 class TestTgEvents:
@@ -600,8 +765,24 @@ class TestTgEvents:
             "last_name": "Иванов",
         }
         assert data["text"] == "Привет!"
+        assert data["reply_to"] is None
+        assert data["forward_from"] is None
         assert len(data["media"]) == 1
         assert data["media"][0]["type"] == "photo"
+
+    def test_tg_message_received_includes_reply_and_forward(self):
+        event = TgMessageReceived(
+            account_id=uuid.uuid4(),
+            chat_id=1,
+            message_id=2,
+            sender=Sender(sender_id=1),
+            text="ок",
+            reply_to={"message_id": 1, "sender_name": "Alice", "text": "план"},
+            forward_from={"message_id": None, "sender_name": "Bob", "text": "смотри это"},
+        )
+        data = event.to_bus_dict()
+        assert data["reply_to"]["sender_name"] == "Alice"
+        assert data["forward_from"]["sender_name"] == "Bob"
 
     def test_tg_account_connected_to_bus_dict(self):
         event = TgAccountConnected(

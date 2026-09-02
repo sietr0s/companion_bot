@@ -7,21 +7,21 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class ConversationCreateRequest(BaseModel):
+class ConversationCreate(BaseModel):
     user_id: UUID | None = None
     telegram_chat_id: int
     telegram_account_id: UUID | None = None
     status: str = "active"
 
 
-class ConversationUpdateRequest(BaseModel):
+class ConversationUpdate(BaseModel):
     status: str | None = None
     telegram_chat_id: int | None = None
     telegram_account_id: UUID | None = None
     last_sequence_number: int | None = None
 
 
-class ConversationResponse(BaseModel):
+class ConversationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -35,7 +35,7 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
 
 
-class MessageCreateRequest(BaseModel):
+class MemoryMessageCreate(BaseModel):
     conversation_id: UUID
     text: str
     direction: str
@@ -44,13 +44,13 @@ class MessageCreateRequest(BaseModel):
     batch_id: UUID | None = None
 
 
-class MessageUpdateRequest(BaseModel):
+class MemoryMessageUpdate(BaseModel):
     text: str | None = None
     direction: str | None = None
     message_type: str | None = None
 
 
-class MessageResponse(BaseModel):
+class MemoryMessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -64,18 +64,18 @@ class MessageResponse(BaseModel):
     updated_at: datetime
 
 
-class SummaryStateCreateRequest(BaseModel):
+class SummaryStateCreate(BaseModel):
     conversation_id: UUID
     current_summary: str | None = None
     checkpoint: int = 0
 
 
-class SummaryStateUpdateRequest(BaseModel):
+class SummaryStateUpdate(BaseModel):
     current_summary: str | None = None
     checkpoint: int | None = None
 
 
-class SummaryStateResponse(BaseModel):
+class SummaryStateRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -86,20 +86,20 @@ class SummaryStateResponse(BaseModel):
     updated_at: datetime
 
 
-class VectorRecordCreateRequest(BaseModel):
+class VectorRecordCreate(BaseModel):
     conversation_id: UUID
     text: str
     embedding: list[float] | None = None
     extra_data: dict[str, Any] | None = None
 
 
-class VectorRecordUpdateRequest(BaseModel):
+class VectorRecordUpdate(BaseModel):
     text: str | None = None
     embedding: list[float] | None = None
     extra_data: dict[str, Any] | None = None
 
 
-class VectorRecordResponse(BaseModel):
+class VectorRecordRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

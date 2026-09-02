@@ -2,11 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * Обновление настроек Telegram-аккаунта (internal).
- */
 export type TelegramSettingsUpdate = {
     use_whitelist?: (boolean | null);
-    whitelist_chat_ids?: null;
+    whitelist_chat_ids?: (Array<number> | null);
 };
 

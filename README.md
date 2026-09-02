@@ -14,7 +14,6 @@ pip install -r requirements.txt
 
 ```env
 JWT_SECRET_KEY=change-me
-INTERNAL_SERVICE_KEY=change-me
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=change-me
 ```
@@ -28,7 +27,21 @@ uvicorn src.main:app --reload
 - Health: `GET /health`
 - OpenAPI: `http://localhost:8000/docs`
 
-Через Docker: `docker compose up --build`.
+Через Docker (app + frontend + Postgres/pgvector, без Kafka):
+
+```bash
+docker compose up --build
+```
+
+Секреты и пароли БД берутся из `.env.docker`. Чтобы переопределить их, скопируйте `.env.docker.example` в `.env` в корне репозитория.
+
+Веса embedding-моделей лежат в `./models` (volume). После первой загрузки повторный `docker compose up` их не качает.
+
+- API: `http://localhost:8000`
+- Admin UI: `http://localhost:3000` (логин: `ADMIN_EMAIL` / `ADMIN_PASSWORD` из `.env.docker`)
+- Postgres: `localhost:5432`
+- Kafka: `docker compose --profile kafka up --build` и `MESSAGE_BUS=kafka`
+- pgAdmin: `docker compose --profile admin up`
 
 ## Слои
 
@@ -39,21 +52,26 @@ uvicorn src.main:app --reload
 | `src/bus` | producer/consumer (`in_memory` или `kafka`) |
 | `src/modules/*` | изолированные домены |
 
-Правила модуля:
+Правила модуля (канон: `users`; подробно — [ADR 0001](docs/adr/0001-module-consistency.md)):
 
 - SQL только в репозитории. Наследник `BaseRepository` не переопределяет CRUD, если нет новой логики.
 - Сервис вызывает репозиторий, без SQLAlchemy-запросов.
 - На каждую ORM-модель — HTTP CRUD через `create_crud_router`.
-- Схемы лежат в `schemas/`: `public.py` (HTTP), `events.py` (шина), при необходимости `internal.py`.
+- Схемы: `schemas/public.py` (HTTP `EntityCreate|Update|Read`), `schemas/events.py` (шина, `BaseEvent`).
+- HTTP-роутеры — пакет `routers/` с экспортом `public_router`.
+- Толстый интеграционный модуль (`telegram_clients`): `services/` + `adapters/`, не один `service.py`.
 
 ```text
 src/modules/<module>/
 ├── models.py
 ├── repository.py
-├── service.py
+├── service.py           # или services/
 ├── dependencies.py
-├── handlers.py          # подписки на шину (если нужны)
-├── routers.py           # или routers/
+├── exceptions.py
+├── handlers.py
+├── routers/
+│   ├── __init__.py      # public_router
+│   └── public.py
 └── schemas/
     ├── public.py
     └── events.py
@@ -66,9 +84,11 @@ src/modules/<module>/
 | `auth` | админы панели: регистрация, логин, JWT | `/api/v1/public/auth` |
 | `users` | собеседники Telegram (не связан с auth); `notes` — подсказки для LLM | `/api/v1/public/users` |
 | `telegram_clients` | Telethon: аккаунты, QR/SMS, чаты, whitelist | `/api/v1/public/telegram` |
-| `batching` | набор входящих сообщений в батч | `/api/v1/public/batches` |
-| `memory` | диалоги, сообщения, summary; vector retrieve in-process (LLM embed/pre/post/summarize) | `/memory` |
-| `llm` | заглушка генерации ответа | нет HTTP (только шина) |
+| `batching` | набор входящих сообщений в батч (in-memory) | нет HTTP (только шина) |
+| `memory` | диалоги, summary, вектор **тем** (эмбед названия, не батча); см. [docs/memory.md](docs/memory.md) | `/api/v1/public/memory` |
+| `llm` | чат через LangChain (Mistral или OpenAI-compatible, напр. OpenRouter); эмбеддинги локальные | нет HTTP (только шина) |
+| `stt` | транскрипция voice/audio (faster-whisper), скачивание через Telegram | нет HTTP (только шина) |
+| `tts` | синтез речи: `stub` или OpenRouter `/audio/speech`; оркестратор пока не вызывает | нет HTTP (только шина) |
 | `orchestrator` | пайплайн companion | нет HTTP (только шина) |
 
 Маршрутов `/internal/` нет.
@@ -77,8 +97,8 @@ src/modules/<module>/
 
 1. Входящее сообщение Telegram → `telegram_clients.event.message.received`
 2. `users` upsert-ит собеседника по `sender_id`
-3. Orchestrator → `batching.command.add_message`
-4. Батч готов → memory: `process_batch` / `update_memory` сохраняют сообщения, индексируют батч (document embed → `VectorRecord`) и при пороге 50 вызывают summarize; `build_context` делает pre → vector search → post и собирает Summary / Retrieved / last N
+3. Orchestrator: текст → `batching.command.add_message`; voice/audio без текста → `stt.command.transcribe`, затем батч с транскриптом
+4. Батч готов → memory сохраняет сообщения, при необходимости кластеризует темы в вектор и summarizen; `build_context` собирает Summary / Retrieved / last N. Подробно: [docs/memory.md](docs/memory.md)
 5. LLM генерирует ответ или подавляет его
 6. Orchestrator → `telegram_clients.command.send_message`
 7. Факт отправки → `telegram_clients.event.message.sent`
@@ -97,8 +117,8 @@ src/modules/<module>/
 | batching | `add_message` | `batch.ready`, `batch.completed` |
 | memory | `process_batch`, `build_context`, `update_memory` | `batch.processed`, `context.built`, `memory.updated` |
 | llm | `generate_reply`, `summarize` | `reply.generated`, `reply.suppressed`, `summary.generated` |
-
-Необработанные сообщения попадают в `bus.dlq`.
+| stt | `transcribe` | `transcribed`, `transcribe_failed` |
+| tts | `synthesize` | `synthesized`, `synthesize_skipped` |
 
 ## Тесты
 
