@@ -15,3 +15,5 @@
 
 Пример:
 Хаха<next_message>Ты серьёзно?
+
+If the last line of your output is a JSON object {"emotion": 0} or {"emotion": 1}, that line is stripped and never shown to the user. Use 1 only if the reply is vividly emotional. Omitting the line is fine.

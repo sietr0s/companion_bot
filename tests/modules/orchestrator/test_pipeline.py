@@ -14,6 +14,11 @@ from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
 from src.core.bus_topics import BusTopics
 from src.modules.batching.handlers import register_handlers as register_batching
+from src.modules.behavior.classifiers import FakeIntakeClassifier
+from src.modules.behavior.engine import Decision
+from src.modules.behavior.handlers import register_handlers as register_behavior
+from src.modules.behavior.repository import BehaviorRepository
+from src.modules.behavior.service import BehaviorService
 from src.modules.llm.handlers import register_handlers as register_llm
 from src.modules.llm.providers.stub import StubChat
 from src.modules.llm.service import LLMService
@@ -35,7 +40,13 @@ class _SessionCM:
 
     async def __aexit__(self, exc_type, exc, tb):
         if exc_type is None:
-            await self._session.commit()
+            try:
+                await self._session.commit()
+            except Exception:
+                await self._session.rollback()
+                raise
+        else:
+            await self._session.rollback()
         return False
 
 
@@ -50,6 +61,24 @@ async def _drain(transport: InMemoryTransport, timeout: float = 3.0) -> None:
         await asyncio.sleep(0.05)
         if transport.queue.empty():
             return
+
+
+def _patch_behavior(monkeypatch, db_session, *, needs_reply=1, action=None):
+    def _decide(policy, ctx, rng, temperature=None):
+        picked = action or policy.fallback
+        return Decision(action=picked, scores={a: 1.0 for a in policy.legal_actions}, blocked={})
+
+    monkeypatch.setattr("src.modules.behavior.service.decide", _decide)
+    monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AsyncMock())
+
+    def build(producer):
+        return BehaviorService(producer, BehaviorRepository(), FakeIntakeClassifier(needs_reply=needs_reply))
+
+    monkeypatch.setattr("src.modules.behavior.handlers.build_behavior_service", build)
+    monkeypatch.setattr(
+        "src.modules.behavior.handlers.create_async_session",
+        lambda: _SessionCM(db_session),
+    )
 
 
 @pytest.mark.asyncio
@@ -72,6 +101,7 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
     monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
     monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    _patch_behavior(monkeypatch, db_session)
 
     pre_calls: list[list[str]] = []
     orig_pre = LLMService.retrieve_pre
@@ -91,6 +121,7 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
 
     register_batching(consumer, producer)
     register_memory(consumer, producer)
+    register_behavior(consumer, producer)
     register_llm(consumer, producer)
     register_orchestrator(consumer, producer)
     register_tg(consumer, manager, producer)
@@ -141,6 +172,7 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
     monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
     monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    _patch_behavior(monkeypatch, db_session)
 
     class FakeDl:
         async def download_voice(self, account_id, chat_id, message_id):
@@ -153,6 +185,7 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
 
     register_batching(consumer, producer)
     register_memory(consumer, producer)
+    register_behavior(consumer, producer)
     register_llm(consumer, producer)
     register_stt(consumer, producer, FakeDl(), StubStt())
     register_orchestrator(consumer, producer)
@@ -176,3 +209,46 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
 
     manager.send_message.assert_awaited()
     assert "transcribed" in manager.send_message.await_args.args[2]
+
+
+@pytest.mark.asyncio
+async def test_ignore_does_not_send(db_session, monkeypatch):
+    transport = InMemoryTransport()
+    producer = InMemoryProducer(transport)
+    consumer = InMemoryConsumer(transport)
+    monkeypatch.setattr(
+        "src.modules.memory.handlers.create_async_session",
+        lambda: _SessionCM(db_session),
+    )
+    fake = FakeEmbedder()
+    stub = StubChat()
+    monkeypatch.setattr("src.modules.llm.handlers.get_embedder", lambda: fake)
+    monkeypatch.setattr("src.modules.llm.handlers.get_chat_provider", lambda: stub)
+    monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
+    monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
+    monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
+    monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
+    monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    _patch_behavior(monkeypatch, db_session, action="ignore")
+    manager = AsyncMock()
+    manager.send_message = AsyncMock()
+    register_batching(consumer, producer)
+    register_memory(consumer, producer)
+    register_behavior(consumer, producer)
+    register_llm(consumer, producer)
+    register_orchestrator(consumer, producer)
+    register_tg(consumer, manager, producer)
+    await consumer.start()
+    await producer.publish(
+        BusTopics.TG_MESSAGE_RECEIVED,
+        {
+            "account_id": str(uuid.uuid4()),
+            "chat_id": 99,
+            "message_id": 1,
+            "text": "whatever",
+            "sender": {"sender_id": 1},
+        },
+    )
+    await _drain(transport)
+    await consumer.stop()
+    manager.send_message.assert_not_awaited()

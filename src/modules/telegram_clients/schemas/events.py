@@ -39,9 +39,11 @@ class TgMessageSent(BaseEvent):
     event_name: str = BusTopics.TG_MESSAGE_SENT
     telegram_account_id: UUID
     chat_id: int
+    text: str | None = None
     message_id: int | None = None
     success: bool
     error: str | None = None
+    message_type: str = "text"
 
 
 class TgAccountConnected(BaseEvent):

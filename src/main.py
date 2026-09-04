@@ -17,6 +17,7 @@ from src.core.seed import seed_admin
 from src.modules.auth.handlers import register_handlers as register_auth_handlers
 from src.modules.auth.routers import public_router as auth_router
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
+from src.modules.behavior.handlers import register_handlers as register_behavior_handlers
 from src.modules.llm.handlers import register_handlers as register_llm_handlers
 from src.modules.memory.handlers import register_handlers as register_memory_handlers
 from src.modules.memory.routers import public_router as memory_router
@@ -48,6 +49,7 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     register_tg_handlers(consumer, container.telegram_client_manager, producer)
     register_batching_handlers(consumer, producer)
     register_memory_handlers(consumer, producer)
+    register_behavior_handlers(consumer, producer)
     register_llm_handlers(consumer, producer)
     register_stt_handlers(consumer, producer, container.telegram_client_manager)
     register_tts_handlers(consumer, producer)

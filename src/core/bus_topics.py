@@ -22,6 +22,8 @@ class BusTopics:
     TG_ACCOUNT_CONNECTED: str = "telegram_clients.event.account.connected"
     TG_ACCOUNT_DISCONNECTED: str = "telegram_clients.event.account.disconnected"
     TG_MESSAGE_SEND: str = "telegram_clients.command.send_message"
+    TG_MESSAGE_SEND_VOICE: str = "telegram_clients.command.send_voice"
+    TG_CHAT_ACTION: str = "telegram_clients.command.chat_action"
 
     BATCH_ADD_MESSAGE: str = "batching.command.add_message"
     BATCH_READY: str = "batching.event.batch.ready"
@@ -47,3 +49,9 @@ class BusTopics:
     TTS_SYNTHESIZE: str = "tts.command.synthesize"
     TTS_SYNTHESIZED: str = "tts.event.synthesized"
     TTS_SYNTHESIZE_SKIPPED: str = "tts.event.synthesize_skipped"
+
+    BEHAVIOR_DECIDE_INTAKE: str = "behavior.command.decide_intake"
+    BEHAVIOR_INTAKE_DECIDED: str = "behavior.event.intake_decided"
+    BEHAVIOR_DECIDE_DELIVERY: str = "behavior.command.decide_delivery"
+    BEHAVIOR_DELIVERY_DECIDED: str = "behavior.event.delivery_decided"
+    BEHAVIOR_NOTE_DELIVERY: str = "behavior.command.note_delivery"

@@ -275,6 +275,20 @@ class TelegramClientManager:
             raise NotFoundError(detail=f"Клиент для account_id={account_id} не подключён")
         await client.send_message(chat_id, text)
 
+    async def send_chat_action(
+        self, account_id: uuid.UUID, chat_id: int, action: str = "record_audio"
+    ) -> None:
+        client = self.get_client(account_id)
+        if not client:
+            raise NotFoundError(detail=f"Клиент для account_id={account_id} не подключён")
+        await client.send_chat_action(chat_id, action)
+
+    async def send_voice(self, account_id: uuid.UUID, chat_id: int, path: Path) -> None:
+        client = self.get_client(account_id)
+        if not client:
+            raise NotFoundError(detail=f"Клиент для account_id={account_id} не подключён")
+        await client.send_file(chat_id, file=str(path), voice_note=True)
+
     async def get_chats(self, account_id: uuid.UUID, limit: int = 100) -> list[dict[str, Any]]:
         """Получить список чатов аккаунта из Telegram API."""
         client = self.get_client(account_id)

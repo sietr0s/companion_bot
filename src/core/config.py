@@ -130,6 +130,10 @@ class Settings(BaseSettings):
     TTS_VOICE: str = "alloy"
     TTS_RESPONSE_FORMAT: str = "mp3"
 
+    BEHAVIOR_TIMEZONE: str = "Europe/Moscow"
+    BEHAVIOR_SOFTMAX_TEMP: float = 1.0
+    BEHAVIOR_INTAKE_TIMEOUT_S: float = 8.0
+
     # Admin (seed-пользователь) — обязательные поля, без дефолтов
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str

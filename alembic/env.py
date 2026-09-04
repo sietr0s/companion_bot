@@ -16,6 +16,7 @@ from src.modules.telegram_clients.models import (  # noqa: F401
 )
 from src.modules.batching.models import Batch, BatchMessage  # noqa: F401
 from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord  # noqa: F401
+from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

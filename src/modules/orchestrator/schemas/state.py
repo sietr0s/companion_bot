@@ -14,5 +14,9 @@ class OrchestratorState(BaseModel):
     conversation_id: UUID | None = None
     context: str | None = None
     reply_messages: list[str] | None = None
+    batch_messages: list = Field(default_factory=list)
+    asked_voice: int = 0
+    pending_outgoing_texts: list[str] = Field(default_factory=list)
+    pending_delivery: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
