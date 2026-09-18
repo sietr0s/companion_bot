@@ -50,8 +50,9 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.MEMORY_BATCH_PROCESSED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(conversation_id),
             "messages": [{"text": "hi", "message_type": "text", "direction": "incoming"}],
         },
@@ -61,8 +62,9 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.MEMORY_CONTEXT_BUILT,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(conversation_id),
             "context": "hi",
         },
@@ -71,8 +73,9 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.BEHAVIOR_INTAKE_DECIDED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(conversation_id),
             "action": "respond",
             "asked_voice": 0,
@@ -82,8 +85,9 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.LLM_REPLY_GENERATED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "messages": ["one", "two"],
         },
     )
@@ -91,8 +95,9 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.BEHAVIOR_DELIVERY_DECIDED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "action": "text",
             "text": "one. two",
         },
@@ -102,7 +107,8 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.TG_MESSAGE_SENT,
         {
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "account_id": str(account_id),
             "chat_id": chat_id,
             "text": "one",
             "success": True,
@@ -112,7 +118,8 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await producer.publish(
         BusTopics.TG_MESSAGE_SENT,
         {
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "account_id": str(account_id),
             "chat_id": chat_id,
             "text": "two",
             "success": True,
@@ -142,8 +149,9 @@ async def test_state_is_isolated_per_account_and_chat() -> None:
     await producer.publish(
         BusTopics.MEMORY_BATCH_PROCESSED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(acc_a),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(acc_a),
             "conversation_id": str(uuid4()),
             "messages": [],
         },
@@ -152,8 +160,9 @@ async def test_state_is_isolated_per_account_and_chat() -> None:
     await producer.publish(
         BusTopics.MEMORY_BATCH_PROCESSED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(acc_b),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(acc_b),
             "conversation_id": str(uuid4()),
             "messages": [],
         },
@@ -191,8 +200,9 @@ async def test_ignore_skips_llm(monkeypatch) -> None:
     await producer.publish(
         BusTopics.MEMORY_CONTEXT_BUILT,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(cid),
             "context": "x",
         },
@@ -201,8 +211,9 @@ async def test_ignore_skips_llm(monkeypatch) -> None:
     await producer.publish(
         BusTopics.BEHAVIOR_INTAKE_DECIDED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(cid),
             "action": "ignore",
         },
@@ -235,8 +246,9 @@ async def test_voice_delivery_publishes_tts(monkeypatch) -> None:
     await producer.publish(
         BusTopics.MEMORY_CONTEXT_BUILT,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "conversation_id": str(cid),
             "context": "x",
         },
@@ -245,8 +257,9 @@ async def test_voice_delivery_publishes_tts(monkeypatch) -> None:
     await producer.publish(
         BusTopics.LLM_REPLY_GENERATED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "messages": ["hello there friend"],
         },
     )
@@ -254,8 +267,9 @@ async def test_voice_delivery_publishes_tts(monkeypatch) -> None:
     await producer.publish(
         BusTopics.BEHAVIOR_DELIVERY_DECIDED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "action": "voice",
             "text": "hello there friend",
         },
@@ -290,8 +304,9 @@ async def test_tts_skip_sends_text_fallback(monkeypatch) -> None:
     await producer.publish(
         BusTopics.LLM_REPLY_GENERATED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "messages": ["fallback"],
         },
     )
@@ -299,8 +314,9 @@ async def test_tts_skip_sends_text_fallback(monkeypatch) -> None:
     await producer.publish(
         BusTopics.BEHAVIOR_DELIVERY_DECIDED,
         {
-            "telegram_chat_id": chat_id,
-            "telegram_account_id": str(account_id),
+            "channel": "telegram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
             "action": "voice",
             "text": "fallback",
         },

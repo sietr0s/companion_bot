@@ -61,12 +61,12 @@ class BehaviorService:
     ) -> IntakeDecidedEvent:
         incoming, _ = _incoming_blob(command.batch_messages.messages)
         now = datetime.now(UTC)
-        if command.telegram_account_id is None:
-            raise ValidationError("telegram_account_id is required for intake")
+        if command.account_id is None:
+            raise ValidationError("account_id is required for intake")
         window = format_intake_window(command.recent, command.batch_messages)
         needs_reply, asked_voice = await self._classifier.classify(window)
         row = await self._repo.get_or_create_account(
-            session, command.telegram_account_id, now, self._rng
+            session, command.account_id, now, self._rng
         )
         life = LifeSnapshot(row.activity, row.mood)
         ctx = DecisionContext(
@@ -107,13 +107,13 @@ class BehaviorService:
             body, command.emotion if command.emotion is not None else suffix_emotion
         )
         now = datetime.now(UTC)
-        if command.telegram_account_id is None:
-            raise ValidationError("telegram_account_id is required for delivery")
+        if command.account_id is None:
+            raise ValidationError("account_id is required for delivery")
         account = await self._repo.get_or_create_account(
-            session, command.telegram_account_id, now, self._rng
+            session, command.account_id, now, self._rng
         )
         chat_row = await self._repo.get_or_create_chat(
-            session, command.telegram_account_id, command.telegram_chat_id
+            session, command.account_id, command.chat_id
         )
         life = LifeSnapshot(account.activity, account.mood)
         chat = ChatSnapshot(chat_row.consecutive_voice_out, chat_row.last_delivery)
@@ -154,7 +154,7 @@ class BehaviorService:
     async def note_delivery(self, session: AsyncSession, command: NoteDeliveryCommand) -> None:
         await self._repo.note_delivery(
             session,
-            command.telegram_account_id,
-            command.telegram_chat_id,
+            command.account_id,
+            command.chat_id,
             command.delivery,
         )

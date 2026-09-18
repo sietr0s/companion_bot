@@ -66,8 +66,8 @@ def _cmd(*, chat_id, messages, account_id=None, batch_id=None):
         batch=Batch(
             id=batch_id or uuid.uuid4(),
             channel="telegram",
-            telegram_chat_id=chat_id,
-            telegram_account_id=account_id,
+            chat_id=chat_id,
+            account_id=account_id,
             messages=list(messages),
         ),
     )
@@ -151,7 +151,7 @@ async def test_process_batch_summarizes_when_threshold_met(db_session):
         MaintainMemoryCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=11,
+            chat_id=11,
             current_sequence=50,
         ),
     )
@@ -183,7 +183,7 @@ async def test_process_batch_skips_vector_if_cluster_fails(db_session):
         MaintainMemoryCommand(
             conversation_id=event.conversation_id,
             channel="telegram",
-            telegram_chat_id=12,
+            chat_id=12,
             current_sequence=event.sequence_numbers[-1],
         ),
     )
@@ -220,7 +220,7 @@ async def test_process_batch_indexes_closed_topics(db_session):
         MaintainMemoryCommand(
             conversation_id=event.conversation_id,
             channel="telegram",
-            telegram_chat_id=40,
+            chat_id=40,
             current_sequence=event.sequence_numbers[-1],
         ),
     )
@@ -297,7 +297,7 @@ async def test_build_context_includes_ranked_hits(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=20,
+            chat_id=20,
             batch_messages=[{"text": "now"}],
             last_n_messages=50,
         ),
@@ -334,7 +334,7 @@ async def test_build_context_retrieves_reference_with_same_query(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=21,
+            chat_id=21,
             batch_messages=[{"text": "now"}],
             last_n_messages=50,
         ),
@@ -374,7 +374,7 @@ async def test_build_context_retrieve_pre_uses_dialogue_window(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=88,
+            chat_id=88,
             batch_messages=[{"text": "девушка ушла"}],
             last_n_messages=50,
         ),
@@ -400,7 +400,7 @@ async def test_build_context_omits_retrieved_on_pre_failure(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=22,
+            chat_id=22,
             batch_messages=[{"text": "now"}],
             last_n_messages=50,
         ),
@@ -424,7 +424,7 @@ async def test_update_memory_does_not_index_small_outgoing(db_session):
         UpdateMemoryCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=30,
+            chat_id=30,
             outgoing_messages=["reply"],
             delivery_status="delivered",
         ),
@@ -453,7 +453,7 @@ async def test_update_memory_stores_voice_type(db_session):
         UpdateMemoryCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=32,
+            chat_id=32,
             outgoing_messages=["hello there friend"],
             delivery_status="delivered",
             message_type="voice",
@@ -500,7 +500,7 @@ async def test_build_context_hydrates_topic_messages(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=50,
+            chat_id=50,
             batch_messages=[{"text": "что там с продом"}],
             last_n_messages=3,
         ),
@@ -525,7 +525,7 @@ async def test_update_memory_skips_when_not_delivered(db_session):
         UpdateMemoryCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=31,
+            chat_id=31,
             outgoing_messages=["reply"],
             delivery_status="failed",
         ),
@@ -560,7 +560,7 @@ async def test_build_context_skips_topic_fully_in_recent(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=51,
+            chat_id=51,
             last_n_messages=50,
         ),
     )
@@ -592,7 +592,7 @@ async def test_build_context_dedups_same_title_by_id(db_session):
         BuildContextCommand(
             conversation_id=conv.id,
             channel="telegram",
-            telegram_chat_id=52,
+            chat_id=52,
             last_n_messages=1,
         ),
     )
@@ -630,7 +630,7 @@ async def test_cluster_retries_then_indexes(db_session):
         MaintainMemoryCommand(
             conversation_id=event.conversation_id,
             channel="telegram",
-            telegram_chat_id=41,
+            chat_id=41,
             current_sequence=event.sequence_numbers[-1],
         ),
     )

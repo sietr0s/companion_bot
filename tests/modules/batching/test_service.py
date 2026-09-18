@@ -130,9 +130,9 @@ async def test_same_chat_different_accounts_keep_separate_batches():
     flushed = await service.add_incoming_message(_cmd(chat_id, "c", acc_a))
     assert flushed is not None
     account_from_batch = (
-        flushed.batch["telegram_account_id"]
+        flushed.batch["account_id"]
         if isinstance(flushed.batch, dict)
-        else flushed.batch.telegram_account_id
+        else flushed.batch.account_id
     )
     assert account_from_batch == acc_a
     assert _batch_texts(flushed.batch) == ["a", "c"]

@@ -107,7 +107,7 @@ class OrchestratorService:
         async def on_message_received(payload: dict) -> None:
             text = (payload.get("text") or "").strip()
             chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id") or payload.get("telegram_account_id")
+            account_id = payload.get("account_id")
             media = payload.get("media") or []
             types = {
                 (item.get("type") if isinstance(item, dict) else getattr(item, "type", None))
@@ -233,8 +233,8 @@ class OrchestratorService:
     def _on_behavior(self) -> None:
         @self._consumer.subscribe(BusTopics.BEHAVIOR_INTAKE_DECIDED)
         async def on_intake_decided(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            account_id = payload.get("telegram_account_id")
+            chat_id = int(payload["chat_id"])
+            account_id = payload.get("account_id")
             state = self._state_from_payload(payload)
             if payload.get("action") == "ignore":
                 logger.info(
@@ -273,7 +273,7 @@ class OrchestratorService:
             state.pending_outgoing_texts = texts
             action = payload.get("action")
             if not action:
-                logger.error("delivery_decided without action chat=%s", payload["telegram_chat_id"])
+                logger.error("delivery_decided without action chat=%s", payload.get("chat_id"))
                 return
             state.pending_delivery = action
             state.delivery_report = {
@@ -282,12 +282,12 @@ class OrchestratorService:
                 "probabilities": payload.get("probabilities") or {},
                 "scores": payload.get("scores") or {},
                 "blocked": payload.get("block_reasons") or [],
-                "chat_id": payload["telegram_chat_id"],
+                "chat_id": payload.get("chat_id"),
                 "incoming_types": payload.get("incoming_types") or [],
                 "activity": payload.get("activity"),
                 "mood": payload.get("mood"),
             }
-            if not payload.get("telegram_account_id"):
+            if not payload.get("account_id"):
                 return
             ids = state.chat.adapter_ids()
             if action == "voice":
@@ -302,7 +302,7 @@ class OrchestratorService:
     def _on_tts(self) -> None:
         @self._consumer.subscribe(BusTopics.TTS_SYNTHESIZED)
         async def on_synthesized(payload: dict) -> None:
-            account_id = payload.get("account_id") or payload.get("telegram_account_id")
+            account_id = payload.get("account_id")
             state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             texts = list(state.pending_outgoing_texts) if state else []
             joined = ". ".join(texts) or payload.get("text") or ""
@@ -318,7 +318,7 @@ class OrchestratorService:
         @self._consumer.subscribe(BusTopics.TTS_SYNTHESIZE_SKIPPED)
         async def on_skipped(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id") or payload.get("telegram_account_id")
+            account_id = payload.get("account_id")
             reason = payload.get("reason") or "unknown"
             state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             texts = list(state.pending_outgoing_texts) if state else []
@@ -342,8 +342,8 @@ class OrchestratorService:
     def _on_llm(self) -> None:
         @self._consumer.subscribe(BusTopics.LLM_REPLY_GENERATED)
         async def on_reply_generated(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            account_id = payload.get("telegram_account_id")
+            chat_id = int(payload["chat_id"])
+            account_id = payload.get("account_id")
             messages = payload.get("messages") or []
             texts = message_texts(messages)
             state = self._state_from_payload(payload)
@@ -363,17 +363,17 @@ class OrchestratorService:
 
         @self._consumer.subscribe(BusTopics.LLM_REPLY_SUPPRESSED)
         async def on_reply_suppressed(payload: dict) -> None:
-            chat_id = payload.get("telegram_chat_id")
+            chat_id = payload.get("chat_id")
             if chat_id is None:
                 return
-            account_id = payload.get("telegram_account_id")
+            account_id = payload.get("account_id")
             self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
 
     def _on_message_sent(self) -> None:
         @self._consumer.subscribe(BusTopics.TG_MESSAGE_SENT)
         async def on_message_sent(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
-            account_id = payload.get("telegram_account_id") or payload.get("account_id")
+            account_id = payload.get("account_id")
             text = payload.get("text")
             state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             if not state or not state.chat.conversation_id:

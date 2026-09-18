@@ -16,25 +16,12 @@ _NEXT_MESSAGE_RE = re.compile(r"</?next_message\s*>", re.IGNORECASE)
 
 
 class ChatRef(BaseModel):
-    """Identity of a companion chat (Telegram or Instagram)."""
-
-    model_config = ConfigDict(populate_by_name=True)
+    """Identity of a companion chat on one channel."""
 
     channel: Channel
-    chat_id: int = Field(validation_alias=AliasChoices("chat_id", "telegram_chat_id"))
-    account_id: UUID | None = Field(
-        default=None,
-        validation_alias=AliasChoices("account_id", "telegram_account_id"),
-    )
+    chat_id: int
+    account_id: UUID | None = None
     conversation_id: UUID | None = None
-
-    @property
-    def telegram_chat_id(self) -> int:
-        return self.chat_id
-
-    @property
-    def telegram_account_id(self) -> UUID | None:
-        return self.account_id
 
     def state_key(self) -> tuple[str, str, int]:
         return (
@@ -49,8 +36,6 @@ class ChatRef(BaseModel):
             "account_id": str(self.account_id) if self.account_id else None,
             "chat_id": self.chat_id,
             "conversation_id": str(self.conversation_id) if self.conversation_id else None,
-            "telegram_account_id": str(self.account_id) if self.account_id else None,
-            "telegram_chat_id": self.chat_id,
         }
 
     def adapter_ids(self) -> dict[str, Any]:
@@ -64,10 +49,10 @@ class ChatRef(BaseModel):
         channel = payload.get("channel")
         if channel not in ("telegram", "instagram"):
             raise ValueError("payload has no valid channel")
-        chat_id = payload.get("chat_id", payload.get("telegram_chat_id"))
+        chat_id = payload.get("chat_id")
         if chat_id is None:
-            raise ValueError("payload has no chat_id or telegram_chat_id")
-        account = payload.get("account_id", payload.get("telegram_account_id"))
+            raise ValueError("payload has no chat_id")
+        account = payload.get("account_id")
         conv = payload.get("conversation_id")
         return cls(
             channel=channel,

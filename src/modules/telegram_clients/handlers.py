@@ -31,7 +31,7 @@ def register_handlers(
     @bus.subscribe(BusTopics.TG_MESSAGE_SEND)
     async def handle_send_message(message: dict[str, Any]) -> None:
         """Отправить сообщение через Telegram-аккаунт."""
-        account_id = message.get("account_id") or message.get("telegram_account_id")
+        account_id = message.get("account_id")
         chat_id = message.get("chat_id")
         text = message.get("text", "")
         if not account_id or chat_id is None:
@@ -60,17 +60,17 @@ def register_handlers(
 
         bus_producer = producer or get_producer()
         event = TgMessageSent(
-            telegram_account_id=uuid.UUID(str(account_id)),
+            account_id=uuid.UUID(str(account_id)),
             chat_id=int(chat_id),
             text=text,
             success=success,
             error=error,
         )
-        await bus_producer.publish(BusTopics.TG_MESSAGE_SENT, event.to_bus_dict())
+        await bus_producer.publish(BusTopics.TG_MESSAGE_SENT, event.model_dump(mode="json"))
 
     @bus.subscribe(BusTopics.TG_CHAT_ACTION)
     async def handle_chat_action(message: dict[str, Any]) -> None:
-        account_id = message.get("account_id") or message.get("telegram_account_id")
+        account_id = message.get("account_id")
         chat_id = message.get("chat_id")
         action = message.get("action") or "record_audio"
         if not account_id or chat_id is None:
@@ -83,7 +83,7 @@ def register_handlers(
 
     @bus.subscribe(BusTopics.TG_MESSAGE_SEND_VOICE)
     async def handle_send_voice(message: dict[str, Any]) -> None:
-        account_id = message.get("account_id") or message.get("telegram_account_id")
+        account_id = message.get("account_id")
         chat_id = message.get("chat_id")
         path = message.get("path")
         text = message.get("text") or ""
@@ -98,16 +98,18 @@ def register_handlers(
         except Exception as exc:
             success = False
             error = str(exc)
-            logger.exception("Не удалось отправить голосовое: account=%s chat=%s", account_id, chat_id)
+            logger.exception(
+                "Не удалось отправить голосовое: account=%s chat=%s", account_id, chat_id
+            )
         finally:
             Path(path).unlink(missing_ok=True)
         bus_producer = producer or get_producer()
         event = TgMessageSent(
-            telegram_account_id=uuid.UUID(str(account_id)),
+            account_id=uuid.UUID(str(account_id)),
             chat_id=int(chat_id),
             text=text,
             success=success,
             error=error,
             message_type="voice",
         )
-        await bus_producer.publish(BusTopics.TG_MESSAGE_SENT, event.to_bus_dict())
+        await bus_producer.publish(BusTopics.TG_MESSAGE_SENT, event.model_dump(mode="json"))

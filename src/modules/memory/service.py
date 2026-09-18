@@ -242,8 +242,8 @@ class MemoryService:
         direction = batch.direction
         conversation = await self._conversations.get_or_create(
             session,
-            telegram_chat_id=batch.telegram_chat_id,
-            telegram_account_id=batch.telegram_account_id,
+            telegram_chat_id=batch.chat_id,
+            telegram_account_id=batch.account_id,
         )
 
         sequence_numbers: list[int] = []
