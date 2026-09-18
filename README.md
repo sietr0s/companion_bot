@@ -20,6 +20,16 @@ ADMIN_PASSWORD=change-me
 
 Локально БД по умолчанию: `postgres:postgres@localhost:5432/modular_monolith`.
 
+Схема — одна baseline-ревизия `20260906_baseline` (`CREATE_TABLES_ON_STARTUP` по умолчанию `False`):
+
+```bash
+alembic upgrade head
+```
+
+Alembic берёт URL из `DB_*` / `settings.DATABASE_URL` (не из `sqlite` в `alembic.ini`). В Docker миграции гоняет `scripts/docker-entrypoint.sh` перед uvicorn.
+
+Если в volume уже была старая цепочка `alembic_version`, том нужно сбросить: `docker compose down -v`, затем `docker compose up --build`.
+
 ```bash
 uvicorn src.main:app --reload
 ```
@@ -56,7 +66,7 @@ docker compose up --build
 
 - SQL только в репозитории. Наследник `BaseRepository` не переопределяет CRUD, если нет новой логики.
 - Сервис вызывает репозиторий, без SQLAlchemy-запросов.
-- На каждую ORM-модель — HTTP CRUD через `create_crud_router`.
+- На ORM-модель с админским CRUD — `create_crud_router`. Bus-only с таблицами (`behavior`) HTTP не поднимает.
 - Схемы: `schemas/public.py` (HTTP `EntityCreate|Update|Read`), `schemas/events.py` (шина, `BaseEvent`).
 - HTTP-роутеры — пакет `routers/` с экспортом `public_router`.
 - Толстый интеграционный модуль (`telegram_clients`): `services/` + `adapters/`, не один `service.py`.
@@ -82,13 +92,15 @@ src/modules/<module>/
 | Модуль | Что делает | HTTP |
 |--------|------------|------|
 | `auth` | админы панели: регистрация, логин, JWT | `/api/v1/public/auth` |
-| `users` | собеседники Telegram (не связан с auth); `notes` — подсказки для LLM | `/api/v1/public/users` |
+| `users` | собеседники `(platform, platform_user_id)`; `notes` — подсказки для LLM | `/api/v1/public/users` |
 | `telegram_clients` | Telethon: аккаунты, QR/SMS, чаты, whitelist | `/api/v1/public/telegram` |
-| `batching` | набор входящих сообщений в батч (in-memory) | нет HTTP (только шина) |
-| `memory` | диалоги, summary, вектор **тем** (эмбед названия, не батча); см. [docs/memory.md](docs/memory.md) | `/api/v1/public/memory` |
+| `instagram_clients` | instagrapi: аккаунты Direct, логин/2FA, poll inbox, whitelist | `/api/v1/public/instagram` |
+| `batching` | набор входящих в батч (in-memory), ключ `(telegram_account_id, telegram_chat_id)` | нет HTTP (только шина) |
+| `memory` | диалоги, summary, вектор **тем**; conversation — пара аккаунт+чат; см. [docs/memory.md](docs/memory.md) | `/api/v1/public/memory` |
+| `behavior` | intake (отвечать/игнор) и delivery (text/voice), состояние жизни | нет HTTP (только шина) |
 | `llm` | чат через LangChain (Mistral или OpenAI-compatible, напр. OpenRouter); эмбеддинги локальные | нет HTTP (только шина) |
 | `stt` | транскрипция voice/audio (faster-whisper), скачивание через Telegram | нет HTTP (только шина) |
-| `tts` | синтез речи: `stub` или OpenRouter `/audio/speech`; оркестратор пока не вызывает | нет HTTP (только шина) |
+| `tts` | синтез речи: `fish` (Fish Audio `/v1/tts`), OpenRouter `/audio/speech`, или `stub`; исходящий voice через оркестратор | нет HTTP (только шина) |
 | `orchestrator` | пайплайн companion | нет HTTP (только шина) |
 
 Маршрутов `/internal/` нет.
@@ -98,10 +110,11 @@ src/modules/<module>/
 1. Входящее сообщение Telegram → `telegram_clients.event.message.received`
 2. `users` upsert-ит собеседника по `sender_id`
 3. Orchestrator: текст → `batching.command.add_message`; voice/audio без текста → `stt.command.transcribe`, затем батч с транскриптом
-4. Батч готов → memory сохраняет сообщения, при необходимости кластеризует темы в вектор и summarizen; `build_context` собирает Summary / Retrieved / last N. Подробно: [docs/memory.md](docs/memory.md)
-5. LLM генерирует ответ или подавляет его
-6. Orchestrator → `telegram_clients.command.send_message`
-7. Факт отправки → `telegram_clients.event.message.sent`
+4. Батч готов → memory сохраняет сообщения и сразу отдаёт пайплайн в `build_context`; затем `memory.command.maintain` (кластеризация и summary). На Kafka maintain выполняется в том же consume-цикле. Подробно: [docs/memory.md](docs/memory.md)
+5. `behavior` решает intake (`ignore` обрывает пайплайн)
+6. LLM генерирует ответ или подавляет его
+7. `behavior` решает delivery: `text` → `telegram_clients.command.send_message`; `voice` → typing delay вне handler шины, затем `tts.command.synthesize` → `send_voice` (при ошибке TTS — текст)
+8. Факт отправки → `telegram_clients.event.message.sent` → `memory.command.update_memory` и `behavior.command.note_delivery`
 
 Модули не вызывают друг друга напрямую: команды и события идут через шину.
 
@@ -113,12 +126,13 @@ src/modules/<module>/
 |--------|---------|---------|
 | auth | — | `user.registered`, `user.logged_in`, `user.deleted` |
 | users | — | `created`, `updated` |
-| telegram_clients | `send_message` | `message.received`, `message.sent`, `account.connected`, `account.disconnected` |
+| telegram_clients | `send_message`, `send_voice`, `chat_action` | `message.received`, `message.sent`, `account.connected`, `account.disconnected` |
 | batching | `add_message` | `batch.ready`, `batch.completed` |
-| memory | `process_batch`, `build_context`, `update_memory` | `batch.processed`, `context.built`, `memory.updated` |
+| memory | `process_batch`, `build_context`, `update_memory`, `maintain` | `batch.processed`, `context.built`, `memory.updated` |
 | llm | `generate_reply`, `summarize` | `reply.generated`, `reply.suppressed`, `summary.generated` |
 | stt | `transcribe` | `transcribed`, `transcribe_failed` |
 | tts | `synthesize` | `synthesized`, `synthesize_skipped` |
+| behavior | `decide_intake`, `decide_delivery`, `note_delivery` | `intake_decided`, `delivery_decided` |
 
 ## Тесты
 

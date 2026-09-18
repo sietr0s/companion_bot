@@ -71,6 +71,8 @@ def _create_lifespan(container: ApplicationContainer):
         consumer = container.consumer
         client_manager = container.telegram_client_manager
         telegram_service = container.telegram_service
+        ig_manager = container.instagram_client_manager
+        instagram_service = container.instagram_service
 
         await init_db()
         from src.modules.llm.dependencies import warmup_heavy_models
@@ -92,10 +94,14 @@ def _create_lifespan(container: ApplicationContainer):
             for account in accounts:
                 await telegram_service.read_unread_messages(session, account.id)
 
+        async with create_async_session() as session:
+            await instagram_service.restore_sessions(session)
+
         logger.info("Приложение запущено, шина: %s", settings.MESSAGE_BUS)
 
         yield
 
+        await ig_manager.stop_all()
         await client_manager.stop_all()
         await consumer.stop()
         await producer.stop()

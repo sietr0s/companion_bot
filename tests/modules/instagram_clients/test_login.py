@@ -38,6 +38,9 @@ class ScriptedClient:
     def two_factor_login(self, verification_code: str) -> bool:
         return True
 
+    def direct_threads(self, amount: int = 20) -> list:
+        return []
+
     def dump_settings(self, path: str) -> bool:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text("{}", encoding="utf-8")

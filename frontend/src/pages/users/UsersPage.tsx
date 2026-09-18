@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, Typography, message } from 'antd';
+import { Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Typography, message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageTitle } from '../../components/common/PageTitle';
 import { UserCreate, UserRead, UserUpdate, UsersService } from '../../api/generated';
@@ -25,7 +25,8 @@ export function UsersPage() {
         return UsersService.updateApiV1PublicUsersItemIdPut(editingUser.id, values);
       }
       return UsersService.createApiV1PublicUsersPost({
-        telegram_id: Number(values.telegram_id),
+        platform: values.platform,
+        platform_user_id: values.platform_user_id,
         username: values.username,
         first_name: values.first_name,
         last_name: values.last_name,
@@ -63,7 +64,8 @@ export function UsersPage() {
         </Space>
       ),
     },
-    { title: 'Telegram ID', dataIndex: 'telegram_id' },
+    { title: 'Канал', dataIndex: 'platform' },
+    { title: 'ID', dataIndex: 'platform_user_id' },
     { title: 'Заметки', dataIndex: 'notes', ellipsis: true },
     {
       title: 'Создан',
@@ -80,7 +82,8 @@ export function UsersPage() {
               setCreating(false);
               setEditingUser(record);
               form.setFieldsValue({
-                telegram_id: record.telegram_id,
+                platform: record.platform,
+                platform_user_id: record.platform_user_id,
                 username: record.username ?? undefined,
                 first_name: record.first_name ?? undefined,
                 last_name: record.last_name ?? undefined,
@@ -104,7 +107,7 @@ export function UsersPage() {
     <Space direction="vertical" size="large" className="page-stack">
       <PageTitle
         title="Собеседники"
-        subtitle="Telegram-пользователи, с которыми работает companion"
+        subtitle="Собеседники по каналу (telegram / instagram)"
         extra={
           <Button
             type="primary"
@@ -149,8 +152,15 @@ export function UsersPage() {
         okText="Сохранить"
       >
         <Form layout="vertical" form={form} onFinish={(values) => saveMutation.mutate(values)}>
-          <Form.Item name="telegram_id" label="Telegram ID" rules={[{ required: !editingUser, message: 'Укажите telegram_id' }]}>
-            <InputNumber style={{ width: '100%' }} disabled={Boolean(editingUser)} />
+          <Form.Item name="platform" label="Канал" rules={[{ required: !editingUser, message: 'Укажите platform' }]}>
+            <Input placeholder="telegram или instagram" disabled={Boolean(editingUser)} />
+          </Form.Item>
+          <Form.Item
+            name="platform_user_id"
+            label="ID на канале"
+            rules={[{ required: !editingUser, message: 'Укажите platform_user_id' }]}
+          >
+            <Input disabled={Boolean(editingUser)} />
           </Form.Item>
           <Form.Item name="username" label="Username">
             <Input maxLength={100} />

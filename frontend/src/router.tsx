@@ -8,6 +8,7 @@ import { TelegramAccountsPage } from './pages/telegram/TelegramAccountsPage';
 import { TelegramChatsPage } from './pages/telegram/TelegramChatsPage';
 import { TelegramSettingsPage } from './pages/telegram/TelegramSettingsPage';
 import { MemoryPage } from './pages/memory/MemoryPage';
+import { InstagramAccountsPage } from './pages/instagram/InstagramAccountsPage';
 
 function ProtectedRoute() {
   const { token } = useAuth();
@@ -32,6 +33,7 @@ export function AppRouter() {
           <Route path="telegram" element={<TelegramAccountsPage />} />
           <Route path="telegram/:accountId/chats" element={<TelegramChatsPage />} />
           <Route path="telegram/:accountId/settings" element={<TelegramSettingsPage />} />
+          <Route path="instagram" element={<InstagramAccountsPage />} />
           <Route path="memory" element={<MemoryPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

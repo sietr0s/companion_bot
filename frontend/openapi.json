@@ -120,6 +120,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_auth_accounts__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -192,6 +197,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_auth_accounts__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -234,6 +244,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_auth_accounts__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -276,6 +291,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_auth_accounts__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -328,6 +348,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_auth_accounts__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -665,7 +690,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/public/telegram/auth/code": {
@@ -706,7 +736,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/public/telegram/auth/password": {
@@ -747,7 +782,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/public/telegram/auth/qr": {
@@ -768,7 +808,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/public/telegram/auth/qr/{account_id}/status": {
@@ -778,6 +823,11 @@
         ],
         "summary": "Статус QR-авторизации",
         "operationId": "auth_qr_status_api_v1_public_telegram_auth_qr__account_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -821,6 +871,11 @@
         ],
         "summary": "Отменить QR-авторизацию",
         "operationId": "auth_qr_cancel_api_v1_public_telegram_auth_qr__account_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -857,6 +912,11 @@
         ],
         "summary": "Завершить QR-авторизацию",
         "operationId": "auth_qr_complete_api_v1_public_telegram_auth_qr__account_id__complete_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -900,6 +960,11 @@
         ],
         "summary": "Список Telegram-аккаунтов",
         "operationId": "get_accounts_api_v1_public_telegram__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "filters",
@@ -982,6 +1047,11 @@
         ],
         "summary": "Telegram-аккаунт",
         "operationId": "get_account_api_v1_public_telegram__account_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1023,6 +1093,11 @@
         ],
         "summary": "Удалить Telegram-аккаунт",
         "operationId": "delete_account_api_v1_public_telegram__account_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1059,6 +1134,11 @@
         ],
         "summary": "Список чатов аккаунта",
         "operationId": "get_chats_api_v1_public_telegram__account_id__chats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1118,6 +1198,11 @@
         ],
         "summary": "Сообщения чата",
         "operationId": "get_messages_api_v1_public_telegram__account_id__chats__chat_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1197,6 +1282,11 @@
         ],
         "summary": "Настройки чтения аккаунта",
         "operationId": "get_settings_api_v1_public_telegram__account_id__settings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1238,6 +1328,11 @@
         ],
         "summary": "Создать настройки чтения",
         "operationId": "create_settings_api_v1_public_telegram__account_id__settings_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1289,6 +1384,11 @@
         ],
         "summary": "Обновить настройки чтения",
         "operationId": "update_settings_api_v1_public_telegram__account_id__settings_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1340,6 +1440,11 @@
         ],
         "summary": "Удалить настройки чтения",
         "operationId": "delete_settings_api_v1_public_telegram__account_id__settings_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1376,6 +1481,11 @@
         ],
         "summary": "Add Chat To Whitelist",
         "operationId": "add_chat_to_whitelist_api_v1_public_telegram__account_id__whitelist_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1429,6 +1539,11 @@
         ],
         "summary": "Remove Chat From Whitelist",
         "operationId": "remove_chat_from_whitelist_api_v1_public_telegram__account_id__whitelist__chat_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1482,6 +1597,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_accounts__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -1554,6 +1674,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_accounts__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1596,6 +1721,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_accounts__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1638,6 +1768,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_accounts__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1690,6 +1825,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_accounts__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1727,6 +1867,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_settings__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -1799,6 +1944,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_settings__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1841,6 +1991,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_settings__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1883,6 +2038,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_settings__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1935,6 +2095,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_settings__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1972,6 +2137,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_chat_states__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -2044,6 +2214,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_chat_states__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2086,6 +2261,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_chat_states__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2128,6 +2308,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_chat_states__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2180,6 +2365,1270 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_chat_states__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/accounts/{account_id}/login": {
+      "post": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_public_instagram_accounts__account_id__login_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/accounts/{account_id}/two-factor": {
+      "post": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Two Factor",
+        "operationId": "two_factor_api_v1_public_instagram_accounts__account_id__two_factor_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/accounts/{account_id}/challenge": {
+      "post": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Challenge",
+        "operationId": "challenge_api_v1_public_instagram_accounts__account_id__challenge_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/{account_id}/settings": {
+      "get": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Get Settings",
+        "operationId": "get_settings_api_v1_public_instagram__account_id__settings_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Create Settings",
+        "operationId": "create_settings_api_v1_public_instagram__account_id__settings_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramSettingsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Update Settings",
+        "operationId": "update_settings_api_v1_public_instagram__account_id__settings_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/{account_id}/whitelist": {
+      "post": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Add User To Whitelist",
+        "operationId": "add_user_to_whitelist_api_v1_public_instagram__account_id__whitelist_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramWhitelistEntryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/{account_id}/whitelist/{user_pk}": {
+      "delete": {
+        "tags": [
+          "Instagram Clients"
+        ],
+        "summary": "Remove User From Whitelist",
+        "operationId": "remove_user_from_whitelist_api_v1_public_instagram__account_id__whitelist__user_pk__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "user_pk",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Pk"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/accounts/": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Accounts"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_instagram_accounts__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_InstagramAccountRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Accounts"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_instagram_accounts__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramAccountCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/accounts/{item_id}": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Accounts"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_instagram_accounts__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Accounts"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_instagram_accounts__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramAccountUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramAccountRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Accounts"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_instagram_accounts__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/settings/": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Settings"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_instagram_settings__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_InstagramSettingsRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Settings"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_instagram_settings__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramSettingsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/settings/{item_id}": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Settings"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_instagram_settings__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Settings"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_instagram_settings__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramSettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Settings"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_instagram_settings__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/chat-states/": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Chat States"
+        ],
+        "summary": "Get List",
+        "operationId": "get_list_api_v1_public_instagram_chat_states__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "title": "Order By"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_InstagramChatStateRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Chat States"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_public_instagram_chat_states__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramChatStateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramChatStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/instagram/chat-states/{item_id}": {
+      "get": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Chat States"
+        ],
+        "summary": "Get By Id",
+        "operationId": "get_by_id_api_v1_public_instagram_chat_states__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramChatStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Chat States"
+        ],
+        "summary": "Update",
+        "operationId": "update_api_v1_public_instagram_chat_states__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstagramChatStateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstagramChatStateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instagram Clients",
+          "Instagram Chat States"
+        ],
+        "summary": "Delete",
+        "operationId": "delete_api_v1_public_instagram_chat_states__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2217,6 +3666,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_memory_conversations__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -2289,6 +3743,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_memory_conversations__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2331,6 +3790,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_memory_conversations__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2373,6 +3837,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_memory_conversations__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2425,6 +3894,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_memory_conversations__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2462,6 +3936,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_memory_messages__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -2534,6 +4013,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_memory_messages__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2576,6 +4060,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_memory_messages__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2618,6 +4107,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_memory_messages__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2670,6 +4164,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_memory_messages__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2707,6 +4206,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_memory_summary_states__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -2779,6 +4283,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_memory_summary_states__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2821,6 +4330,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_memory_summary_states__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2863,6 +4377,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_memory_summary_states__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2915,6 +4434,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_memory_summary_states__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2952,6 +4476,11 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_memory_vector_records__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "page",
@@ -3024,6 +4553,11 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_memory_vector_records__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -3066,6 +4600,11 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_memory_vector_records__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -3108,6 +4647,11 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_memory_vector_records__item_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -3160,6 +4704,11 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_memory_vector_records__item_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -3175,6 +4724,116 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/conversations/{conversation_id}/topics": {
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "List Conversation Topics",
+        "operationId": "list_conversation_topics_api_v1_public_memory_conversations__conversation_id__topics_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VectorTopicRead"
+                  },
+                  "title": "Response List Conversation Topics Api V1 Public Memory Conversations  Conversation Id  Topics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/memory/conversations/{conversation_id}/topics/{topic_id}": {
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Get Conversation Topic",
+        "operationId": "get_conversation_topic_api_v1_public_memory_conversations__conversation_id__topics__topic_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorTopicDetailRead"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -3985,6 +5644,383 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "InstagramAccountCreate": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "InstagramAccountCreate"
+      },
+      "InstagramAccountRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "instagram_pk": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instagram Pk"
+          },
+          "session_file": {
+            "type": "string",
+            "title": "Session File"
+          },
+          "is_connected": {
+            "type": "boolean",
+            "title": "Is Connected",
+            "default": false
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "session_file"
+        ],
+        "title": "InstagramAccountRead"
+      },
+      "InstagramAccountUpdate": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "is_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Connected"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "instagram_pk": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instagram Pk"
+          }
+        },
+        "type": "object",
+        "title": "InstagramAccountUpdate"
+      },
+      "InstagramChatStateCreate": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "thread_id": {
+            "type": "integer",
+            "title": "Thread Id"
+          },
+          "last_item_id": {
+            "type": "string",
+            "title": "Last Item Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "thread_id",
+          "last_item_id"
+        ],
+        "title": "InstagramChatStateCreate"
+      },
+      "InstagramChatStateRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "thread_id": {
+            "type": "integer",
+            "title": "Thread Id"
+          },
+          "last_item_id": {
+            "type": "string",
+            "title": "Last Item Id"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "thread_id",
+          "last_item_id"
+        ],
+        "title": "InstagramChatStateRead"
+      },
+      "InstagramChatStateUpdate": {
+        "properties": {
+          "last_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Item Id"
+          }
+        },
+        "type": "object",
+        "title": "InstagramChatStateUpdate"
+      },
+      "InstagramCodeRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "InstagramCodeRequest"
+      },
+      "InstagramLoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "InstagramLoginRequest"
+      },
+      "InstagramSettingsCreate": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "use_whitelist": {
+            "type": "boolean",
+            "title": "Use Whitelist",
+            "default": true
+          },
+          "whitelist_user_pks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Whitelist User Pks"
+          }
+        },
+        "type": "object",
+        "title": "InstagramSettingsCreate"
+      },
+      "InstagramSettingsRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "use_whitelist": {
+            "type": "boolean",
+            "title": "Use Whitelist"
+          },
+          "whitelist_user_pks": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whitelist User Pks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "use_whitelist"
+        ],
+        "title": "InstagramSettingsRead"
+      },
+      "InstagramSettingsUpdate": {
+        "properties": {
+          "use_whitelist": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Whitelist"
+          },
+          "whitelist_user_pks": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Whitelist User Pks"
+          }
+        },
+        "type": "object",
+        "title": "InstagramSettingsUpdate"
+      },
+      "InstagramWhitelistEntryCreate": {
+        "properties": {
+          "user_pk": {
+            "type": "integer",
+            "title": "User Pk"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_pk"
+        ],
+        "title": "InstagramWhitelistEntryCreate"
+      },
       "LoginRequest": {
         "properties": {
           "identifier": {
@@ -4393,6 +6429,114 @@
           "total_pages"
         ],
         "title": "PaginatedResponse[ConversationRead]"
+      },
+      "PaginatedResponse_InstagramAccountRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InstagramAccountRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[InstagramAccountRead]"
+      },
+      "PaginatedResponse_InstagramChatStateRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InstagramChatStateRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[InstagramChatStateRead]"
+      },
+      "PaginatedResponse_InstagramSettingsRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InstagramSettingsRead"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "total_pages"
+        ],
+        "title": "PaginatedResponse[InstagramSettingsRead]"
       },
       "PaginatedResponse_MemoryMessageRead_": {
         "properties": {
@@ -4918,9 +7062,15 @@
       },
       "UserCreate": {
         "properties": {
-          "telegram_id": {
-            "type": "integer",
-            "title": "Telegram Id"
+          "platform": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Platform"
+          },
+          "platform_user_id": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Platform User Id"
           },
           "username": {
             "anyOf": [
@@ -4972,7 +7122,8 @@
         },
         "type": "object",
         "required": [
-          "telegram_id"
+          "platform",
+          "platform_user_id"
         ],
         "title": "UserCreate"
       },
@@ -4983,9 +7134,13 @@
             "format": "uuid",
             "title": "Id"
           },
-          "telegram_id": {
-            "type": "integer",
-            "title": "Telegram Id"
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "platform_user_id": {
+            "type": "string",
+            "title": "Platform User Id"
           },
           "username": {
             "anyOf": [
@@ -5059,7 +7214,8 @@
         "type": "object",
         "required": [
           "id",
-          "telegram_id"
+          "platform",
+          "platform_user_id"
         ],
         "title": "UserRead"
       },
@@ -5139,13 +7295,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",
@@ -5167,6 +7316,11 @@
             "type": "string",
             "title": "Text"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "topic"
+          },
           "embedding": {
             "anyOf": [
               {
@@ -5181,17 +7335,20 @@
             ],
             "title": "Embedding"
           },
-          "extra_data": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extra Data"
+          "seq_from": {
+            "type": "integer",
+            "title": "Seq From",
+            "default": 0
+          },
+          "seq_to": {
+            "type": "integer",
+            "title": "Seq To",
+            "default": 0
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial",
+            "default": false
           }
         },
         "type": "object",
@@ -5217,6 +7374,11 @@
             "type": "string",
             "title": "Text"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "topic"
+          },
           "embedding": {
             "anyOf": [
               {
@@ -5231,11 +7393,18 @@
             ],
             "title": "Embedding"
           },
-          "extra_data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Extra Data",
-            "default": {}
+          "seq_from": {
+            "type": "integer",
+            "title": "Seq From"
+          },
+          "seq_to": {
+            "type": "integer",
+            "title": "Seq To"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial",
+            "default": false
           },
           "created_at": {
             "type": "string",
@@ -5253,6 +7422,8 @@
           "id",
           "conversation_id",
           "text",
+          "seq_from",
+          "seq_to",
           "created_at",
           "updated_at"
         ],
@@ -5271,6 +7442,17 @@
             ],
             "title": "Text"
           },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
           "embedding": {
             "anyOf": [
               {
@@ -5285,21 +7467,162 @@
             ],
             "title": "Embedding"
           },
-          "extra_data": {
+          "seq_from": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Extra Data"
+            "title": "Seq From"
+          },
+          "seq_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq To"
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial"
           }
         },
         "type": "object",
         "title": "VectorRecordUpdate"
+      },
+      "VectorTopicDetailRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "seq_from": {
+            "type": "integer",
+            "title": "Seq From"
+          },
+          "seq_to": {
+            "type": "integer",
+            "title": "Seq To"
+          },
+          "message_count": {
+            "type": "integer",
+            "title": "Message Count"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "topic"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryMessageRead"
+            },
+            "type": "array",
+            "title": "Messages",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "title",
+          "seq_from",
+          "seq_to",
+          "message_count",
+          "created_at"
+        ],
+        "title": "VectorTopicDetailRead"
+      },
+      "VectorTopicRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "seq_from": {
+            "type": "integer",
+            "title": "Seq From"
+          },
+          "seq_to": {
+            "type": "integer",
+            "title": "Seq To"
+          },
+          "message_count": {
+            "type": "integer",
+            "title": "Message Count"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "topic"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "conversation_id",
+          "title",
+          "seq_from",
+          "seq_to",
+          "message_count",
+          "created_at"
+        ],
+        "title": "VectorTopicRead"
       },
       "WhitelistEntryCreate": {
         "properties": {

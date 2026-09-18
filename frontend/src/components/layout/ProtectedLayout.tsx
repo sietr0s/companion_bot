@@ -37,6 +37,7 @@ export function ProtectedLayout() {
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/users', icon: <TeamOutlined />, label: 'Users' },
     { key: '/telegram', icon: <MessageOutlined />, label: 'Telegram' },
+    { key: '/instagram', icon: <MessageOutlined />, label: 'Instagram' },
     { key: '/memory', icon: <DatabaseOutlined />, label: 'Memory' },
   ];
 
@@ -50,6 +51,7 @@ export function ProtectedLayout() {
     dashboard: 'Dashboard',
     users: 'Users',
     telegram: 'Telegram',
+    instagram: 'Instagram',
     memory: 'Memory',
     chats: 'Chats',
     settings: 'Settings',

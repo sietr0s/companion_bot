@@ -52,6 +52,18 @@ def get_instagram_settings_service(
     return InstagramSettingsService(repository=repo)
 
 
+def build_instagram_account_service(
+    client_manager: InstagramClientManager | None = None,
+) -> InstagramAccountService:
+    return InstagramAccountService(
+        repository=get_instagram_account_repository(),
+        settings_service=InstagramSettingsService(get_instagram_settings_repository()),
+        client_manager=client_manager or get_instagram_client_manager(),
+        message_bus=get_producer(),
+        chat_state_repository=get_instagram_chat_state_repository(),
+    )
+
+
 def get_instagram_account_service(
     repo: InstagramAccountRepository = Depends(get_instagram_account_repository),
     settings: InstagramSettingsService = Depends(get_instagram_settings_service),

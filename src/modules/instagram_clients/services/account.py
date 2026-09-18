@@ -1,5 +1,6 @@
 """Instagram account service: persistence plus login via InstagramClientManager."""
 
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -123,6 +124,7 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
                     instagram_pk=account.instagram_pk,
                 ).model_dump(mode="json"),
             )
+        await self._start_polling(account.id)
         return account
 
     async def poll_and_publish(self, session: AsyncSession, account_id: UUID) -> int:
@@ -153,3 +155,28 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
                     BusTopics.IG_MESSAGE_RECEIVED, event.model_dump(mode="json")
                 )
         return len(events)
+
+    async def restore_sessions(self, session: AsyncSession) -> None:
+        accounts = await self.repository.get_all(session, limit=1000)
+        manager = self._require_manager()
+        for account in accounts:
+            path = Path(account.session_file) if account.session_file else None
+            if path is None or not path.is_file():
+                if account.is_connected:
+                    await self.repository.update(session, account, {"is_connected": False})
+                continue
+            ok = await manager.restore_session(account.id, account.session_file)
+            await self.repository.update(session, account, {"is_connected": ok})
+            if ok:
+                await self._start_polling(account.id)
+
+    async def _start_polling(self, account_id: UUID) -> None:
+        from src.core.database import create_async_session
+
+        manager = self._require_manager()
+
+        async def tick() -> None:
+            async with create_async_session() as poll_session:
+                await self.poll_and_publish(poll_session, account_id)
+
+        await manager.start_poll(account_id, tick)

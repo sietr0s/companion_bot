@@ -112,6 +112,22 @@ class InstagramClientManager:
             self._pending.pop(account_id, None)
             return logged
 
+    async def restore_session(self, account_id: uuid.UUID, session_file: str) -> bool:
+        client = self.make_client()
+
+        def _load() -> None:
+            client.load_settings(session_file)
+            if hasattr(client, "account_info"):
+                client.account_info()
+
+        try:
+            await asyncio.to_thread(_load)
+        except Exception:
+            logger.warning("Instagram session restore failed account=%s", account_id, exc_info=True)
+            return False
+        self.attach(account_id, client)
+        return True
+
     async def dump_settings(self, account_id: uuid.UUID, path: str) -> None:
         client = self.get_client(account_id)
 
