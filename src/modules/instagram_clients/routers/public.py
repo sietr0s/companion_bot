@@ -9,6 +9,7 @@ from src.modules.instagram_clients.dependencies import (
     get_instagram_chat_state_service,
     get_instagram_settings_service,
 )
+from src.modules.instagram_clients.routers.public_auth import router as auth_router
 from src.modules.instagram_clients.routers.public_settings import router as settings_router
 from src.modules.instagram_clients.routers.public_whitelist import router as whitelist_router
 from src.modules.instagram_clients.schemas.public import (
@@ -28,6 +29,7 @@ router = APIRouter(
     tags=["Instagram Clients"],
     dependencies=[Depends(get_current_admin)],
 )
+router.include_router(auth_router)
 router.include_router(settings_router)
 router.include_router(whitelist_router)
 router.include_router(

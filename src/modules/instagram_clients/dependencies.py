@@ -2,6 +2,7 @@
 
 from fastapi import Depends
 
+from src.bus import get_producer
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
 
 from src.modules.instagram_clients.repository import (
@@ -55,7 +56,12 @@ def get_instagram_account_service(
     repo: InstagramAccountRepository = Depends(get_instagram_account_repository),
     settings: InstagramSettingsService = Depends(get_instagram_settings_service),
 ) -> InstagramAccountService:
-    return InstagramAccountService(repository=repo, settings_service=settings)
+    return InstagramAccountService(
+        repository=repo,
+        settings_service=settings,
+        client_manager=get_instagram_client_manager(),
+        message_bus=get_producer(),
+    )
 
 
 def get_instagram_chat_state_service(

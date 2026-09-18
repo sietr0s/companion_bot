@@ -6,6 +6,15 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class InstagramLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class InstagramCodeRequest(BaseModel):
+    code: str
+
+
 class InstagramAccountCreate(BaseModel):
     username: str = Field(max_length=100)
 
