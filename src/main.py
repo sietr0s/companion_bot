@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from src.bus import configure_bus
 from src.core.config import settings
 from src.core.container import ApplicationContainer
-from src.core.database import create_async_session, init_db
+from src.core.database import create_async_session, dispose_db, init_db
 from src.core.exceptions import AppException
 from src.core.seed import seed_admin
 from src.modules.auth.handlers import register_handlers as register_auth_handlers
@@ -25,6 +25,7 @@ from src.modules.orchestrator.handlers import register_handlers as register_orch
 from src.modules.stt.handlers import register_handlers as register_stt_handlers
 from src.modules.telegram_clients.dependencies import configure_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
+from src.modules.instagram_clients.routers import public_router as ig_router
 from src.modules.telegram_clients.routers import public_router as tg_router
 from src.modules.tts.handlers import register_handlers as register_tts_handlers
 from src.modules.users.handlers import register_handlers as register_users_handlers
@@ -38,6 +39,10 @@ logging.basicConfig(
     force=True,
 )
 logging.getLogger("aiokafka").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.orm").setLevel(logging.WARNING)
 
 
 def _register_bus_handlers(container: ApplicationContainer) -> None:
@@ -91,6 +96,7 @@ def _create_lifespan(container: ApplicationContainer):
         await client_manager.stop_all()
         await consumer.stop()
         await producer.stop()
+        await dispose_db()
         logger.info("Приложение остановлено")
 
     return lifespan
@@ -127,6 +133,7 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.include_router(auth_router)
     application.include_router(users_router)
     application.include_router(tg_router)
+    application.include_router(ig_router)
     application.include_router(memory_router)
 
     return application
