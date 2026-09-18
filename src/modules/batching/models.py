@@ -10,12 +10,13 @@ from src.base.model import BaseModel
 
 
 class Batch(BaseModel):
-    """Batch of incoming messages for one Telegram chat."""
+    """Unused table: runtime batching is in-memory. Kept for schema hygiene."""
 
     __tablename__ = "batches"
 
-    telegram_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
-    telegram_account_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(String(32), nullable=False, default="telegram")
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    account_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     max_size: Mapped[int] = mapped_column(Integer, default=1)
     current_size: Mapped[int] = mapped_column(Integer, default=0)

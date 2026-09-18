@@ -11,7 +11,9 @@ from src.modules.memory.models import VectorRecord
 class _VecRow(BaseModel):
     __tablename__ = "test_embedding_rows"
     label: Mapped[str] = mapped_column(String(20))
-    embedding: Mapped[list[float] | None] = mapped_column(EmbeddingVector(EMBEDDING_DIM), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(
+        EmbeddingVector(EMBEDDING_DIM), nullable=True
+    )
 
 
 def test_embedding_exposes_cosine_distance():

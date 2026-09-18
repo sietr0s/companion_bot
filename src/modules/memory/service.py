@@ -242,8 +242,9 @@ class MemoryService:
         direction = batch.direction
         conversation = await self._conversations.get_or_create(
             session,
-            telegram_chat_id=batch.chat_id,
-            telegram_account_id=batch.account_id,
+            channel=batch.channel,
+            chat_id=batch.chat_id,
+            account_id=batch.account_id,
         )
 
         sequence_numbers: list[int] = []
@@ -286,14 +287,14 @@ class MemoryService:
         event_batch_processed = BatchProcessedEvent(
             conversation_id=conversation.id,
             channel=batch.channel,
-            chat_id=conversation.telegram_chat_id,
-            account_id=conversation.telegram_account_id,
+            chat_id=conversation.chat_id,
+            account_id=conversation.account_id,
         )
         event_memory_maintain = MaintainMemoryCommand(
             conversation_id=conversation.id,
             channel=batch.channel,
-            chat_id=conversation.telegram_chat_id,
-            account_id=conversation.telegram_account_id,
+            chat_id=conversation.chat_id,
+            account_id=conversation.account_id,
             current_sequence=current_sequence,
         )
         await self._message_bus.publish(
@@ -365,8 +366,8 @@ class MemoryService:
             conv = await self._conversations.get_by_id(session, hit.conversation_id)
             topic_chat = ChatRef(
                 channel=chat.channel,
-                chat_id=conv.telegram_chat_id if conv else chat.chat_id,
-                account_id=conv.telegram_account_id if conv else chat.account_id,
+                chat_id=conv.chat_id if conv else chat.chat_id,
+                account_id=conv.account_id if conv else chat.account_id,
                 conversation_id=hit.conversation_id,
             )
             topics.append(
@@ -455,7 +456,7 @@ class MemoryService:
             raise ConversationNotFoundError(f"Conversation {command.conversation_id} not found")
 
         conversation_id = conversation.id
-        telegram_chat_id = conversation.telegram_chat_id
+        chat_id = conversation.chat_id
         messages_saved = 0
         summary_updated = False
         if command.delivery_status == "delivered" and command.outgoing_messages:
@@ -490,8 +491,8 @@ class MemoryService:
         event = MemoryUpdatedEvent(
             conversation_id=conversation_id,
             channel=command.channel,
-            chat_id=telegram_chat_id,
-            account_id=conversation.telegram_account_id,
+            chat_id=chat_id,
+            account_id=conversation.account_id,
             messages_count=messages_saved,
             summary_updated=summary_updated,
         )
@@ -502,8 +503,8 @@ class MemoryService:
                 MaintainMemoryCommand(
                     conversation_id=conversation_id,
                     channel=command.channel,
-                    chat_id=telegram_chat_id,
-                    account_id=conversation.telegram_account_id,
+                    chat_id=chat_id,
+                    account_id=conversation.account_id,
                     current_sequence=current_sequence,
                 ).model_dump(mode="json"),
             )

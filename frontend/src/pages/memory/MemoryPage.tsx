@@ -46,7 +46,7 @@ function statusColor(status: string) {
 
 function userTitle(user: UserRead | undefined, conversation: ConversationRead) {
   if (!user) {
-    return conversation.user_id ? `User ${conversation.user_id.slice(0, 8)}…` : `Chat ${conversation.telegram_chat_id}`;
+    return conversation.user_id ? `User ${conversation.user_id.slice(0, 8)}…` : `Chat ${conversation.chat_id}`;
   }
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
   if (name) return name;
@@ -144,7 +144,8 @@ export function MemoryPage() {
     return items.filter((item) => {
       const user = item.user_id ? usersById.get(item.user_id) : undefined;
       const haystack = [
-        String(item.telegram_chat_id),
+        String(item.chat_id),
+        item.channel,
         item.status,
         item.id,
         item.user_id ?? '',
@@ -177,7 +178,7 @@ export function MemoryPage() {
     mutationFn: (values: ConversationCreate) =>
       MemoryService.createApiV1PublicMemoryConversationsPost({
         ...values,
-        telegram_chat_id: Number(values.telegram_chat_id),
+        chat_id: Number(values.chat_id),
       }),
     onSuccess: (created) => {
       setConversationOpen(false);
@@ -320,7 +321,9 @@ export function MemoryPage() {
                       }
                       description={
                         <Space direction="vertical" size={0}>
-                          <Typography.Text type="secondary">chat {item.telegram_chat_id}</Typography.Text>
+                          <Typography.Text type="secondary">
+                            {item.channel} {item.chat_id}
+                          </Typography.Text>
                           <Typography.Text type="secondary">{formatDate(item.last_activity_at)}</Typography.Text>
                         </Space>
                       }
@@ -346,7 +349,9 @@ export function MemoryPage() {
                       {userTitle(selected.user_id ? usersById.get(selected.user_id) : undefined, selected)}
                     </Typography.Text>
                     <Tag color={statusColor(selected.status)}>{selected.status}</Tag>
-                    <Typography.Text type="secondary">chat {selected.telegram_chat_id}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {selected.channel} {selected.chat_id}
+                    </Typography.Text>
                   </Space>
                 }
                 extra={
@@ -495,13 +500,16 @@ export function MemoryPage() {
         confirmLoading={createConversation.isPending}
       >
         <Form layout="vertical" form={conversationForm} onFinish={(values) => createConversation.mutate(values)}>
-          <Form.Item name="telegram_chat_id" label="Telegram chat ID" rules={[{ required: true }]}>
+          <Form.Item name="channel" label="Канал" initialValue="telegram" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="chat_id" label="Chat ID" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="user_id" label="User ID">
             <Input />
           </Form.Item>
-          <Form.Item name="telegram_account_id" label="Telegram account ID">
+          <Form.Item name="account_id" label="Account ID">
             <Input />
           </Form.Item>
           <Form.Item name="status" label="Status" initialValue="active">

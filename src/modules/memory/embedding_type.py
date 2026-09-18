@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import JSON, TypeDecorator
-from sqlalchemy.engine import Dialect
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Dialect
 
 
 class EmbeddingVector(TypeDecorator):

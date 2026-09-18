@@ -95,7 +95,7 @@ src/modules/<module>/
 | `users` | собеседники `(platform, platform_user_id)`; `notes` — подсказки для LLM | `/api/v1/public/users` |
 | `telegram_clients` | Telethon: аккаунты, QR/SMS, чаты, whitelist | `/api/v1/public/telegram` |
 | `instagram_clients` | instagrapi: аккаунты Direct, логин/2FA, poll inbox, whitelist | `/api/v1/public/instagram` |
-| `batching` | набор входящих в батч (in-memory), ключ `(telegram_account_id, telegram_chat_id)` | нет HTTP (только шина) |
+| `batching` | набор входящих в батч (in-memory), ключ `(channel, account_id, chat_id)` | нет HTTP (только шина) |
 | `memory` | диалоги, summary, вектор **тем**; conversation — пара аккаунт+чат; см. [docs/memory.md](docs/memory.md) | `/api/v1/public/memory` |
 | `behavior` | intake (отвечать/игнор) и delivery (text/voice), состояние жизни | нет HTTP (только шина) |
 | `llm` | чат через LangChain (Mistral или OpenAI-compatible, напр. OpenRouter); эмбеддинги локальные | нет HTTP (только шина) |

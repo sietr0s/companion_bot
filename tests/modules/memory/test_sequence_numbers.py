@@ -42,7 +42,7 @@ async def test_two_batches_get_distinct_sequence_numbers(db_session) -> None:
             messages=[{"text": "c"}],
         ),
     )
-    conv = await ConversationRepository().get_by_telegram_chat_id(db_session, chat_id)
+    conv = await ConversationRepository().get_by_chat_id(db_session, chat_id)
     assert conv is not None
     assert conv.last_sequence_number == 3
     result = await db_session.execute(select(Message).where(Message.conversation_id == conv.id))
@@ -73,11 +73,11 @@ async def test_two_accounts_same_chat_get_separate_conversations(db_session) -> 
         ),
     )
     assert first.conversation_id != second.conversation_id
-    conv_a = await ConversationRepository().get_by_telegram_chat_and_account(
-        db_session, chat_id, acc_a
+    conv_a = await ConversationRepository().get_by_channel_chat_account(
+        db_session, channel="telegram", chat_id=chat_id, account_id=acc_a
     )
-    conv_b = await ConversationRepository().get_by_telegram_chat_and_account(
-        db_session, chat_id, acc_b
+    conv_b = await ConversationRepository().get_by_channel_chat_account(
+        db_session, channel="telegram", chat_id=chat_id, account_id=acc_b
     )
     assert conv_a is not None and conv_b is not None
     assert conv_a.id != conv_b.id

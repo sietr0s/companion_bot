@@ -3,11 +3,17 @@
 import math
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.base.repository import BaseRepository
-from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
+from src.modules.memory.models import (
+    Conversation,
+    Message,
+    MessageBatch,
+    SummaryState,
+    VectorRecord,
+)
 
 
 def _cosine_distance(a: list[float], b: list[float]) -> float | None:
@@ -30,27 +36,80 @@ class ConversationRepository(BaseRepository[Conversation]):
     def __init__(self) -> None:
         super().__init__(Conversation)
 
-    async def get_by_telegram_chat_id(
-        self, session: AsyncSession, telegram_chat_id: int
+    async def get_by_chat_id(
+        self, session: AsyncSession, chat_id: int, *, channel: str = "telegram"
     ) -> Conversation | None:
         result = await session.execute(
-            select(Conversation).where(Conversation.telegram_chat_id == telegram_chat_id)
+            select(Conversation).where(
+                Conversation.channel == channel,
+                Conversation.chat_id == chat_id,
+            )
         )
+        return result.scalars().first()
+
+    async def get_by_channel_chat_account(
+        self,
+        session: AsyncSession,
+        *,
+        channel: str,
+        chat_id: int,
+        account_id: UUID | None,
+    ) -> Conversation | None:
+        stmt = select(Conversation).where(
+            Conversation.channel == channel,
+            Conversation.chat_id == chat_id,
+        )
+        if account_id is None:
+            stmt = stmt.where(Conversation.account_id.is_(None))
+        else:
+            stmt = stmt.where(Conversation.account_id == account_id)
+        result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_or_create(
         self,
         session: AsyncSession,
-        telegram_chat_id: int,
-        user_id: UUID,
+        *,
+        channel: str,
+        chat_id: int,
+        account_id: UUID | None = None,
+        user_id: UUID | None = None,
     ) -> Conversation:
-        conversation = await self.get_by_telegram_chat_id(session, telegram_chat_id)
+        conversation = await self.get_by_channel_chat_account(
+            session, channel=channel, chat_id=chat_id, account_id=account_id
+        )
         if conversation:
             return conversation
         return await self.create(
             session,
-            {"telegram_chat_id": telegram_chat_id, "user_id": user_id},
+            {
+                "channel": channel,
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "account_id": account_id,
+            },
         )
+
+    async def allocate_sequence_numbers(
+        self, session: AsyncSession, conversation_id: UUID, count: int
+    ) -> int:
+        """Atomically bump last_sequence_number; return the first new number."""
+        if count < 1:
+            raise ValueError("count must be >= 1")
+        result = await session.execute(
+            update(Conversation)
+            .where(Conversation.id == conversation_id)
+            .values(last_sequence_number=Conversation.last_sequence_number + count)
+            .returning(Conversation.last_sequence_number)
+        )
+        last = result.scalar_one()
+        await session.flush()
+        return last - count + 1
+
+
+class MessageBatchRepository(BaseRepository[MessageBatch]):
+    def __init__(self) -> None:
+        super().__init__(MessageBatch)
 
 
 class MessageRepository(BaseRepository[Message]):
@@ -73,7 +132,9 @@ class MessageRepository(BaseRepository[Message]):
 
     async def get_message_count(self, session: AsyncSession, conversation_id: UUID) -> int:
         result = await session.execute(
-            select(func.count()).select_from(Message).where(Message.conversation_id == conversation_id)
+            select(func.count())
+            .select_from(Message)
+            .where(Message.conversation_id == conversation_id)
         )
         return result.scalar() or 0
 
@@ -110,6 +171,10 @@ class MessageRepository(BaseRepository[Message]):
             .order_by(Message.sequence_number.asc())
         )
         return list(result.scalars().all())
+
+    async def delete_for_conversation(self, session: AsyncSession, conversation_id: UUID) -> None:
+        await session.execute(delete(Message).where(Message.conversation_id == conversation_id))
+        await session.flush()
 
 
 class SummaryStateRepository(BaseRepository[SummaryState]):
@@ -161,32 +226,43 @@ class VectorRecordRepository(BaseRepository[VectorRecord]):
     def __init__(self) -> None:
         super().__init__(VectorRecord)
 
+    async def list_for_conversation(
+        self, session: AsyncSession, conversation_id: UUID
+    ) -> list[VectorRecord]:
+        result = await session.execute(
+            select(VectorRecord)
+            .where(VectorRecord.conversation_id == conversation_id)
+            .order_by(VectorRecord.created_at.asc())
+        )
+        return list(result.scalars().all())
+
     async def search_similar(
         self,
         session: AsyncSession,
-        conversation_id: UUID,
+        conversation_id: UUID | None,
         query_embedding: list[float],
         top_k: int = 10,
+        *,
+        kind: str = "topic",
     ) -> list[VectorRecord]:
         dialect = session.bind.dialect.name if session.bind is not None else ""
+        want = "reference" if kind == "reference" else "topic"
+        filters = [
+            VectorRecord.embedding.is_not(None),
+            VectorRecord.kind == want,
+        ]
+        if conversation_id is not None:
+            filters.append(VectorRecord.conversation_id == conversation_id)
         if dialect == "postgresql":
             result = await session.execute(
                 select(VectorRecord)
-                .where(
-                    VectorRecord.conversation_id == conversation_id,
-                    VectorRecord.embedding.is_not(None),
-                )
+                .where(*filters)
                 .order_by(VectorRecord.embedding.cosine_distance(query_embedding))
                 .limit(top_k)
             )
             return list(result.scalars().all())
 
-        result = await session.execute(
-            select(VectorRecord).where(
-                VectorRecord.conversation_id == conversation_id,
-                VectorRecord.embedding.is_not(None),
-            )
-        )
+        result = await session.execute(select(VectorRecord).where(*filters))
         rows = list(result.scalars().all())
         scored: list[tuple[float, VectorRecord]] = []
         for row in rows:
@@ -198,3 +274,9 @@ class VectorRecordRepository(BaseRepository[VectorRecord]):
             scored.append((dist, row))
         scored.sort(key=lambda item: item[0])
         return [row for _, row in scored[:top_k]]
+
+    async def delete_for_conversation(self, session: AsyncSession, conversation_id: UUID) -> None:
+        await session.execute(
+            delete(VectorRecord).where(VectorRecord.conversation_id == conversation_id)
+        )
+        await session.flush()

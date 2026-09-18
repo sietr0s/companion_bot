@@ -113,7 +113,7 @@ class BehaviorService:
             session, command.account_id, now, self._rng
         )
         chat_row = await self._repo.get_or_create_chat(
-            session, command.account_id, command.chat_id
+            session, command.account_id, command.chat_id, channel=command.channel
         )
         life = LifeSnapshot(account.activity, account.mood)
         chat = ChatSnapshot(chat_row.consecutive_voice_out, chat_row.last_delivery)
@@ -158,4 +158,5 @@ class BehaviorService:
             command.account_id,
             command.chat_id,
             command.delivery,
+            channel=command.channel,
         )

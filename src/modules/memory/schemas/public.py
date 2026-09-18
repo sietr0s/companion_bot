@@ -1,7 +1,6 @@
 """Публичные HTTP-схемы модуля memory."""
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -9,15 +8,17 @@ from pydantic import BaseModel, ConfigDict
 
 class ConversationCreate(BaseModel):
     user_id: UUID | None = None
-    telegram_chat_id: int
-    telegram_account_id: UUID | None = None
+    channel: str = "telegram"
+    chat_id: int
+    account_id: UUID | None = None
     status: str = "active"
 
 
 class ConversationUpdate(BaseModel):
     status: str | None = None
-    telegram_chat_id: int | None = None
-    telegram_account_id: UUID | None = None
+    channel: str | None = None
+    chat_id: int | None = None
+    account_id: UUID | None = None
     last_sequence_number: int | None = None
 
 
@@ -26,8 +27,9 @@ class ConversationRead(BaseModel):
 
     id: UUID
     user_id: UUID | None = None
-    telegram_chat_id: int
-    telegram_account_id: UUID | None = None
+    channel: str
+    chat_id: int
+    account_id: UUID | None = None
     status: str
     last_sequence_number: int
     last_activity_at: datetime
@@ -89,14 +91,20 @@ class SummaryStateRead(BaseModel):
 class VectorRecordCreate(BaseModel):
     conversation_id: UUID
     text: str
+    kind: str = "topic"
     embedding: list[float] | None = None
-    extra_data: dict[str, Any] | None = None
+    seq_from: int = 0
+    seq_to: int = 0
+    partial: bool = False
 
 
 class VectorRecordUpdate(BaseModel):
     text: str | None = None
+    kind: str | None = None
     embedding: list[float] | None = None
-    extra_data: dict[str, Any] | None = None
+    seq_from: int | None = None
+    seq_to: int | None = None
+    partial: bool | None = None
 
 
 class VectorRecordRead(BaseModel):
@@ -105,7 +113,26 @@ class VectorRecordRead(BaseModel):
     id: UUID
     conversation_id: UUID
     text: str
+    kind: str = "topic"
     embedding: list[float] | None = None
-    extra_data: dict[str, Any] = {}
+    seq_from: int
+    seq_to: int
+    partial: bool = False
     created_at: datetime
     updated_at: datetime
+
+
+class VectorTopicRead(BaseModel):
+    id: UUID
+    conversation_id: UUID
+    title: str
+    seq_from: int
+    seq_to: int
+    message_count: int
+    kind: str = "topic"
+    partial: bool = False
+    created_at: datetime
+
+
+class VectorTopicDetailRead(VectorTopicRead):
+    messages: list[MemoryMessageRead] = []

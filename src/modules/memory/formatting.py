@@ -1,4 +1,4 @@
-"""Glue batch messages and assemble LLM context blocks."""
+"""Helpers for clustering/embed input. Reply prompts live in llm.formatting."""
 
 from __future__ import annotations
 
@@ -16,6 +16,18 @@ def glue_batch(messages: list, direction: str) -> str:
     return "\n".join(f"{label}: {msg}" for msg in message_texts(messages))
 
 
+def retrieve_pre_input(
+    recent: list[tuple[str, str]],
+    limit: int,
+) -> tuple[list[str], str]:
+    """Last `limit` turns as User/Assistant lines; fallback is last incoming texts."""
+    window = recent[-limit:] if limit > 0 else list(recent)
+    lines = [f"{_LABELS[direction]}: {text}" for direction, text in window]
+    last_user = [text for direction, text in window if direction == "incoming"]
+    fallback = (last_user[-1] if last_user else " ".join(text for _, text in window)).strip()
+    return lines, fallback
+
+
 def numbered_window(messages: list) -> str:
     """ORM messages: sequence_number|User|text."""
     lines = []
@@ -25,26 +37,35 @@ def numbered_window(messages: list) -> str:
     return "\n".join(lines)
 
 
-def format_topic_snippet(topic: str, messages: list[tuple[str, str]]) -> str:
-    body = "\n".join(f"{_LABELS[direction]}: {text}" for direction, text in messages)
+def format_topic_snippet(
+    topic: str,
+    messages: list[tuple[str, str]],
+    *,
+    max_messages: int | None = None,
+) -> str:
+    truncated = False
+    clipped = messages
+    if max_messages is not None and max_messages > 0 and len(messages) > max_messages:
+        clipped = messages[-max_messages:]
+        truncated = True
+    body = "\n".join(f"{_LABELS[direction]}: {text}" for direction, text in clipped)
+    if truncated:
+        body = "…\n" + body
     return f"{topic}\n{body}" if body else topic
 
 
-def assemble_context(
+def topic_embed_text(
+    title: str,
+    messages: list[tuple[str, str]],
     *,
-    summary: str | None,
-    retrieved: list[str],
-    recent: list[tuple[str, str]],
+    max_chars: int,
 ) -> str:
-    """recent is (direction, text). Omit empty Summary/Retrieved blocks."""
-    parts: list[str] = []
-    if summary:
-        parts.append(f"Summary: {summary}")
-    if retrieved:
-        lines = ["Retrieved:"] + [f"- {item}" for item in retrieved]
-        parts.append("\n".join(lines))
-    if recent:
-        parts.append(
-            "\n".join(f"{_LABELS[direction]}: {text}" for direction, text in recent)
-        )
-    return "\n".join(parts)
+    body = "\n".join(f"{_LABELS[direction]}: {text}" for direction, text in messages)
+    if max_chars > 0 and len(body) > max_chars:
+        body = body[:max_chars].rstrip()
+    title = (title or "").strip()
+    if not body:
+        return title
+    if not title:
+        return body
+    return f"{title}\n{body}"

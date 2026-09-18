@@ -1,5 +1,6 @@
 """Memory module bus event handlers."""
 
+import logging
 from typing import Any
 
 from src.bus.interface import MessageConsumer, MessageProducer
@@ -8,9 +9,12 @@ from src.core.database import create_async_session
 from src.modules.memory.dependencies import build_memory_service
 from src.modules.memory.schemas.events import (
     BuildContextCommand,
+    MaintainMemoryCommand,
     ProcessBatchCommand,
     UpdateMemoryCommand,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
@@ -33,3 +37,16 @@ def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> N
         command = UpdateMemoryCommand.model_validate(message)
         async with create_async_session() as session:
             await service.update_memory(session, command)
+
+    @consumer.subscribe(BusTopics.MEMORY_MAINTAIN)
+    async def handle_maintain(message: dict[str, Any]) -> None:
+        command = MaintainMemoryCommand.model_validate(message)
+        await _run_maintain(service, command)
+
+
+async def _run_maintain(service, command: MaintainMemoryCommand) -> None:
+    try:
+        async with create_async_session() as session:
+            await service.maintain_memory(session, command)
+    except Exception:
+        logger.exception("memory maintain failed conversation=%s", command.conversation_id)

@@ -132,7 +132,8 @@ async def test_process_batch_summarizes_when_threshold_met(db_session):
     conv = await conv_repo.create(
         db_session,
         {
-            "telegram_chat_id": 11,
+            "channel": "telegram",
+            "chat_id": 11,
             "user_id": uuid.uuid4(),
             "last_sequence_number": 49,
         },
@@ -244,7 +245,7 @@ def _vec(seed: float) -> list[float]:
 async def _seed_retrieve(db_session, telegram_chat_id: int, vector_rows: list[tuple[str, float]]):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": telegram_chat_id, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": telegram_chat_id, "user_id": uuid.uuid4()},
     )
     await insert_message(db_session, conv.id, text="recent", sequence_number=10)
     await SummaryStateRepository().create(
@@ -314,7 +315,7 @@ async def test_build_context_retrieves_reference_with_same_query(db_session):
     conv = await _seed_retrieve(db_session, 21, [("old A", 0.9)])
     other = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 210, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 210, "user_id": uuid.uuid4()},
     )
     await VectorRecordRepository().create(
         db_session,
@@ -348,7 +349,7 @@ async def test_build_context_retrieves_reference_with_same_query(db_session):
 async def test_build_context_retrieve_pre_uses_dialogue_window(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 88, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 88, "user_id": uuid.uuid4()},
     )
     await insert_message(db_session, conv.id, text="старое", sequence_number=1)
     await insert_message(
@@ -415,7 +416,7 @@ async def test_build_context_omits_retrieved_on_pre_failure(db_session):
 async def test_update_memory_does_not_index_small_outgoing(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 30, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 30, "user_id": uuid.uuid4()},
     )
     llm = RecordingLLM()
     svc = _service(llm)
@@ -445,7 +446,7 @@ async def test_update_memory_does_not_index_small_outgoing(db_session):
 async def test_update_memory_stores_voice_type(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 32, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 32, "user_id": uuid.uuid4()},
     )
     svc = _service(RecordingLLM())
     await svc.update_memory(
@@ -470,7 +471,7 @@ async def test_update_memory_stores_voice_type(db_session):
 async def test_build_context_hydrates_topic_messages(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 50, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 50, "user_id": uuid.uuid4()},
     )
     await insert_message(db_session, conv.id, text="сервер упал", sequence_number=1)
     await insert_message(
@@ -516,7 +517,7 @@ async def test_build_context_hydrates_topic_messages(db_session):
 async def test_update_memory_skips_when_not_delivered(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 31, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 31, "user_id": uuid.uuid4()},
     )
     llm = RecordingLLM()
     svc = _service(llm)
@@ -541,7 +542,7 @@ async def test_update_memory_skips_when_not_delivered(db_session):
 async def test_build_context_skips_topic_fully_in_recent(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 51, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 51, "user_id": uuid.uuid4()},
     )
     await insert_message(db_session, conv.id, text="сервер упал", sequence_number=1)
     await VectorRecordRepository().create(
@@ -571,7 +572,7 @@ async def test_build_context_skips_topic_fully_in_recent(db_session):
 async def test_build_context_dedups_same_title_by_id(db_session):
     conv = await ConversationRepository().create(
         db_session,
-        {"telegram_chat_id": 52, "user_id": uuid.uuid4()},
+        {"channel": "telegram", "chat_id": 52, "user_id": uuid.uuid4()},
     )
     await insert_message(db_session, conv.id, text="now", sequence_number=20)
     for seq_from, seq_to, body in ((1, 2, "first"), (3, 4, "second")):

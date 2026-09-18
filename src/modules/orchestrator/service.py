@@ -24,7 +24,7 @@ class OrchestratorService:
         self._background: set[asyncio.Task] = set()
 
     def register_all_handlers(self) -> None:
-        self._on_telegram_message()
+        self._on_incoming_message()
         self._on_stt()
         self._on_batch_ready()
         self._on_memory()
@@ -102,7 +102,7 @@ class OrchestratorService:
                 out.append(Message.model_validate(item))
         return out
 
-    def _on_telegram_message(self) -> None:
+    def _on_incoming_message(self) -> None:
         async def on_message_received(payload: dict) -> None:
             text = (payload.get("text") or "").strip()
             chat_id = int(payload["chat_id"])

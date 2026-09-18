@@ -5481,11 +5481,16 @@
             ],
             "title": "User Id"
           },
-          "telegram_chat_id": {
-            "type": "integer",
-            "title": "Telegram Chat Id"
+          "channel": {
+            "type": "string",
+            "title": "Channel",
+            "default": "telegram"
           },
-          "telegram_account_id": {
+          "chat_id": {
+            "type": "integer",
+            "title": "Chat Id"
+          },
+          "account_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -5495,7 +5500,7 @@
                 "type": "null"
               }
             ],
-            "title": "Telegram Account Id"
+            "title": "Account Id"
           },
           "status": {
             "type": "string",
@@ -5505,7 +5510,7 @@
         },
         "type": "object",
         "required": [
-          "telegram_chat_id"
+          "chat_id"
         ],
         "title": "ConversationCreate"
       },
@@ -5528,11 +5533,15 @@
             ],
             "title": "User Id"
           },
-          "telegram_chat_id": {
-            "type": "integer",
-            "title": "Telegram Chat Id"
+          "channel": {
+            "type": "string",
+            "title": "Channel"
           },
-          "telegram_account_id": {
+          "chat_id": {
+            "type": "integer",
+            "title": "Chat Id"
+          },
+          "account_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -5542,7 +5551,7 @@
                 "type": "null"
               }
             ],
-            "title": "Telegram Account Id"
+            "title": "Account Id"
           },
           "status": {
             "type": "string",
@@ -5571,7 +5580,8 @@
         "type": "object",
         "required": [
           "id",
-          "telegram_chat_id",
+          "channel",
+          "chat_id",
           "status",
           "last_sequence_number",
           "last_activity_at",
@@ -5593,7 +5603,18 @@
             ],
             "title": "Status"
           },
-          "telegram_chat_id": {
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "chat_id": {
             "anyOf": [
               {
                 "type": "integer"
@@ -5602,9 +5623,9 @@
                 "type": "null"
               }
             ],
-            "title": "Telegram Chat Id"
+            "title": "Chat Id"
           },
-          "telegram_account_id": {
+          "account_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -5614,7 +5635,7 @@
                 "type": "null"
               }
             ],
-            "title": "Telegram Account Id"
+            "title": "Account Id"
           },
           "last_sequence_number": {
             "anyOf": [

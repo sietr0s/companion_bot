@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-import random
-from datetime import datetime
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.behavior.life import roll_life, should_roll
 from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState
+
+if TYPE_CHECKING:
+    import random
+    from datetime import datetime
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class BehaviorRepository:
@@ -35,7 +39,8 @@ class BehaviorRepository:
                 updated_at=now,
             )
             session.add(row)
-            await session.flush()
+            await session.commit()
+            await session.refresh(row)
             return row
         if should_roll(row.activity_until, now):
             life, until = roll_life(now, rng)
@@ -43,7 +48,8 @@ class BehaviorRepository:
             row.mood = life.mood
             row.activity_until = until
             row.updated_at = now
-            await session.flush()
+            await session.commit()
+            await session.refresh(row)
         return row
 
     async def get_or_create_chat(
@@ -51,9 +57,12 @@ class BehaviorRepository:
         session: AsyncSession,
         account_id: UUID,
         chat_id: int,
+        *,
+        channel: str = "telegram",
     ) -> BehaviorChatState:
         result = await session.execute(
             select(BehaviorChatState).where(
+                BehaviorChatState.channel == channel,
                 BehaviorChatState.account_id == account_id,
                 BehaviorChatState.chat_id == chat_id,
             )
@@ -61,13 +70,15 @@ class BehaviorRepository:
         row = result.scalar_one_or_none()
         if row is None:
             row = BehaviorChatState(
+                channel=channel,
                 account_id=account_id,
                 chat_id=chat_id,
                 consecutive_voice_out=0,
                 last_delivery=None,
             )
             session.add(row)
-            await session.flush()
+            await session.commit()
+            await session.refresh(row)
         return row
 
     async def note_delivery(
@@ -75,13 +86,16 @@ class BehaviorRepository:
         session: AsyncSession,
         account_id: UUID,
         chat_id: int,
-        channel: str,
+        delivery: str,
+        *,
+        channel: str = "telegram",
     ) -> None:
-        row = await self.get_or_create_chat(session, account_id, chat_id)
-        if channel == "voice":
+        row = await self.get_or_create_chat(session, account_id, chat_id, channel=channel)
+        if delivery == "voice":
             row.consecutive_voice_out = (row.consecutive_voice_out or 0) + 1
             row.last_delivery = "voice"
         else:
             row.consecutive_voice_out = 0
             row.last_delivery = "text"
-        await session.flush()
+        await session.commit()
+        await session.refresh(row)
