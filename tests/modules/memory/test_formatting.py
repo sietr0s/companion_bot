@@ -11,11 +11,11 @@ def test_glue_incoming():
 
 
 def test_glue_incoming_message_objects():
-    from src.modules.memory.schemas.events import IncomingMessage
+    from src.domain.chat import Message
 
     assert (
         glue_batch(
-            [IncomingMessage(text="a"), IncomingMessage(text="b")],
+            [Message(text="a"), Message(text="b")],
             "incoming",
         )
         == "User: a\nUser: b"
@@ -23,12 +23,11 @@ def test_glue_incoming_message_objects():
 
 
 def test_glue_reply_message():
-    from src.domain.chat import QuotedMessage
-    from src.modules.memory.schemas.events import IncomingMessage
+    from src.domain.chat import Message, QuotedMessage
 
     glued = glue_batch(
         [
-            IncomingMessage(
+            Message(
                 text="ок",
                 reply_to=QuotedMessage(sender_name="Alice", text="план"),
             )

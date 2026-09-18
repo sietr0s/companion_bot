@@ -185,10 +185,9 @@ async def test_process_batch_skips_vector_if_cluster_fails(db_session):
             conversation_id=event.conversation_id,
             channel="telegram",
             chat_id=12,
-            current_sequence=event.sequence_numbers[-1],
+            current_sequence=await _last_sequence(db_session, event.conversation_id),
         ),
     )
-    assert event.sequence_numbers
     count = (await db_session.execute(select(func.count()).select_from(VectorRecord))).scalar()
     assert count == 0
 
@@ -222,7 +221,7 @@ async def test_process_batch_indexes_closed_topics(db_session):
             conversation_id=event.conversation_id,
             channel="telegram",
             chat_id=40,
-            current_sequence=event.sequence_numbers[-1],
+            current_sequence=await _last_sequence(db_session, event.conversation_id),
         ),
     )
     rows = (await db_session.execute(select(VectorRecord))).scalars().all()
@@ -632,7 +631,7 @@ async def test_cluster_retries_then_indexes(db_session):
             conversation_id=event.conversation_id,
             channel="telegram",
             chat_id=41,
-            current_sequence=event.sequence_numbers[-1],
+            current_sequence=await _last_sequence(db_session, event.conversation_id),
         ),
     )
     assert len(llm.cluster_calls) == 3
