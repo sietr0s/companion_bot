@@ -43,10 +43,15 @@ class TestBaseRepository:
         from src.modules.users.schemas.public import UserCreate
 
         user_repo = UserRepository()
-        data = UserCreate(telegram_id=1001, first_name="Тест", last_name="Тестов")
+        data = UserCreate(
+            platform="telegram",
+            platform_user_id="1001",
+            first_name="Тест",
+            last_name="Тестов",
+        )
         profile = await user_repo.create(db_session, data)
         assert profile.first_name == "Тест"
-        assert profile.telegram_id == 1001
+        assert profile.platform_user_id == "1001"
 
     async def test_get_by_id(self, db_session: AsyncSession, repo: AuthRepository):
         """Получение сущности по ID."""

@@ -1,4 +1,4 @@
-"""HTTP-схемы собеседников Telegram."""
+"""HTTP-схемы собеседников."""
 
 from datetime import datetime
 from uuid import UUID
@@ -7,7 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
-    telegram_id: int
+    platform: str = Field(max_length=32)
+    platform_user_id: str = Field(max_length=64)
     username: str | None = Field(None, max_length=100)
     first_name: str | None = Field(None, max_length=100)
     last_name: str | None = Field(None, max_length=100)
@@ -25,7 +26,8 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    telegram_id: int
+    platform: str
+    platform_user_id: str
     username: str | None = None
     first_name: str | None = None
     last_name: str | None = None

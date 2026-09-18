@@ -2,5 +2,5 @@
 
 ERROR_MESSAGES = {
     "not_found": "Собеседник не найден",
-    "already_exists": "Собеседник с таким telegram_id уже есть",
+    "already_exists": "Собеседник с такой парой platform + platform_user_id уже есть",
 }

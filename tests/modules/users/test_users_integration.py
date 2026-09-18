@@ -45,17 +45,23 @@ class TestUsersCRUD:
         user_headers = {"Authorization": f"Bearer {auth_token}"}
 
         forbidden = await test_client_with_db.get("/api/v1/public/users/", headers=user_headers)
-        assert forbidden.status_code == 401
+        assert forbidden.status_code == 403
 
         created = await test_client_with_db.post(
             "/api/v1/public/users/",
-            json={"telegram_id": 10001, "first_name": "Alice", "notes": "коротко"},
+            json={
+                "platform": "telegram",
+                "platform_user_id": "10001",
+                "first_name": "Alice",
+                "notes": "коротко",
+            },
             headers=admin,
         )
         assert created.status_code == 201, created.text
         body = created.json()
         user_id = body["id"]
-        assert body["telegram_id"] == 10001
+        assert body["platform"] == "telegram"
+        assert body["platform_user_id"] == "10001"
         assert body["notes"] == "коротко"
 
         listed = await test_client_with_db.get("/api/v1/public/users/", headers=admin)

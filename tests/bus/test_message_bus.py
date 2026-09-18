@@ -4,6 +4,8 @@
 
 import uuid
 
+import pytest
+
 from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
@@ -14,15 +16,15 @@ from src.modules.users.schemas.events import UserCreated, UserUpdated
 class TestBaseEvent:
     """Тесты базового класса событий."""
 
-    def test_user_registered_to_bus_dict(self):
-        """UserRegistered корректно сериализуется через to_bus_dict."""
+    def test_user_registered_model_dump_json(self):
+        """UserRegistered корректно сериализуется через model_dump(mode="json")."""
         auth_id = uuid.uuid4()
         event = UserRegistered(
             auth_id=auth_id,
             identifier="test@test.com",
             identifier_type="email",
         )
-        data = event.to_bus_dict()
+        data = event.model_dump(mode="json")
 
         assert data["event_name"] == "auth.event.user.registered"
         assert data["auth_id"] == str(auth_id)
@@ -30,32 +32,50 @@ class TestBaseEvent:
         assert data["identifier_type"] == "email"
         assert "timestamp" in data
 
-    def test_user_logged_in_to_bus_dict(self):
+    def test_user_logged_in_model_dump_json(self):
         event = UserLoggedIn(
             auth_id=uuid.uuid4(),
             identifier="a@b.com",
             identifier_type="email",
         )
-        data = event.to_bus_dict()
+        data = event.model_dump(mode="json")
         assert data["event_name"] == "auth.event.user.logged_in"
 
-    def test_user_created_to_bus_dict(self):
+    def test_user_created_model_dump_json(self):
         user_id = uuid.uuid4()
-        event = UserCreated(user_id=user_id, telegram_id=42)
-        data = event.to_bus_dict()
+        event = UserCreated(
+            user_id=user_id, platform="telegram", platform_user_id="42"
+        )
+        data = event.model_dump(mode="json")
         assert data["event_name"] == "users.event.created"
         assert data["user_id"] == str(user_id)
-        assert data["telegram_id"] == 42
+        assert data["platform_user_id"] == "42"
 
-    def test_user_updated_to_bus_dict(self):
+    def test_user_updated_model_dump_json(self):
         event = UserUpdated(
             user_id=uuid.uuid4(),
-            telegram_id=42,
+            platform="telegram",
+            platform_user_id="42",
             fields_updated=["first_name", "notes"],
         )
-        data = event.to_bus_dict()
+        data = event.model_dump(mode="json")
         assert data["event_name"] == "users.event.updated"
         assert data["fields_updated"] == ["first_name", "notes"]
+
+
+class TestBusFactory:
+    def test_get_producer_without_configure_raises(self):
+        import src.bus as bus_mod
+
+        bus_mod._producer = None
+        bus_mod._consumer = None
+        try:
+            with pytest.raises(RuntimeError, match="configure_bus"):
+                bus_mod.get_producer()
+        finally:
+            from src.bus import configure_bus, create_bus
+
+            configure_bus(*create_bus("in_memory"))
 
 
 class TestInMemoryProducer:
@@ -102,7 +122,7 @@ class TestInMemoryProducer:
     def test_multiple_subscribers(self):
         """Несколько обработчиков на один топик."""
         transport = InMemoryTransport()
-        producer = InMemoryProducer(transport)
+        InMemoryProducer(transport)
         consumer = InMemoryConsumer(transport)
 
         @consumer.subscribe("multi")
@@ -151,7 +171,7 @@ class TestInMemoryConsumer:
     async def test_start_stop(self):
         """Consumer запускает и корректно останавливает чтение очереди."""
         transport = InMemoryTransport()
-        producer = InMemoryProducer(transport)
+        InMemoryProducer(transport)
         consumer = InMemoryConsumer(transport)
         await consumer.start()
         await consumer.stop()

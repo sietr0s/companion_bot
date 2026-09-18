@@ -1,4 +1,4 @@
-"""Собеседники Telegram: upsert из входящих сообщений и CRUD."""
+"""Собеседники: upsert из входящих сообщений и CRUD."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,16 +15,17 @@ class UserService(BaseService[UserRepository, User]):
         super().__init__(repository)
         self.message_bus = message_bus
 
-    async def get_or_create_from_telegram(
+    async def get_or_create_from_platform(
         self,
         session: AsyncSession,
         *,
-        telegram_id: int,
+        platform: str,
+        platform_user_id: str,
         username: str | None = None,
         first_name: str | None = None,
         last_name: str | None = None,
     ) -> User:
-        existing = await self.repository.get_by_telegram_id(session, telegram_id)
+        existing = await self.repository.get_by_platform(session, platform, platform_user_id)
         incoming = {
             "username": username,
             "first_name": first_name,
@@ -33,14 +34,19 @@ class UserService(BaseService[UserRepository, User]):
         if existing is None:
             user = await self.repository.create(
                 session,
-                {"telegram_id": telegram_id, **incoming},
+                {
+                    "platform": platform,
+                    "platform_user_id": str(platform_user_id),
+                    **incoming,
+                },
             )
             await self.message_bus.publish(
                 BusTopics.USER_CREATED,
                 UserCreated(
                     user_id=user.id,
-                    telegram_id=user.telegram_id,
-                ).to_bus_dict(),
+                    platform=user.platform,
+                    platform_user_id=user.platform_user_id,
+                ).model_dump(mode="json"),
             )
             return user
 
@@ -56,8 +62,9 @@ class UserService(BaseService[UserRepository, User]):
             BusTopics.USER_UPDATED,
             UserUpdated(
                 user_id=user.id,
-                telegram_id=user.telegram_id,
+                platform=user.platform,
+                platform_user_id=user.platform_user_id,
                 fields_updated=list(changes),
-            ).to_bus_dict(),
+            ).model_dump(mode="json"),
         )
         return user
