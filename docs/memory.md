@@ -97,4 +97,4 @@
 
 ## Миграция
 
-Актуальная схема — Alembic `20260906_baseline`: `message_batches`, `messages.batch_id` NOT NULL, у `vector_records` колонки `seq_from` / `seq_to` / `partial`, unique conversation `(telegram_account_id, telegram_chat_id)`. Старые инкрементальные ревизии удалены. Нужен чистый volume: `docker compose down -v`.
+Актуальная схема — Alembic `20260918_baseline`: `create_all` по текущим моделям, unique conversation `(channel, account_id, chat_id)`. Инкрементальных ревизий нет. Нужен чистый volume: `docker compose down -v`.

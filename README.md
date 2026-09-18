@@ -20,7 +20,7 @@ ADMIN_PASSWORD=change-me
 
 Локально БД по умолчанию: `postgres:postgres@localhost:5432/modular_monolith`.
 
-Схема — одна baseline-ревизия `20260906_baseline` (`CREATE_TABLES_ON_STARTUP` по умолчанию `False`):
+Схема — одна baseline-ревизия `20260918_baseline` (`CREATE_TABLES_ON_STARTUP` по умолчанию `False`):
 
 ```bash
 alembic upgrade head
