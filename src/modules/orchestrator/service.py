@@ -3,22 +3,25 @@
 import asyncio
 import logging
 import random
-from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
-from src.domain.chat import Message, message_texts
+from src.domain.chat import Batch, ChatRef, ConversationContext, Message, message_texts
+from src.modules.behavior.report import format_decision_log
 from src.modules.orchestrator.schemas.state import OrchestratorState
 
 logger = logging.getLogger(__name__)
 
 
 class OrchestratorService:
-    def __init__(self, message_consumer: MessageConsumer, message_producer: MessageProducer) -> None:
+    def __init__(
+        self, message_consumer: MessageConsumer, message_producer: MessageProducer
+    ) -> None:
         self._consumer = message_consumer
         self._producer = message_producer
         self._states: dict[tuple[str, int], OrchestratorState] = {}
+        self._background: set[asyncio.Task] = set()
 
     def register_all_handlers(self) -> None:
         self._on_telegram_message()
@@ -30,21 +33,74 @@ class OrchestratorService:
         self._on_tts()
         self._on_message_sent()
 
-    @staticmethod
-    def _state_key(account_id: UUID | str | None, chat_id: int) -> tuple[str, int]:
-        return (str(account_id) if account_id else "", int(chat_id))
+    def _state_key(
+        self, channel: str, account_id: UUID | str | None, chat_id: int
+    ) -> tuple[str, str, int]:
+        return (channel, str(account_id) if account_id else "", int(chat_id))
 
-    def _state_for(self, account_id: UUID | str | None, chat_id: int) -> OrchestratorState:
-        key = self._state_key(account_id, chat_id)
+    def _state_for(
+        self, channel: str, account_id: UUID | str | None, chat_id: int
+    ) -> OrchestratorState:
+        key = self._state_key(channel, account_id, chat_id)
         state = self._states.get(key)
         if state is None:
             state = OrchestratorState(
                 correlation_id=uuid4(),
-                telegram_chat_id=chat_id,
-                telegram_account_id=UUID(str(account_id)) if account_id else None,
+                chat=ChatRef(
+                    channel=channel,  # type: ignore[arg-type]
+                    chat_id=int(chat_id),
+                    account_id=UUID(str(account_id)) if account_id else None,
+                ),
             )
             self._states[key] = state
         return state
+
+    @staticmethod
+    def _with_channel(payload: dict) -> dict:
+        if payload.get("channel") in ("telegram", "instagram"):
+            return payload
+        return {**payload, "channel": "telegram"}
+
+    def _state_from_payload(self, payload: dict) -> OrchestratorState:
+        ref = ChatRef.from_payload(self._with_channel(payload))
+        return self._state_for(ref.channel, ref.account_id, ref.chat_id)
+
+    def _merge_chat(self, state: OrchestratorState, payload: dict) -> ChatRef:
+        state.chat = state.chat.merged(ChatRef.from_payload(self._with_channel(payload)))
+        return state.chat
+
+    def _spawn(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def wait_background(self) -> None:
+        if self._background:
+            await asyncio.gather(*self._background, return_exceptions=True)
+
+    async def _deliver_voice(self, ids: dict, texts: list[str]) -> None:
+        await self._producer.publish(
+            BusTopics.TG_CHAT_ACTION,
+            {**ids, "action": "record_audio"},
+        )
+        await asyncio.sleep(random.uniform(1.0, 1.5))
+        joined = ". ".join(texts)
+        await self._producer.publish(
+            BusTopics.TTS_SYNTHESIZE,
+            {**ids, "text": joined},
+        )
+
+    @staticmethod
+    def _as_messages(raw: list) -> list[Message]:
+        out: list[Message] = []
+        for item in raw:
+            if isinstance(item, Message):
+                out.append(item)
+            elif isinstance(item, str):
+                out.append(Message(text=item, direction="incoming"))
+            else:
+                out.append(Message.model_validate(item))
+        return out
 
     def _on_telegram_message(self) -> None:
         @self._consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
@@ -60,10 +116,8 @@ class OrchestratorService:
             is_audio = bool(types & {"voice", "audio"})
             if not text and not is_audio:
                 return
-            state = self._state_for(account_id, chat_id)
-            if account_id:
-                state.telegram_account_id = UUID(str(account_id))
-            state.updated_at = datetime.now(UTC)
+            state = self._state_from_payload(payload)
+            self._merge_chat(state, payload)
             if not text and is_audio:
                 first = media[0]
                 fid = (
@@ -79,8 +133,7 @@ class OrchestratorService:
                 await self._producer.publish(
                     BusTopics.STT_TRANSCRIBE,
                     {
-                        "account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
-                        "chat_id": chat_id,
+                        **state.chat.adapter_ids(),
                         "message_id": payload.get("message_id"),
                         "telegram_file_id": fid,
                         "media_type": media_type or "voice",
@@ -89,7 +142,6 @@ class OrchestratorService:
                     },
                 )
                 return
-            state.current_message = text
             message = Message(
                 text=text,
                 message_type=(
@@ -104,8 +156,7 @@ class OrchestratorService:
             await self._producer.publish(
                 BusTopics.BATCH_ADD_MESSAGE,
                 {
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
+                    **state.chat.bus_ids(),
                     "message": message.model_dump(mode="json"),
                 },
             )
@@ -115,13 +166,11 @@ class OrchestratorService:
         async def on_transcribed(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
             account_id = payload.get("account_id")
-            state = self._state_for(account_id, chat_id)
-            if account_id:
-                state.telegram_account_id = UUID(str(account_id))
+            state = self._state_from_payload(payload)
+            self._merge_chat(state, payload)
             text = (payload.get("text") or "").strip()
             if not text:
                 return
-            state.current_message = text
             message = Message(
                 text=text,
                 message_type=payload.get("media_type") or "voice",
@@ -133,8 +182,7 @@ class OrchestratorService:
             await self._producer.publish(
                 BusTopics.BATCH_ADD_MESSAGE,
                 {
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
+                    **state.chat.bus_ids(),
                     "message": message.model_dump(mode="json"),
                 },
             )
@@ -146,67 +194,39 @@ class OrchestratorService:
     def _on_batch_ready(self) -> None:
         @self._consumer.subscribe(BusTopics.BATCH_READY)
         async def on_batch_ready(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            account_id = payload.get("telegram_account_id")
-            raw_messages = payload.get("messages") or []
-            state = self._state_for(account_id, chat_id)
-            if account_id:
-                state.telegram_account_id = UUID(str(account_id))
-            messages = [
-                {"text": item, "message_type": "text", "direction": "incoming"}
-                if isinstance(item, str)
-                else item
-                for item in raw_messages
-            ]
+            state = self._state_from_payload(payload)
+            batch = Batch.model_validate(payload["batch"])
+            state.batch_messages = batch
             await self._producer.publish(
                 BusTopics.MEMORY_PROCESS_BATCH,
-                {
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
-                    "conversation_id": str(state.conversation_id) if state.conversation_id else None,
-                    "messages": messages,
-                    "batch_id": payload.get("batch_id"),
-                },
+                {"batch": batch.model_dump(mode="json")},
             )
 
+    # TODO: Шаг хуйни
     def _on_memory(self) -> None:
         @self._consumer.subscribe(BusTopics.MEMORY_BATCH_PROCESSED)
         async def on_batch_processed(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            conversation_id = UUID(str(payload["conversation_id"]))
-            state = self._state_for(payload.get("telegram_account_id"), chat_id)
-            state.conversation_id = conversation_id
-            if payload.get("telegram_account_id"):
-                state.telegram_account_id = UUID(str(payload["telegram_account_id"]))
-            state.batch_messages = list(payload.get("messages") or [])
+            state = self._state_from_payload(payload)
+            chat = self._merge_chat(state, payload)
             await self._producer.publish(
                 BusTopics.MEMORY_BUILD_CONTEXT,
                 {
-                    "conversation_id": str(conversation_id),
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
-                    "batch_messages": payload.get("messages") or [],
+                    **chat.bus_ids(),
                     "last_n_messages": 50,
                 },
             )
 
         @self._consumer.subscribe(BusTopics.MEMORY_CONTEXT_BUILT)
         async def on_context_built(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            conversation_id = UUID(str(payload["conversation_id"]))
-            state = self._state_for(payload.get("telegram_account_id"), chat_id)
-            state.context = payload.get("context", "")
-            state.conversation_id = conversation_id
-            if payload.get("batch_messages"):
-                state.batch_messages = list(payload.get("batch_messages") or [])
+            state = self._state_from_payload(payload)
+            chat = self._merge_chat(state, payload)
+            state.memory = ConversationContext.from_payload(payload)
             await self._producer.publish(
                 BusTopics.BEHAVIOR_DECIDE_INTAKE,
                 {
-                    "conversation_id": str(conversation_id),
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
-                    "context": state.context,
-                    "batch_messages": state.batch_messages,
+                    **chat.bus_ids(),
+                    "batch_messages": state.batch_messages.model_dump(mode="json"),
+                    "recent": [m.model_dump(mode="json") for m in state.memory.recent_messages()],
                 },
             )
 
@@ -215,82 +235,81 @@ class OrchestratorService:
         async def on_intake_decided(payload: dict) -> None:
             chat_id = int(payload["telegram_chat_id"])
             account_id = payload.get("telegram_account_id")
-            state = self._state_for(account_id, chat_id)
+            state = self._state_from_payload(payload)
             if payload.get("action") == "ignore":
-                self._states.pop(self._state_key(account_id, chat_id), None)
+                logger.info(
+                    "\n%s",
+                    format_decision_log(
+                        stage="intake",
+                        action="ignore",
+                        text="",
+                        probabilities=payload.get("probabilities") or {},
+                        scores=payload.get("scores") or {},
+                        chat_id=chat_id,
+                        activity=payload.get("activity"),
+                        mood=payload.get("mood"),
+                    ),
+                )
+                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
                 return
             state.asked_voice = int(payload.get("asked_voice") or 0)
-            if not state.conversation_id:
+            if not state.chat.conversation_id:
                 return
             await self._producer.publish(
                 BusTopics.LLM_GENERATE_REPLY,
                 {
-                    "conversation_id": str(state.conversation_id),
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(state.telegram_account_id) if state.telegram_account_id else None,
-                    "context": state.context or "",
+                    **state.chat.bus_ids(),
+                    "summary": state.memory.summary,
+                    "retrieved": [t.model_dump(mode="json") for t in state.memory.retrieved],
+                    "references": [t.model_dump(mode="json") for t in state.memory.references],
+                    "recent": [b.model_dump(mode="json") for b in state.memory.recent],
                 },
             )
 
         @self._consumer.subscribe(BusTopics.BEHAVIOR_DELIVERY_DECIDED)
         async def on_delivery_decided(payload: dict) -> None:
-            chat_id = int(payload["telegram_chat_id"])
-            account_id = payload.get("telegram_account_id")
-            state = self._state_for(account_id, chat_id)
-            texts = list(state.reply_messages or [])
-            if not texts and payload.get("text"):
-                texts = [payload["text"]]
+            state = self._state_from_payload(payload)
+            texts = state.reply_messages
             state.pending_outgoing_texts = texts
-            action = payload.get("action") or "text"
-            state.pending_delivery = action
-            if not account_id:
+            action = payload.get("action")
+            if not action:
+                logger.error("delivery_decided without action chat=%s", payload["telegram_chat_id"])
                 return
+            state.pending_delivery = action
+            state.delivery_report = {
+                "action": action,
+                "text": "\n".join(texts),
+                "probabilities": payload.get("probabilities") or {},
+                "scores": payload.get("scores") or {},
+                "blocked": payload.get("block_reasons") or [],
+                "chat_id": payload["telegram_chat_id"],
+                "incoming_types": payload.get("incoming_types") or [],
+                "activity": payload.get("activity"),
+                "mood": payload.get("mood"),
+            }
+            if not payload.get("telegram_account_id"):
+                return
+            ids = state.chat.adapter_ids()
             if action == "voice":
-                try:
-                    await self._producer.publish(
-                        BusTopics.TG_CHAT_ACTION,
-                        {
-                            "account_id": str(account_id),
-                            "chat_id": chat_id,
-                            "action": "record_audio",
-                        },
-                    )
-                except Exception:
-                    logger.exception("record_audio action failed")
-                await asyncio.sleep(random.uniform(1.0, 1.5))
-                joined = ". ".join(texts)
-                await self._producer.publish(
-                    BusTopics.TTS_SYNTHESIZE,
-                    {
-                        "account_id": str(account_id),
-                        "chat_id": chat_id,
-                        "text": joined,
-                    },
-                )
+                self._spawn(self._deliver_voice(ids, texts))
                 return
             for text in texts:
                 await self._producer.publish(
                     BusTopics.TG_MESSAGE_SEND,
-                    {
-                        "account_id": str(account_id),
-                        "chat_id": chat_id,
-                        "text": text,
-                    },
+                    {**ids, "text": text},
                 )
 
     def _on_tts(self) -> None:
         @self._consumer.subscribe(BusTopics.TTS_SYNTHESIZED)
         async def on_synthesized(payload: dict) -> None:
-            chat_id = int(payload["chat_id"])
             account_id = payload.get("account_id") or payload.get("telegram_account_id")
-            state = self._states.get(self._state_key(account_id, chat_id))
+            state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             texts = list(state.pending_outgoing_texts) if state else []
             joined = ". ".join(texts) or payload.get("text") or ""
             await self._producer.publish(
                 BusTopics.TG_MESSAGE_SEND_VOICE,
                 {
-                    "account_id": str(account_id) if account_id else None,
-                    "chat_id": chat_id,
+                    **ChatRef.from_payload(self._with_channel(payload)).adapter_ids(),
                     "path": payload.get("path"),
                     "text": joined,
                 },
@@ -300,20 +319,24 @@ class OrchestratorService:
         async def on_skipped(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
             account_id = payload.get("account_id") or payload.get("telegram_account_id")
-            state = self._states.get(self._state_key(account_id, chat_id))
+            reason = payload.get("reason") or "unknown"
+            state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             texts = list(state.pending_outgoing_texts) if state else []
+            if not texts and payload.get("text"):
+                texts = [str(payload["text"])]
+            logger.warning("TTS failed, sending text fallback chat=%s reason=%s", chat_id, reason)
             if state:
                 state.pending_delivery = "text"
-            if not account_id:
+                if state.delivery_report is not None:
+                    state.delivery_report["action"] = "text"
+            if not account_id or not texts:
+                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
                 return
+            ids = ChatRef.from_payload(self._with_channel(payload)).adapter_ids()
             for text in texts:
                 await self._producer.publish(
                     BusTopics.TG_MESSAGE_SEND,
-                    {
-                        "account_id": str(account_id),
-                        "chat_id": chat_id,
-                        "text": text,
-                    },
+                    {**ids, "text": text},
                 )
 
     def _on_llm(self) -> None:
@@ -323,18 +346,17 @@ class OrchestratorService:
             account_id = payload.get("telegram_account_id")
             messages = payload.get("messages") or []
             texts = message_texts(messages)
-            state = self._state_for(account_id, chat_id)
+            state = self._state_from_payload(payload)
             state.reply_messages = list(texts)
-            if not account_id:
-                return
             await self._producer.publish(
                 BusTopics.BEHAVIOR_DECIDE_DELIVERY,
                 {
-                    "conversation_id": str(state.conversation_id) if state.conversation_id else None,
-                    "telegram_chat_id": chat_id,
-                    "telegram_account_id": str(account_id),
+                    **state.chat.bus_ids(),
                     "messages": messages,
-                    "batch_messages": state.batch_messages,
+                    "batch_messages": [
+                        m.model_dump(mode="json")
+                        for m in (state.batch_messages.messages if state.batch_messages else [])
+                    ],
                     "asked_voice": state.asked_voice,
                 },
             )
@@ -345,7 +367,7 @@ class OrchestratorService:
             if chat_id is None:
                 return
             account_id = payload.get("telegram_account_id")
-            self._states.pop(self._state_key(account_id, int(chat_id)), None)
+            self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
 
     def _on_message_sent(self) -> None:
         @self._consumer.subscribe(BusTopics.TG_MESSAGE_SENT)
@@ -353,8 +375,8 @@ class OrchestratorService:
             chat_id = int(payload["chat_id"])
             account_id = payload.get("telegram_account_id") or payload.get("account_id")
             text = payload.get("text")
-            state = self._states.get(self._state_key(account_id, chat_id))
-            if not state or not state.conversation_id:
+            state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
+            if not state or not state.chat.conversation_id:
                 return
             outgoing = [text] if text else list(state.reply_messages or [])
             if not outgoing:
@@ -366,21 +388,41 @@ class OrchestratorService:
             await self._producer.publish(
                 BusTopics.MEMORY_UPDATE,
                 {
-                    "conversation_id": str(state.conversation_id),
-                    "telegram_chat_id": chat_id,
+                    **state.chat.bus_ids(),
                     "outgoing_messages": outgoing,
                     "delivery_status": "delivered" if payload.get("success", True) else "failed",
+                    "message_type": "voice" if payload.get("message_type") == "voice" else "text",
                 },
             )
             if payload.get("success", True) and account_id:
-                channel = "voice" if payload.get("message_type") == "voice" else "text"
+                delivery = "voice" if payload.get("message_type") == "voice" else "text"
                 await self._producer.publish(
                     BusTopics.BEHAVIOR_NOTE_DELIVERY,
                     {
-                        "telegram_account_id": str(account_id),
-                        "telegram_chat_id": chat_id,
-                        "channel": channel,
+                        **state.chat.bus_ids(),
+                        "delivery": delivery,
                     },
                 )
             if not state.reply_messages:
-                self._states.pop(self._state_key(account_id, chat_id), None)
+                report = state.delivery_report or {}
+                sent_as = (
+                    "voice"
+                    if payload.get("message_type") == "voice"
+                    else report.get("action") or "text"
+                )
+                logger.info(
+                    "\n%s",
+                    format_decision_log(
+                        stage="delivery",
+                        action=sent_as,
+                        text=report.get("text") or (text or ""),
+                        probabilities=report.get("probabilities") or {},
+                        scores=report.get("scores") or {},
+                        blocked=report.get("blocked") or [],
+                        chat_id=chat_id,
+                        activity=report.get("activity"),
+                        mood=report.get("mood"),
+                        incoming_types=report.get("incoming_types") or [],
+                    ),
+                )
+                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)

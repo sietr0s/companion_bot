@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
-from src.domain.chat import QuotedMessage
+from src.domain.chat import Person, QuotedMessage
+
+Sender = Person
 
 
 class Media(BaseModel):
@@ -15,19 +17,13 @@ class Media(BaseModel):
     type: str
 
 
-class Sender(BaseModel):
-    sender_id: int | None = None
-    username: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
-
-
 class TgMessageReceived(BaseEvent):
     event_name: str = BusTopics.TG_MESSAGE_RECEIVED
+    channel: str = "telegram"
     account_id: UUID
     chat_id: int
     message_id: int
-    sender: Sender
+    sender: Person
     text: str | None = None
     media: list[Media] = Field(default_factory=list)
     date: datetime | None = None

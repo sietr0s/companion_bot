@@ -121,9 +121,7 @@ async def test_multi_bubble_send_persists_each_line_once() -> None:
     await _drain(transport)
     await consumer.stop()
 
-    memory_updates = [
-        payload for topic, payload in recorded if topic == BusTopics.MEMORY_UPDATE
-    ]
+    memory_updates = [payload for topic, payload in recorded if topic == BusTopics.MEMORY_UPDATE]
     outgoing = [msg for payload in memory_updates for msg in payload["outgoing_messages"]]
     assert outgoing == ["one", "two"]
 
@@ -163,16 +161,15 @@ async def test_state_is_isolated_per_account_and_chat() -> None:
     await _drain(transport)
     await consumer.stop()
 
-    key_a = svc._state_key(acc_a, chat_id)
-    key_b = svc._state_key(acc_b, chat_id)
+    key_a = svc._state_key("telegram", acc_a, chat_id)
+    key_b = svc._state_key("telegram", acc_b, chat_id)
     assert key_a != key_b
-    assert svc._states[key_a].conversation_id != svc._states[key_b].conversation_id
+    assert svc._states[key_a].chat.conversation_id != svc._states[key_b].chat.conversation_id
 
 
 @pytest.mark.asyncio
 async def test_ignore_skips_llm(monkeypatch) -> None:
     monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AsyncMock())
-    from unittest.mock import AsyncMock as AM
 
     transport = InMemoryTransport()
     producer = InMemoryProducer(transport)
@@ -217,9 +214,7 @@ async def test_ignore_skips_llm(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_voice_delivery_publishes_tts(monkeypatch) -> None:
-    from unittest.mock import AsyncMock as AM
-
-    monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AM())
+    monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AsyncMock())
     transport = InMemoryTransport()
     producer = InMemoryProducer(transport)
     consumer = InMemoryConsumer(transport)
@@ -266,16 +261,16 @@ async def test_voice_delivery_publishes_tts(monkeypatch) -> None:
         },
     )
     await _drain(transport)
+    await svc.wait_background()
+    await _drain(transport)
     await consumer.stop()
     assert any(t == BusTopics.TTS_SYNTHESIZE for t, _ in recorded)
     assert not any(t == BusTopics.TG_MESSAGE_SEND for t, _ in recorded)
 
 
 @pytest.mark.asyncio
-async def test_tts_skip_sends_text(monkeypatch) -> None:
-    from unittest.mock import AsyncMock as AM
-
-    monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AM())
+async def test_tts_skip_sends_text_fallback(monkeypatch) -> None:
+    monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AsyncMock())
     transport = InMemoryTransport()
     producer = InMemoryProducer(transport)
     consumer = InMemoryConsumer(transport)
@@ -311,10 +306,15 @@ async def test_tts_skip_sends_text(monkeypatch) -> None:
         },
     )
     await _drain(transport)
+    await svc.wait_background()
+    await _drain(transport)
     await producer.publish(
         BusTopics.TTS_SYNTHESIZE_SKIPPED,
         {"account_id": str(account_id), "chat_id": chat_id, "reason": "stub"},
     )
     await _drain(transport)
     await consumer.stop()
-    assert any(t == BusTopics.TG_MESSAGE_SEND for t, _ in recorded)
+    sent = [m for t, m in recorded if t == BusTopics.TG_MESSAGE_SEND]
+    assert len(sent) == 1
+    assert sent[0]["text"] == "fallback"
+    assert not any(t == BusTopics.TG_MESSAGE_SEND_VOICE for t, _ in recorded)

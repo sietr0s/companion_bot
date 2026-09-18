@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import logging
 import random
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
+from src.core.exceptions import ValidationError
 from src.domain.chat import Message, message_texts
-from src.modules.behavior.classifiers import IntakeClassifier
+from src.modules.behavior.classifiers import format_intake_window
 from src.modules.behavior.engine import (
     ChatSnapshot,
     DecisionContext,
@@ -19,7 +17,6 @@ from src.modules.behavior.engine import (
     decide,
 )
 from src.modules.behavior.policies import DELIVERY_POLICY, INTAKE_POLICY
-from src.modules.behavior.repository import BehaviorRepository
 from src.modules.behavior.schemas.events import (
     DecideDeliveryCommand,
     DecideIntakeCommand,
@@ -29,12 +26,20 @@ from src.modules.behavior.schemas.events import (
 )
 from src.modules.behavior.scoring import detect_emotion, strip_emotion_suffix
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from src.bus.interface import MessageProducer
+    from src.modules.behavior.classifiers import IntakeClassifier
+    from src.modules.behavior.repository import BehaviorRepository
 
 
 def _incoming_blob(messages: list[Message]) -> tuple[str, tuple[str, ...]]:
     texts = message_texts(messages)
-    types = tuple((m.message_type if isinstance(m, Message) else m.get("message_type", "text")) for m in messages)
+    types = tuple(
+        (m.message_type if isinstance(m, Message) else m.get("message_type", "text"))
+        for m in messages
+    )
     return " ".join(texts), types
 
 
@@ -54,37 +59,16 @@ class BehaviorService:
     async def decide_intake(
         self, session: AsyncSession, command: DecideIntakeCommand
     ) -> IntakeDecidedEvent:
-        incoming, _ = _incoming_blob(command.batch_messages)
+        incoming, _ = _incoming_blob(command.batch_messages.messages)
         now = datetime.now(UTC)
-        needs_reply, asked_voice = 1, 0
-        life = LifeSnapshot()
         if command.telegram_account_id is None:
-            event = IntakeDecidedEvent(
-                conversation_id=command.conversation_id,
-                telegram_account_id=None,
-                telegram_chat_id=command.telegram_chat_id,
-                action="respond",
-                scores={"respond": 50.0, "ignore": 0.0},
-                activity=None,
-                mood=None,
-                needs_reply=1,
-                asked_voice=0,
-            )
-            await self._producer.publish(BusTopics.BEHAVIOR_INTAKE_DECIDED, event.to_bus_dict())
-            return event
-        try:
-            needs_reply, asked_voice = await self._classifier.classify(incoming)
-        except Exception:
-            logger.exception("intake classify failed")
-            needs_reply, asked_voice = 1, 0
-        try:
-            row = await self._repo.get_or_create_account(
-                session, command.telegram_account_id, now, self._rng
-            )
-            life = LifeSnapshot(row.activity, row.mood)
-        except Exception:
-            logger.exception("load account life failed")
-            await session.rollback()
+            raise ValidationError("telegram_account_id is required for intake")
+        window = format_intake_window(command.recent, command.batch_messages)
+        needs_reply, asked_voice = await self._classifier.classify(window)
+        row = await self._repo.get_or_create_account(
+            session, command.telegram_account_id, now, self._rng
+        )
+        life = LifeSnapshot(row.activity, row.mood)
         ctx = DecisionContext(
             incoming_text=incoming,
             life=life,
@@ -97,16 +81,20 @@ class BehaviorService:
         scores = decision.scores
         event = IntakeDecidedEvent(
             conversation_id=command.conversation_id,
-            telegram_account_id=command.telegram_account_id,
-            telegram_chat_id=command.telegram_chat_id,
+            channel=command.channel,
+            account_id=command.account_id,
+            chat_id=command.chat_id,
             action=action,
             scores=scores,
+            probabilities=decision.probabilities,
             activity=life.activity,
             mood=life.mood,
             needs_reply=needs_reply,
             asked_voice=asked_voice,
         )
-        await self._producer.publish(BusTopics.BEHAVIOR_INTAKE_DECIDED, event.to_bus_dict())
+        await self._producer.publish(
+            BusTopics.BEHAVIOR_INTAKE_DECIDED, event.model_dump(mode="json")
+        )
         return event
 
     async def decide_delivery(
@@ -115,33 +103,20 @@ class BehaviorService:
         incoming, types = _incoming_blob(command.batch_messages)
         joined = ". ".join(message_texts(command.messages))
         body, suffix_emotion = strip_emotion_suffix(joined)
-        emotion = detect_emotion(body, command.emotion if command.emotion is not None else suffix_emotion)
+        emotion = detect_emotion(
+            body, command.emotion if command.emotion is not None else suffix_emotion
+        )
         now = datetime.now(UTC)
         if command.telegram_account_id is None:
-            event = DeliveryDecidedEvent(
-                conversation_id=command.conversation_id,
-                telegram_account_id=None,
-                telegram_chat_id=command.telegram_chat_id,
-                action="text",
-                text=body,
-                scores={"text": 1.0},
-            )
-            await self._producer.publish(BusTopics.BEHAVIOR_DELIVERY_DECIDED, event.to_bus_dict())
-            return event
-        life = LifeSnapshot()
-        chat = ChatSnapshot()
-        try:
-            account = await self._repo.get_or_create_account(
-                session, command.telegram_account_id, now, self._rng
-            )
-            chat_row = await self._repo.get_or_create_chat(
-                session, command.telegram_account_id, command.telegram_chat_id
-            )
-            life = LifeSnapshot(account.activity, account.mood)
-            chat = ChatSnapshot(chat_row.consecutive_voice_out, chat_row.last_delivery)
-        except Exception:
-            logger.exception("load delivery state failed")
-            await session.rollback()
+            raise ValidationError("telegram_account_id is required for delivery")
+        account = await self._repo.get_or_create_account(
+            session, command.telegram_account_id, now, self._rng
+        )
+        chat_row = await self._repo.get_or_create_chat(
+            session, command.telegram_account_id, command.telegram_chat_id
+        )
+        life = LifeSnapshot(account.activity, account.mood)
+        chat = ChatSnapshot(chat_row.consecutive_voice_out, chat_row.last_delivery)
         ctx = DecisionContext(
             incoming_text=incoming,
             incoming_types=types,
@@ -158,25 +133,28 @@ class BehaviorService:
         blocked = decision.blocked
         event = DeliveryDecidedEvent(
             conversation_id=command.conversation_id,
-            telegram_account_id=command.telegram_account_id,
-            telegram_chat_id=command.telegram_chat_id,
+            channel=command.channel,
+            account_id=command.account_id,
+            chat_id=command.chat_id,
             action=action,
             text=body,
             scores=scores,
+            probabilities=decision.probabilities,
             blocked_voice="voice" in blocked,
             block_reasons=list(blocked.values()),
+            incoming_types=list(types),
+            activity=life.activity,
+            mood=life.mood,
         )
-        await self._producer.publish(BusTopics.BEHAVIOR_DELIVERY_DECIDED, event.to_bus_dict())
+        await self._producer.publish(
+            BusTopics.BEHAVIOR_DELIVERY_DECIDED, event.model_dump(mode="json")
+        )
         return event
 
     async def note_delivery(self, session: AsyncSession, command: NoteDeliveryCommand) -> None:
-        try:
-            await self._repo.note_delivery(
-                session,
-                command.telegram_account_id,
-                command.telegram_chat_id,
-                command.channel,
-            )
-        except Exception:
-            logger.exception("note_delivery failed")
-            await session.rollback()
+        await self._repo.note_delivery(
+            session,
+            command.telegram_account_id,
+            command.telegram_chat_id,
+            command.delivery,
+        )

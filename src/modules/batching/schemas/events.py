@@ -2,32 +2,25 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
-from src.domain.chat import Message
+from src.domain.chat import Batch, ChatRef, Message
 
 
-class AddMessageCommand(BaseModel):
-    telegram_chat_id: int
-    telegram_account_id: UUID
+class AddMessageCommand(ChatRef):
     message: Message
     sequence_number: int | None = None
 
 
-class BatchReadyEvent(BaseEvent):
+class BatchReadyEvent(ChatRef, BaseEvent):
     event_name: str = BusTopics.BATCH_READY
-    batch_id: UUID
-    telegram_chat_id: int
-    telegram_account_id: UUID
-    messages: list[Message] = Field(default_factory=list)
-    message_count: int = 0
+    batch: Batch
 
 
-class BatchCompletedEvent(BaseEvent):
+class BatchCompletedEvent(ChatRef, BaseEvent):
     event_name: str = BusTopics.BATCH_COMPLETED
     batch_id: UUID
-    telegram_chat_id: int
     success: bool
     error_message: str | None = None

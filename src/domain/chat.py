@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 Channel = Literal["telegram", "instagram"]
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 NEXT_MESSAGE_TAG = "<next_message>"
 _NEXT_MESSAGE_RE = re.compile(r"</?next_message\s*>", re.IGNORECASE)
@@ -18,10 +18,23 @@ _NEXT_MESSAGE_RE = re.compile(r"</?next_message\s*>", re.IGNORECASE)
 class ChatRef(BaseModel):
     """Identity of a companion chat (Telegram or Instagram)."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     channel: Channel
-    chat_id: int
-    account_id: UUID | None = None
+    chat_id: int = Field(validation_alias=AliasChoices("chat_id", "telegram_chat_id"))
+    account_id: UUID | None = Field(
+        default=None,
+        validation_alias=AliasChoices("account_id", "telegram_account_id"),
+    )
     conversation_id: UUID | None = None
+
+    @property
+    def telegram_chat_id(self) -> int:
+        return self.chat_id
+
+    @property
+    def telegram_account_id(self) -> UUID | None:
+        return self.account_id
 
     def state_key(self) -> tuple[str, str, int]:
         return (
