@@ -151,7 +151,7 @@ class OrchestratorService:
                 direction="incoming",
                 reply_to=payload.get("reply_to"),
                 forward_from=payload.get("forward_from"),
-                telegram_message_id=payload.get("message_id"),
+                message_id=payload.get("message_id"),
             )
             await self._producer.publish(
                 BusTopics.BATCH_ADD_MESSAGE,
@@ -177,7 +177,7 @@ class OrchestratorService:
                 direction="incoming",
                 reply_to=payload.get("reply_to"),
                 forward_from=payload.get("forward_from"),
-                telegram_message_id=payload.get("message_id"),
+                message_id=payload.get("message_id"),
             )
             await self._producer.publish(
                 BusTopics.BATCH_ADD_MESSAGE,

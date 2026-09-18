@@ -104,12 +104,17 @@ class QuotedMessage(BaseModel):
 
 
 class Message(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     text: str | None = None
     message_type: str = "text"
     direction: str = "incoming"
     reply_to: QuotedMessage | None = None
     forward_from: QuotedMessage | None = None
-    telegram_message_id: int | None = None
+    message_id: str | int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("message_id", "telegram_message_id"),
+    )
 
 
 class Batch(ChatRef):
