@@ -4,6 +4,7 @@
 Асинхронный движок и сессия — основа для всех операций с БД.
 Используем asyncpg как драйвер — он быстрее psycopg2 для I/O-bound нагрузки.
 """
+
 import logging
 from collections.abc import AsyncGenerator
 
@@ -45,7 +46,7 @@ async def init_db() -> None:
     _engine = create_async_engine(
         settings.DATABASE_URL,
         pool_size=settings.DATABASE_POOL_SIZE,
-        echo=settings.DEBUG,
+        echo=False,
     )
     _async_session_factory = async_sessionmaker(
         _engine,
@@ -58,49 +59,39 @@ async def init_db() -> None:
             if conn.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
-            if conn.dialect.name == "postgresql":
-                await conn.execute(
-                    text(
-                        """
-                        DO $$
-                        BEGIN
-                            IF EXISTS (
-                                SELECT 1
-                                FROM information_schema.columns
-                                WHERE table_name = 'conversations'
-                                  AND column_name = 'last_activity_at'
-                                  AND data_type = 'timestamp without time zone'
-                            ) THEN
-                                ALTER TABLE conversations
-                                ALTER COLUMN last_activity_at TYPE TIMESTAMP WITH TIME ZONE
-                                USING last_activity_at AT TIME ZONE 'UTC';
-                            END IF;
-                        END $$;
-                        """
-                    )
-                )
-                await conn.execute(
-                    text(
-                        """
-                        ALTER TABLE summary_states
-                        ADD COLUMN IF NOT EXISTS cluster_checkpoint INTEGER NOT NULL DEFAULT 0
-                        """
-                    )
-                )
         logger.info("Таблицы БД созданы")
+
+
+async def dispose_db() -> None:
+    global _engine, _async_session_factory
+    if _engine is not None:
+        await _engine.dispose()
+    _engine = None
+    _async_session_factory = None
 
 
 def _load_models() -> None:
     """Импортировать ORM-модели, чтобы они попали в Base.metadata."""
     from src.modules.auth.models import Auth  # noqa: F401
-    from src.modules.batching.models import Batch, BatchMessage  # noqa: F401
-    from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord  # noqa: F401
+    from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState  # noqa: F401
+    from src.modules.memory.models import (  # noqa: F401
+        Conversation,
+        Message,
+        MessageBatch,
+        SummaryState,
+        VectorRecord,
+    )
     from src.modules.telegram_clients.models import (  # noqa: F401
         TelegramAccount,
         TelegramChatState,
         TelegramSettings,
     )
     from src.modules.users.models import User  # noqa: F401
+    from src.modules.instagram_clients.models import (  # noqa: F401
+        InstagramAccount,
+        InstagramChatState,
+        InstagramSettings,
+    )
 
 
 _load_models()
