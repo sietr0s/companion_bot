@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 from src.bus import configure_bus
 from src.modules.auth.dependencies import get_auth_repository, get_auth_service
+from src.modules.instagram_clients.dependencies import get_instagram_account_repository
 from src.modules.telegram_clients.dependencies import (
     get_telegram_account_repository,
     get_telegram_settings_repository,
@@ -68,4 +69,10 @@ class TestTelegramDependencies:
     def test_get_telegram_settings_repository(self):
         """Репозиторий настроек Telegram создаётся без параметров."""
         repo = get_telegram_settings_repository()
+        assert repo is not None
+
+
+class TestInstagramDependencies:
+    def test_get_instagram_account_repository(self):
+        repo = get_instagram_account_repository()
         assert repo is not None

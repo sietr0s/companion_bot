@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from src.bus import configure_bus, create_bus
 from src.bus.interface import MessageConsumer, MessageProducer
+from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
+from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
 from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.dependencies import (
     configure_telegram_client_manager,
@@ -18,6 +20,7 @@ class ApplicationContainer:
     consumer: MessageConsumer
     telegram_client_manager: TelegramClientManager
     telegram_service: TelegramAccountService
+    instagram_client_manager: InstagramClientManager
 
     @classmethod
     def create(cls, message_bus: str | None = None) -> "ApplicationContainer":
@@ -25,6 +28,8 @@ class ApplicationContainer:
         configure_bus(producer, consumer)
         client_manager = TelegramClientManager()
         configure_telegram_client_manager(client_manager)
+        ig_manager = InstagramClientManager()
+        configure_instagram_client_manager(ig_manager)
         telegram_service = get_telegram_client_service_factory(
             client_manager=client_manager,
         )
@@ -33,4 +38,5 @@ class ApplicationContainer:
             consumer=consumer,
             telegram_client_manager=client_manager,
             telegram_service=telegram_service,
+            instagram_client_manager=ig_manager,
         )

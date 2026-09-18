@@ -23,6 +23,7 @@ from src.modules.memory.handlers import register_handlers as register_memory_han
 from src.modules.memory.routers import public_router as memory_router
 from src.modules.orchestrator.handlers import register_handlers as register_orchestrator_handlers
 from src.modules.stt.handlers import register_handlers as register_stt_handlers
+from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
 from src.modules.telegram_clients.dependencies import configure_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
 from src.modules.instagram_clients.routers import public_router as ig_router
@@ -118,6 +119,7 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     container = container or ApplicationContainer.create()
     configure_bus(container.producer, container.consumer)
     configure_telegram_client_manager(container.telegram_client_manager)
+    configure_instagram_client_manager(container.instagram_client_manager)
     _register_bus_handlers(container)
 
     application = FastAPI(

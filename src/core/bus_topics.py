@@ -25,6 +25,12 @@ class BusTopics:
     TG_MESSAGE_SEND_VOICE: str = "telegram_clients.command.send_voice"
     TG_CHAT_ACTION: str = "telegram_clients.command.chat_action"
 
+    IG_MESSAGE_RECEIVED: str = "instagram_clients.event.message.received"
+    IG_MESSAGE_SENT: str = "instagram_clients.event.message.sent"
+    IG_ACCOUNT_CONNECTED: str = "instagram_clients.event.account.connected"
+    IG_ACCOUNT_DISCONNECTED: str = "instagram_clients.event.account.disconnected"
+    IG_MESSAGE_SEND: str = "instagram_clients.command.send_message"
+
     BATCH_ADD_MESSAGE: str = "batching.command.add_message"
     BATCH_READY: str = "batching.event.batch.ready"
     BATCH_COMPLETED: str = "batching.event.batch.completed"
@@ -32,6 +38,7 @@ class BusTopics:
     MEMORY_PROCESS_BATCH: str = "memory.command.process_batch"
     MEMORY_BUILD_CONTEXT: str = "memory.command.build_context"
     MEMORY_UPDATE: str = "memory.command.update_memory"
+    MEMORY_MAINTAIN: str = "memory.command.maintain"
     MEMORY_BATCH_PROCESSED: str = "memory.event.batch.processed"
     MEMORY_CONTEXT_BUILT: str = "memory.event.context.built"
     MEMORY_UPDATED: str = "memory.event.memory.updated"

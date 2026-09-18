@@ -1,6 +1,8 @@
-"""DI for instagram_clients HTTP. Manager configure arrives in a later task."""
+"""DI for instagram_clients HTTP and InstagramClientManager."""
 
 from fastapi import Depends
+
+from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
 
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
@@ -12,6 +14,23 @@ from src.modules.instagram_clients.services import (
     InstagramChatStateService,
     InstagramSettingsService,
 )
+
+
+_instagram_client_manager: InstagramClientManager | None = None
+
+
+def configure_instagram_client_manager(manager: InstagramClientManager) -> None:
+    global _instagram_client_manager
+    _instagram_client_manager = manager
+
+
+def get_instagram_client_manager() -> InstagramClientManager:
+    if _instagram_client_manager is None:
+        raise RuntimeError(
+            "InstagramClientManager не сконфигурирован. "
+            "Создайте ApplicationContainer или вызовите configure_instagram_client_manager."
+        )
+    return _instagram_client_manager
 
 
 def get_instagram_account_repository() -> InstagramAccountRepository:
