@@ -19,7 +19,7 @@ from src.modules.behavior.criteria import (
     WantSpeakCriterion,
 )
 from src.modules.behavior.engine import Policy
-from src.modules.behavior.filters import VoiceHardFilter
+from src.modules.behavior.filters import InstagramChannelVoiceFilter, VoiceHardFilter
 
 INTAKE_POLICY = Policy(
     name="intake",
@@ -53,6 +53,6 @@ DELIVERY_POLICY = Policy(
         WantSpeakCriterion(),
         EmotionVoiceCriterion(),
     ),
-    filters=(VoiceHardFilter(),),
+    filters=(VoiceHardFilter(), InstagramChannelVoiceFilter()),
     fallback="text",
 )

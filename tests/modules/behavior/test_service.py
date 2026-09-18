@@ -104,3 +104,29 @@ async def test_decide_delivery_blocks_voice_on_url(db_session):
     )
     assert event.action == "text"
     assert event.blocked_voice
+
+
+@pytest.mark.asyncio
+async def test_decide_delivery_blocks_voice_on_instagram(db_session):
+    account = TelegramAccount(phone="+79001110009", session_file="/tmp/s9", is_connected=True)
+    db_session.add(account)
+    await db_session.flush()
+    producer = AsyncMock()
+    svc = BehaviorService(producer, BehaviorRepository(), FakeIntakeClassifier())
+    event = await svc.decide_delivery(
+        db_session,
+        DecideDeliveryCommand(
+            conversation_id=uuid4(),
+            channel="instagram",
+            account_id=account.id,
+            chat_id=11,
+            messages=[
+                Message(
+                    text="this is a long enough spoken reply without urls or digits here"
+                )
+            ],
+            asked_voice=1,
+        ),
+    )
+    assert event.action == "text"
+    assert event.blocked_voice

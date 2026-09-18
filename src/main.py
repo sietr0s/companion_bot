@@ -24,6 +24,7 @@ from src.modules.memory.routers import public_router as memory_router
 from src.modules.orchestrator.handlers import register_handlers as register_orchestrator_handlers
 from src.modules.stt.handlers import register_handlers as register_stt_handlers
 from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
+from src.modules.instagram_clients.handlers import register_handlers as register_ig_handlers
 from src.modules.telegram_clients.dependencies import configure_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
 from src.modules.instagram_clients.routers import public_router as ig_router
@@ -53,6 +54,7 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     register_auth_handlers(consumer)
     register_users_handlers(consumer, producer)
     register_tg_handlers(consumer, container.telegram_client_manager, producer)
+    register_ig_handlers(consumer, container.instagram_client_manager, producer)
     register_batching_handlers(consumer, producer)
     register_memory_handlers(consumer, producer)
     register_behavior_handlers(consumer, producer)

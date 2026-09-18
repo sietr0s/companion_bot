@@ -125,6 +125,7 @@ class BehaviorService:
             chat=chat,
             asked_voice=command.asked_voice,
             emotion=emotion,
+            channel=command.channel,
             now=now,
         )
         decision = decide(DELIVERY_POLICY, ctx, self._rng)

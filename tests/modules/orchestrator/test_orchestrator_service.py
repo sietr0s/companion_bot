@@ -334,3 +334,60 @@ async def test_tts_skip_sends_text_fallback(monkeypatch) -> None:
     assert len(sent) == 1
     assert sent[0]["text"] == "fallback"
     assert not any(t == BusTopics.TG_MESSAGE_SEND_VOICE for t, _ in recorded)
+
+
+@pytest.mark.asyncio
+async def test_instagram_delivery_publishes_ig_send_not_tg() -> None:
+    transport = InMemoryTransport()
+    producer = InMemoryProducer(transport)
+    consumer = InMemoryConsumer(transport)
+    recorded: list[tuple[str, dict]] = []
+    orig = producer.publish
+
+    async def spy(topic: str, message: dict) -> None:
+        recorded.append((topic, message))
+        await orig(topic, message)
+
+    producer.publish = spy  # type: ignore[method-assign]
+    svc = OrchestratorService(consumer, producer)
+    svc.register_all_handlers()
+    await consumer.start()
+    account_id = uuid4()
+    chat_id = 11
+    await producer.publish(
+        BusTopics.IG_MESSAGE_RECEIVED,
+        {
+            "channel": "instagram",
+            "account_id": str(account_id),
+            "chat_id": chat_id,
+            "message_id": "1",
+            "text": "hello",
+            "sender": {"sender_id": 5},
+        },
+    )
+    await _drain(transport)
+    await producer.publish(
+        BusTopics.LLM_REPLY_GENERATED,
+        {
+            "channel": "instagram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
+            "messages": ["yo there friend"],
+        },
+    )
+    await _drain(transport)
+    await producer.publish(
+        BusTopics.BEHAVIOR_DELIVERY_DECIDED,
+        {
+            "channel": "instagram",
+            "chat_id": chat_id,
+            "account_id": str(account_id),
+            "action": "voice",
+            "text": "yo there friend",
+        },
+    )
+    await _drain(transport)
+    await consumer.stop()
+    assert any(t == BusTopics.IG_MESSAGE_SEND for t, _ in recorded)
+    assert not any(t == BusTopics.TG_MESSAGE_SEND for t, _ in recorded)
+    assert not any(t == BusTopics.TTS_SYNTHESIZE for t, _ in recorded)

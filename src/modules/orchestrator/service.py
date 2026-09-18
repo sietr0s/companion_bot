@@ -103,7 +103,6 @@ class OrchestratorService:
         return out
 
     def _on_telegram_message(self) -> None:
-        @self._consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)
         async def on_message_received(payload: dict) -> None:
             text = (payload.get("text") or "").strip()
             chat_id = int(payload["chat_id"])
@@ -114,7 +113,8 @@ class OrchestratorService:
                 for item in media
             }
             is_audio = bool(types & {"voice", "audio"})
-            if not text and not is_audio:
+            channel = payload.get("channel") or "telegram"
+            if not text and (channel == "instagram" or not is_audio):
                 return
             state = self._state_from_payload(payload)
             self._merge_chat(state, payload)
@@ -160,6 +160,9 @@ class OrchestratorService:
                     "message": message.model_dump(mode="json"),
                 },
             )
+
+        self._consumer.subscribe(BusTopics.TG_MESSAGE_RECEIVED)(on_message_received)
+        self._consumer.subscribe(BusTopics.IG_MESSAGE_RECEIVED)(on_message_received)
 
     def _on_stt(self) -> None:
         @self._consumer.subscribe(BusTopics.STT_TRANSCRIBED)
@@ -290,12 +293,20 @@ class OrchestratorService:
             if not payload.get("account_id"):
                 return
             ids = state.chat.adapter_ids()
+            if action == "voice" and state.chat.channel == "instagram":
+                action = "text"
+                state.pending_delivery = "text"
+            topic = (
+                BusTopics.IG_MESSAGE_SEND
+                if state.chat.channel == "instagram"
+                else BusTopics.TG_MESSAGE_SEND
+            )
             if action == "voice":
                 self._spawn(self._deliver_voice(ids, texts))
                 return
             for text in texts:
                 await self._producer.publish(
-                    BusTopics.TG_MESSAGE_SEND,
+                    topic,
                     {**ids, "text": text},
                 )
 
@@ -370,7 +381,6 @@ class OrchestratorService:
             self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
 
     def _on_message_sent(self) -> None:
-        @self._consumer.subscribe(BusTopics.TG_MESSAGE_SENT)
         async def on_message_sent(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
             account_id = payload.get("account_id")
@@ -426,3 +436,6 @@ class OrchestratorService:
                     ),
                 )
                 self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
+
+        self._consumer.subscribe(BusTopics.TG_MESSAGE_SENT)(on_message_sent)
+        self._consumer.subscribe(BusTopics.IG_MESSAGE_SENT)(on_message_sent)
