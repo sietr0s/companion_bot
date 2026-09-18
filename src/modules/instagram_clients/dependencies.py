@@ -61,6 +61,7 @@ def get_instagram_account_service(
         settings_service=settings,
         client_manager=get_instagram_client_manager(),
         message_bus=get_producer(),
+        chat_state_repository=get_instagram_chat_state_repository(),
     )
 
 

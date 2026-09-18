@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from src.core.exceptions import NotFoundError
+from src.domain.chat import Person
+from src.modules.instagram_clients.schemas.events import IgMessageReceived
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ class InstagramClientManager:
         self._clients: dict[uuid.UUID, Any] = {}
         self._locks: dict[uuid.UUID, asyncio.Lock] = {}
         self._pending: dict[uuid.UUID, Any] = {}
+        self._poll_tasks: dict[uuid.UUID, asyncio.Task] = {}
 
     def attach(self, account_id: uuid.UUID, client: Any) -> None:
         self._clients[account_id] = client
@@ -119,6 +122,89 @@ class InstagramClientManager:
         async with self._lock(account_id):
             await asyncio.to_thread(_dump)
 
+    async def poll_once(
+        self,
+        account_id: uuid.UUID,
+        *,
+        own_pk: int,
+        use_whitelist: bool,
+        whitelist_user_pks: list[int],
+        last_item_ids: dict[int, str],
+    ) -> tuple[list[IgMessageReceived], dict[int, str]]:
+        client = self.get_client(account_id)
+
+        def _fetch() -> list[Any]:
+            return list(client.direct_threads() or [])
+
+        async with self._lock(account_id):
+            threads = await asyncio.to_thread(_fetch)
+        allowed = {int(pk) for pk in whitelist_user_pks}
+        events: list[IgMessageReceived] = []
+        cursors: dict[int, str] = {}
+        for thread in threads:
+            thread_id = int(getattr(thread, "id", 0) or 0)
+            items = list(getattr(thread, "messages", None) or getattr(thread, "items", None) or [])
+            items = sorted(items, key=_item_sort_key)
+            last = last_item_ids.get(thread_id)
+            if last is None and items:
+                cursors[thread_id] = _item_id(items[-1])
+                continue
+            newest = last
+            for item in items:
+                iid = _item_id(item)
+                if not _is_newer(iid, last):
+                    continue
+                newest = iid
+                user_id = int(getattr(item, "user_id", 0) or 0)
+                if user_id == int(own_pk):
+                    continue
+                if use_whitelist and user_id not in allowed:
+                    continue
+                text = getattr(item, "text", None)
+                events.append(
+                    IgMessageReceived(
+                        account_id=account_id,
+                        chat_id=thread_id,
+                        message_id=iid,
+                        sender=Person(sender_id=user_id),
+                        text=text,
+                    )
+                )
+            if newest is not None:
+                cursors[thread_id] = newest
+        return events, cursors
+
+    async def start_poll(
+        self,
+        account_id: uuid.UUID,
+        tick,
+        *,
+        interval_s: float | None = None,
+    ) -> None:
+        await self.stop_poll(account_id)
+        delay = interval_s
+        if delay is None:
+            from src.modules.instagram_clients.config import instagram_clients_settings
+
+            delay = instagram_clients_settings.INSTAGRAM_POLL_INTERVAL_S
+
+        async def loop() -> None:
+            while True:
+                try:
+                    await tick()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("instagram poll failed account=%s", account_id)
+                await asyncio.sleep(delay)
+
+        self._poll_tasks[account_id] = asyncio.create_task(loop())
+
+    async def stop_poll(self, account_id: uuid.UUID) -> None:
+        task = self._poll_tasks.pop(account_id, None)
+        if task is not None and not task.done():
+            task.cancel()
+
     async def send_text(self, account_id: uuid.UUID, thread_id: int, text: str) -> str:
         client = self.get_client(account_id)
 
@@ -133,5 +219,34 @@ class InstagramClientManager:
             return await asyncio.to_thread(_send)
 
     async def stop_all(self) -> None:
+        for account_id in list(self._poll_tasks):
+            await self.stop_poll(account_id)
         self._clients.clear()
         self._locks.clear()
+        self._pending.clear()
+
+
+def _item_id(item: Any) -> str:
+    raw = getattr(item, "id", None)
+    if raw is None and isinstance(item, dict):
+        raw = item.get("id") or item.get("item_id")
+    return str(raw or "")
+
+
+def _item_sort_key(item: Any) -> tuple[int, str]:
+    iid = _item_id(item)
+    if iid.isdigit():
+        return (0, str(int(iid)).zfill(20))
+    return (1, iid)
+
+
+def _is_newer(item_id: str, last: str | None) -> bool:
+    if not item_id:
+        return False
+    if last is None:
+        return True
+    if item_id == last:
+        return False
+    if item_id.isdigit() and last.isdigit():
+        return int(item_id) > int(last)
+    return True

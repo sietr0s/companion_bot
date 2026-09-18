@@ -13,7 +13,10 @@ from src.core.exceptions import NotFoundError
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
 from src.modules.instagram_clients.config import instagram_clients_settings
 from src.modules.instagram_clients.models import InstagramAccount
-from src.modules.instagram_clients.repository import InstagramAccountRepository
+from src.modules.instagram_clients.repository import (
+    InstagramAccountRepository,
+    InstagramChatStateRepository,
+)
 from src.modules.instagram_clients.schemas.events import IgAccountConnected
 from src.modules.instagram_clients.services.settings import InstagramSettingsService
 
@@ -25,11 +28,13 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
         settings_service: InstagramSettingsService,
         client_manager: InstagramClientManager | None = None,
         message_bus: MessageProducer | None = None,
+        chat_state_repository: InstagramChatStateRepository | None = None,
     ) -> None:
         super().__init__(repository)
         self.settings_service = settings_service
         self.client_manager = client_manager
         self.message_bus = message_bus
+        self.chat_state_repository = chat_state_repository
 
     async def create(
         self,
@@ -119,3 +124,32 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
                 ).model_dump(mode="json"),
             )
         return account
+
+    async def poll_and_publish(self, session: AsyncSession, account_id: UUID) -> int:
+        account = await self._require_account(session, account_id)
+        if account.instagram_pk is None:
+            return 0
+        manager = self._require_manager()
+        settings = await self.settings_service.create_default_settings(session, account_id)
+        last_item_ids: dict[int, str] = {}
+        if self.chat_state_repository is not None:
+            states = await self.chat_state_repository.get_all_by_account(session, account_id)
+            last_item_ids = {int(row.thread_id): row.last_item_id for row in states}
+        events, cursors = await manager.poll_once(
+            account_id,
+            own_pk=int(account.instagram_pk),
+            use_whitelist=bool(settings.use_whitelist),
+            whitelist_user_pks=list(settings.whitelist_user_pks or []),
+            last_item_ids=last_item_ids,
+        )
+        if self.chat_state_repository is not None:
+            for thread_id, item_id in cursors.items():
+                await self.chat_state_repository.upsert_last_item_id(
+                    session, account_id, thread_id, item_id
+                )
+        if self.message_bus is not None:
+            for event in events:
+                await self.message_bus.publish(
+                    BusTopics.IG_MESSAGE_RECEIVED, event.model_dump(mode="json")
+                )
+        return len(events)

@@ -70,3 +70,10 @@ class InstagramChatStateRepository(BaseRepository[InstagramChatState]):
                 "last_item_id": item_id,
             },
         )
+
+    async def get_all_by_account(
+        self, session: AsyncSession, account_id: uuid.UUID
+    ) -> list[InstagramChatState]:
+        stmt = select(self.model).where(self.model.account_id == account_id)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
