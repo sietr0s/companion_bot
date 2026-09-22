@@ -1,8 +1,8 @@
-"""Mistral chat via LangChain ChatMistralAI."""
+"""Google Gemini chat via LangChain ChatGoogleGenerativeAI."""
 
 from __future__ import annotations
 
-from langchain_mistralai import ChatMistralAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from src.modules.llm.presets import DEFAULT_PRESETS, SamplingPreset
 from src.modules.llm.providers.invoke import (
@@ -12,15 +12,16 @@ from src.modules.llm.providers.invoke import (
 )
 
 
-class MistralChat:
+class GeminiChat:
     def __init__(
         self, api_key: str, model: str, presets: dict[str, SamplingPreset] | None = None
     ) -> None:
         self._presets = presets if presets is not None else DEFAULT_PRESETS
-        self._llm = ChatMistralAI(
+        self._llm = ChatGoogleGenerativeAI(
             api_key=api_key,
             model=model,
             max_retries=2,
+            streaming=False,
         )
 
     async def complete(self, system: str, user: str, *, preset: str) -> str:

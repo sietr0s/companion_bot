@@ -93,9 +93,9 @@ class LLMService:
         chat = self._chat_or_default()
         messages = [("system", system), *turns]
         if hasattr(chat, "complete_messages"):
-            text = await chat.complete_messages(messages)
+            text = await chat.complete_messages(messages, preset="reply")
         else:
-            text = await chat.complete(system, turns[-1][1])
+            text = await chat.complete(system, turns[-1][1], preset="reply")
         batch = outgoing_batch(
             channel=command.channel,
             chat_id=command.chat_id,
@@ -134,14 +134,14 @@ class LLMService:
 
     async def retrieve_pre(self, batch_messages: list, fallback: str | None = None) -> str:
         user = "\n".join(message_texts(batch_messages))
-        raw = await self._chat_or_default().complete(load_prompt("retrieve_pre"), user)
+        raw = await self._chat_or_default().complete(load_prompt("retrieve_pre"), user, preset="rag")
         return _sanitize_search_query(raw, fallback=fallback or user)
 
     async def retrieve_post(self, query: str, hits: list[str]) -> list[str]:
         if not hits:
             return []
         user = f"Query:\n{query}\n\nSnippets:\n" + "\n".join(f"- {hit}" for hit in hits)
-        raw = await self._chat_or_default().complete(load_prompt("retrieve_post"), user)
+        raw = await self._chat_or_default().complete(load_prompt("retrieve_post"), user, preset="rag")
         lines = [line.strip().lstrip("- ").strip() for line in raw.splitlines() if line.strip()]
         unused = list(hits)
         kept: list[str] = []
@@ -154,7 +154,7 @@ class LLMService:
 
     async def cluster_topics(self, numbered: str) -> str:
         prompt = render_prompt("cluster_topics", messages=numbered)
-        return await self._chat_or_default().complete(prompt, numbered)
+        return await self._chat_or_default().complete(prompt, numbered, preset="extract")
 
     async def summarize(
         self,
@@ -167,7 +167,7 @@ class LLMService:
             parts.append(current_summary)
         parts.extend(messages)
         prompt = render_prompt("summarize", messages="\n".join(parts))
-        text = await self._chat_or_default().complete(prompt, prompt)
+        text = await self._chat_or_default().complete(prompt, prompt, preset="extract")
         return text[:max_chars]
 
     async def summarize_command(self, command: SummarizeCommand) -> SummaryGeneratedEvent:

@@ -4,12 +4,14 @@ import asyncio
 import logging
 
 from src.bus import get_producer
-from src.core.config import settings
+from src.bus.interface import MessageProducer
 from src.core.langsmith import configure_langsmith
 from src.core.model_cache import apply_model_cache
+from src.modules.llm.config import llm_settings
 from src.modules.llm.embedder import Embedder, QwenEmbedder
 from src.modules.llm.providers.base import ChatProvider
 from src.modules.llm.providers.mistral import MistralChat
+from src.modules.llm.providers.google import GeminiChat
 from src.modules.llm.providers.openai_compat import (
     OPENAI_BASE_URL,
     OPENROUTER_BASE_URL,
@@ -39,19 +41,27 @@ def get_chat_provider() -> ChatProvider:
 
 
 def build_chat_provider() -> ChatProvider:
-    provider = (settings.LLM_PROVIDER or "mistral").strip().lower()
+    provider = llm_settings.LLM_PROVIDER
     if provider == "stub":
         return StubChat()
     if provider == "mistral":
-        api_key = (settings.MISTRAL_API_KEY or "").strip()
-        if not api_key:
+        if not llm_settings.MISTRAL_API_KEY:
             raise RuntimeError("LLM_PROVIDER=mistral требует MISTRAL_API_KEY")
-        return MistralChat(api_key=api_key, model=settings.MISTRAL_MODEL)
+        return MistralChat(
+            api_key=llm_settings.MISTRAL_API_KEY,
+            model=llm_settings.MISTRAL_MODEL,
+            presets=llm_settings.presets(),
+        )
+    if provider == "google":
+        return GeminiChat(
+            api_key=llm_settings.GOOGLE_API_KEY,
+            model=llm_settings.GOOGLE_MODEL,
+            presets=llm_settings.presets(),
+        )
     if provider in {"openrouter", "openai", "openai_compat"}:
-        api_key = (settings.LLM_API_KEY or "").strip()
-        if not api_key:
+        if not llm_settings.LLM_API_KEY:
             raise RuntimeError(f"LLM_PROVIDER={provider} требует LLM_API_KEY")
-        base_url = (settings.LLM_BASE_URL or "").strip()
+        base_url = llm_settings.LLM_BASE_URL
         if not base_url:
             if provider == "openrouter":
                 base_url = OPENROUTER_BASE_URL
@@ -60,11 +70,12 @@ def build_chat_provider() -> ChatProvider:
             else:
                 raise ValueError("LLM_BASE_URL обязателен для LLM_PROVIDER=openai_compat")
         return OpenAICompatChat(
-            api_key=api_key,
-            model=settings.LLM_MODEL,
+            api_key=llm_settings.LLM_API_KEY,
+            model=llm_settings.LLM_MODEL,
             base_url=base_url,
+            presets=llm_settings.presets(),
         )
-    raise ValueError(f"Unsupported LLM_PROVIDER: {settings.LLM_PROVIDER}")
+    raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
 
 
 async def warmup_heavy_models() -> None:
@@ -81,9 +92,13 @@ async def warmup_heavy_models() -> None:
     logger.info("Прогрев моделей завершён")
 
 
-def get_llm_service() -> LLMService:
+def build_llm_service(message_bus: MessageProducer | None = None) -> LLMService:
     return LLMService(
-        message_bus=get_producer(),
+        message_bus=message_bus or get_producer(),
         embedder=get_embedder(),
         chat=get_chat_provider(),
     )
+
+
+def get_llm_service() -> LLMService:
+    return build_llm_service()

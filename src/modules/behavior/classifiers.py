@@ -88,7 +88,9 @@ class ChatIntakeClassifier:
     async def classify(self, user_text: str) -> tuple[int, int]:
         try:
             raw = await asyncio.wait_for(
-                self._chat.complete(_INTAKE_PROMPT, _classification_payload(user_text)),
+                self._chat.complete(
+                    _INTAKE_PROMPT, _classification_payload(user_text), preset="extract"
+                ),
                 timeout=self._timeout_s,
             )
         except TimeoutError:

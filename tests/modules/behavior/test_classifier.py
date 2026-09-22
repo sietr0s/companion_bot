@@ -11,7 +11,7 @@ from src.modules.behavior.classifiers import (
 @pytest.mark.asyncio
 async def test_classifier_bad_json_fails_open():
     class Bad:
-        async def complete(self, system, user):
+        async def complete(self, system, user, *, preset: str):
             return "Ха, ну ладно, ценю настойчивость!"
 
     c = ChatIntakeClassifier(Bad(), timeout_s=1)
@@ -20,16 +20,17 @@ async def test_classifier_bad_json_fails_open():
 
 @pytest.mark.asyncio
 async def test_classifier_wraps_transcript_and_parses_json():
-    seen: list[tuple[str, str]] = []
+    seen: list[tuple[str, str, str]] = []
 
     class Ok:
-        async def complete(self, system, user):
-            seen.append((system, user))
+        async def complete(self, system, user, *, preset: str):
+            seen.append((system, user, preset))
             return '{"needs_reply": 0, "asked_voice": 1}'
 
     c = ChatIntakeClassifier(Ok(), timeout_s=1)
     assert await c.classify("User: hi\nAssistant: hey") == (0, 1)
-    system, user = seen[0]
+    system, user, preset = seen[0]
+    assert preset == "extract"
     assert "JSON only" in system or "classify" in system.lower()
     assert "do not continue" in user.lower()
     assert "User: hi" in user
