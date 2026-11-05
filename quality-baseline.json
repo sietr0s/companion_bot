@@ -1,0 +1,901 @@
+{
+  "schema_version": 1,
+  "findings": [
+    {
+      "tool": "mypy",
+      "path": "src/domain/ai.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/interface.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Callable\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/clustering.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/error_handler.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Callable\"",
+      "score": 1,
+      "count": 3
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/in_memory/consumer.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Callable\"",
+      "score": 1,
+      "count": 5
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/models.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/models.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/embedding_type.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"TypeDecorator\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/embedding_type.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/schemas/public.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/schemas/public.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/domain/chat.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/domain/chat.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/schemas.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/filters.py",
+      "rule": "arg-type",
+      "message": "Argument \"operator\" to \"Filter\" has incompatible type \"str\"; expected \"FilterOperator\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/filters.py",
+      "rule": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"Callable[[str], date]\", variable has type \"Callable[[str], datetime]\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/filters.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Select[()]\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/invoke.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 4
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/invoke.py",
+      "rule": "no-any-return",
+      "message": "Returning Any from function declared to return \"str\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/invoke.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/orchestrator/schemas/state.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/mapping.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/mapping.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/formatting.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/behavior/classifiers.py",
+      "rule": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"Message | tuple[str, Any]\", variable has type \"Message\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/schemas/events.py",
+      "rule": "misc",
+      "message": "Definition of \"from_payload\" in base class \"ChatRef\" is incompatible with definition in base class \"ConversationContext\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/schemas/events.py",
+      "rule": "misc",
+      "message": "Definition of \"from_payload\" in base class \"ChatRef\" is incompatible with definition in base class \"ConversationContext\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/schemas/events.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/repository.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Task\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 17
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/repository.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"BaseRepository\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/service.py",
+      "rule": "no-any-return",
+      "message": "Returning Any from function declared to return \"ModelType\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/services/context.py",
+      "rule": "arg-type",
+      "message": "Argument \"conversation_id\" to \"get_last_messages\" of \"MessageRepository\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/services/context.py",
+      "rule": "arg-type",
+      "message": "Argument 2 to \"get_by_conversation_id\" of \"SummaryStateRepository\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/reference_import.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/services/maintenance.py",
+      "rule": "arg-type",
+      "message": "Argument 1 to \"_maintain_lock\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/services/maintenance.py",
+      "rule": "arg-type",
+      "message": "Argument \"conversation_id\" to \"_maybe_cluster\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/services/maintenance.py",
+      "rule": "arg-type",
+      "message": "Argument \"conversation_id\" to \"_maybe_summarize\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/config.py",
+      "rule": "no-any-return",
+      "message": "Returning Any from function declared to return \"str\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/core/config.py",
+      "rule": "call-arg",
+      "message": "Missing named argument \"JWT_SECRET_KEY\" for \"Settings\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/core/config.py",
+      "rule": "call-arg",
+      "message": "Missing named argument \"ADMIN_EMAIL\" for \"Settings\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/core/config.py",
+      "rule": "call-arg",
+      "message": "Missing named argument \"ADMIN_PASSWORD\" for \"Settings\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/adapters/client_manager.py",
+      "rule": "import-untyped",
+      "message": "Skipping analyzing \"instagrapi\": module is installed, but missing library stubs or py.typed marker",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/adapters/client_manager.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Task\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/instagram_clients/adapters/client_manager.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Task\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "arg-type",
+      "message": "Argument 1 to \"pop\" of \"dict\" has incompatible type \"tuple[str, str, int]\"; expected \"tuple[str, int]\"",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "arg-type",
+      "message": "Argument \"channel\" to \"Batch\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "arg-type",
+      "message": "Argument \"channel\" to \"BatchReadyEvent\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "arg-type",
+      "message": "Argument 1 to \"get\" of \"dict\" has incompatible type \"tuple[str, str, int]\"; expected \"tuple[str, int]\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "index",
+      "message": "Invalid index type \"tuple[str, str, int]\" for \"dict[tuple[str, int], PendingBatch]\"; expected type \"tuple[str, int]\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/batching/service.py",
+      "rule": "arg-type",
+      "message": "Argument \"channel\" to \"BatchCompletedEvent\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/adapters/client_manager.py",
+      "rule": "no-any-return",
+      "message": "Returning Any from function declared to return \"str\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/core/security.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/kafka/producer.py",
+      "rule": "import-untyped",
+      "message": "Skipping analyzing \"aiokafka\": module is installed, but missing library stubs or py.typed marker",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/kafka/consumer.py",
+      "rule": "import-untyped",
+      "message": "Skipping analyzing \"aiokafka\": module is installed, but missing library stubs or py.typed marker",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/kafka/consumer.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Callable\"",
+      "score": 1,
+      "count": 4
+    },
+    {
+      "tool": "mypy",
+      "path": "src/bus/kafka/consumer.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"Task\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/auth/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 5
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/auth/service.py",
+      "rule": "return-value",
+      "message": "Incompatible return value type (got \"Auth\", expected \"AuthRead\")",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/stt/providers/whisper.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/stt/providers/whisper.py",
+      "rule": "import-untyped",
+      "message": "Skipping analyzing \"faster_whisper\": module is installed, but missing library stubs or py.typed marker",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/stt/providers/whisper.py",
+      "rule": "no-untyped-call",
+      "message": "Call to untyped function \"_get_model\" in typed context",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 4
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "union-attr",
+      "message": "Item \"None\" of \"list[Any] | None\" has no attribute \"__iter__\" (not iterable)",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "untyped-decorator",
+      "message": "Untyped decorator makes function \"on_new_message\" untyped",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/behavior/service.py",
+      "rule": "arg-type",
+      "message": "Argument \"conversation_id\" to \"IntakeDecidedEvent\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/behavior/service.py",
+      "rule": "arg-type",
+      "message": "Argument 2 to \"note_delivery\" of \"BehaviorRepository\" has incompatible type \"UUID | None\"; expected \"UUID\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/routers.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"BaseService\"",
+      "score": 1,
+      "count": 6
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/routers.py",
+      "rule": "arg-type",
+      "message": "Argument \"tags\" to \"APIRouter\" has incompatible type \"list[str]\"; expected \"list[str | Enum] | None\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/base/routers.py",
+      "rule": "valid-type",
+      "message": "Variable \"response_schema\" is not valid as a type",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/routers/public_auth.py",
+      "rule": "return-value",
+      "message": "Incompatible return value type (got \"TelegramAccount\", expected \"AccountRead\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/routers/public_accounts.py",
+      "rule": "arg-type",
+      "message": "Argument 1 to \"from_list\" of \"PaginatedResponse\" has incompatible type \"Sequence[TelegramAccount]\"; expected \"list[AccountRead]\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/routers/public_accounts.py",
+      "rule": "return-value",
+      "message": "Incompatible return value type (got \"TelegramAccount\", expected \"AccountRead\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/routers/public_accounts.py",
+      "rule": "return-value",
+      "message": "Incompatible return value type (got \"list[dict[Any, Any]]\", expected \"list[ChatRead]\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/embedder.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/embedder.py",
+      "rule": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"SentenceTransformer\", variable has type \"None\")",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/embedder.py",
+      "rule": "no-untyped-call",
+      "message": "Call to untyped function \"_get_model\" in typed context",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/mistral.py",
+      "rule": "call-arg",
+      "message": "Unexpected keyword argument \"model\" for \"ChatMistralAI\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/mistral.py",
+      "rule": "arg-type",
+      "message": "Argument \"api_key\" to \"ChatMistralAI\" has incompatible type \"str\"; expected \"SecretStr | None\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/providers/openai_compat.py",
+      "rule": "arg-type",
+      "message": "Argument \"api_key\" to \"ChatOpenAI\" has incompatible type \"str\"; expected \"SecretStr | Callable[[], str] | Callable[[], Awaitable[str]] | None\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/llm/service.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"list\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/memory/handlers.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/main.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "mypy",
+      "path": "src/main.py",
+      "rule": "arg-type",
+      "message": "Argument 2 to \"add_exception_handler\" of \"Starlette\" has incompatible type \"Callable[[Request[State], AppException], Coroutine[Any, Any, JSONResponse]]\"; expected \"Callable[[Request[State], Exception], Response | Awaitable[Response]] | Callable[[WebSocket[State], Exception], Awaitable[None]]\"",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "bandit",
+      "path": "src/bus/__init__.py",
+      "rule": "B101",
+      "message": "LOW: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "score": 1,
+      "count": 2
+    },
+    {
+      "tool": "bandit",
+      "path": "src/modules/behavior/service.py",
+      "rule": "B311",
+      "message": "LOW: Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "bandit",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "B311",
+      "message": "LOW: Standard pseudo-random generators are not suitable for security/cryptographic purposes.",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "vulture",
+      "path": "src/main.py",
+      "rule": "unused",
+      "message": "unused variable 'app' (100% confidence)",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "vulture",
+      "path": "src/main.py",
+      "rule": "unused",
+      "message": "unused variable 'request' (100% confidence)",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/telegram_clients/adapters/quoted.py",
+      "rule": "cyclomatic",
+      "message": "extract_forward",
+      "score": 16,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/telegram_clients/adapters/quoted.py",
+      "rule": "cyclomatic",
+      "message": "extract_reply",
+      "score": 11,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "cyclomatic",
+      "message": "OrchestratorService._on_incoming_message.on_message_received",
+      "score": 17,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "cyclomatic",
+      "message": "OrchestratorService._on_behavior.on_delivery_decided",
+      "score": 12,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/orchestrator/service.py",
+      "rule": "cyclomatic",
+      "message": "OrchestratorService._on_message_sent.on_message_sent",
+      "score": 24,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/instagram_clients/adapters/client_manager.py",
+      "rule": "cyclomatic",
+      "message": "InstagramClientManager.poll_once",
+      "score": 15,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/behavior/classifiers.py",
+      "rule": "cyclomatic",
+      "message": "format_intake_window",
+      "score": 11,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/behavior/engine.py",
+      "rule": "cyclomatic",
+      "message": "decide",
+      "score": 11,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/reference_import.py",
+      "rule": "cyclomatic",
+      "message": "load_reference_export",
+      "score": 16,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/clustering.py",
+      "rule": "cyclomatic",
+      "message": "normalize_cluster_blocks",
+      "score": 18,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/clustering.py",
+      "rule": "cyclomatic",
+      "message": "split_closed_open",
+      "score": 17,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/clustering.py",
+      "rule": "cyclomatic",
+      "message": "parse_cluster_json",
+      "score": 13,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/clustering.py",
+      "rule": "cyclomatic",
+      "message": "_unwrap_content",
+      "score": 12,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/memory/services/context.py",
+      "rule": "cyclomatic",
+      "message": "ContextBuilder._retrieve_snippets",
+      "score": 14,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/modules/llm/providers/stub.py",
+      "rule": "cyclomatic",
+      "message": "StubChat.complete_messages",
+      "score": 12,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/base/filters.py",
+      "rule": "cyclomatic",
+      "message": "apply_filters",
+      "score": 13,
+      "count": 1
+    },
+    {
+      "tool": "complexity",
+      "path": "src/base/filters.py",
+      "rule": "cyclomatic",
+      "message": "apply_ordering",
+      "score": 11,
+      "count": 1
+    }
+  ]
+}

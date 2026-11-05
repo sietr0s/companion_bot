@@ -3,6 +3,9 @@
 ## GitHub Actions
 
 Workflow `.github/workflows/ci.yml` запускается на push, pull request и вручную.
+Дополнительный workflow `Code quality` проверяет типы, сложность, мёртвый код,
+дублирование и уязвимости. Покрытие, пороги, известный долг и расположение отчётов
+описаны в [code-quality.md](code-quality.md).
 Три независимых задания проверяют:
 
 * Ruff: линтинг и форматирование `src`, `tests`, `scripts`, `server.py`.
@@ -53,8 +56,9 @@ npm run build
 
 Установщик использует CPU PyTorch и зафиксированные версии Python-зависимостей
 вне checkout; исходные requirements остаются источником прямых зависимостей.
-Frontend устанавливается с `npm ci --legacy-peer-deps`: текущие ESLint 10 и
-eslint-plugin-react 7 имеют несовместимые peer declarations. Lockfile сохраняется.
+Frontend устанавливается с `npm ci --legacy-peer-deps` для согласованного
+воспроизведения peer resolution из lockfile. Проверенные версии инструментов и
+результаты dependency-аудита описаны в `code-quality.md`.
 
 В checkout исторически отслеживается часть `node_modules` и Python bytecode.
 Чтобы установка не переписывала эти файлы, frontend собирается из копии

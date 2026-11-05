@@ -6,12 +6,14 @@
 """
 
 import asyncio
+import os
 import uuid
 from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from hypothesis import settings as hypothesis_settings
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -30,6 +32,9 @@ from src.modules.auth.service import AuthService
 from src.modules.telegram_clients.repository import TelegramAccountRepository
 from src.modules.users.repository import UserRepository
 from src.modules.users.service import UserService
+
+hypothesis_settings.register_profile("ci", max_examples=150, derandomize=True)
+hypothesis_settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "default"))
 
 # SQLite в памяти для тестов — изолирована и быстра
 TEST_DATABASE_URL = "sqlite+aiosqlite://"

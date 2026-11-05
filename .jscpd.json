@@ -1,0 +1,10 @@
+{
+  "path": ["src", "frontend/src"],
+  "format": ["python", "typescript", "tsx", "javascript"],
+  "ignore": ["**/api/generated/**", "**/node_modules/**", "**/__pycache__/**", "**/*.test.*", "**/test/**"],
+  "minLines": 10,
+  "minTokens": 70,
+  "reporters": ["json"],
+  "output": "reports/quality/duplicates",
+  "absolute": true
+}

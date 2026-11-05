@@ -1,0 +1,80 @@
+name: Code quality
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly rescan, including newly published dependency advisories (UTC).
+    - cron: '17 7 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Types, code smells and security
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-backend
+        with:
+          quality-tools: 'true'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend analysis tools
+        run: npm ci --prefix frontend --legacy-peer-deps --no-audit --no-fund
+      - name: Check quality regressions and generate reports
+        run: python scripts/quality_report.py
+      - name: Audit Python dependencies
+        if: always()
+        run: |
+          mkdir -p reports/security
+          python scripts/audit_python.py
+      - name: Audit frontend dependencies
+        if: always()
+        working-directory: frontend
+        run: |
+          mkdir -p ../reports/security
+          npm audit --audit-level=high --json > ../reports/security/npm-audit.json
+      - name: Summarize dependency security
+        if: always()
+        run: python scripts/security_summary.py
+      - name: Upload detailed analysis and security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-and-security
+          path: reports/
+          retention-days: 30
+          if-no-files-found: error
+
+  workflows:
+    name: Validate GitHub Actions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install checksum-verified actionlint
+        env:
+          ACTIONLINT_VERSION: '1.7.7'
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}" -o "$archive"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o checksums.txt
+          awk -v archive="$archive" '$2 == archive' checksums.txt > selected-checksum.txt
+          test -s selected-checksum.txt
+          sha256sum --check selected-checksum.txt
+          tar -xzf "$archive" actionlint
+      - name: Check workflow expressions and shell commands
+        run: ./actionlint .github/workflows/*.yml

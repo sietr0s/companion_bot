@@ -24,3 +24,12 @@ venv/
 frontend/node_modules/
 frontend/dist/
 *.tsbuildinfo
+
+# Local quality reports and tool caches
+/reports/
+.coverage
+.coverage.*
+.hypothesis/
+.mypy_cache/
+frontend/coverage/
+frontend/reports/

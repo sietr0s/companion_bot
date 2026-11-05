@@ -77,15 +77,7 @@ markers = [
 
 [tool.coverage.run]
 omit = [
-    "*/schemas/*",
     "*/__init__.py",
-    "*/constants.py",
-    "*/dependencies.py",
-    "*/keyboards.py",
-    "*/bot.py",
-    "src/main.py",
-    "src/core/config.py",
-    "src/core/database.py",
 ]
 
 [tool.coverage.report]

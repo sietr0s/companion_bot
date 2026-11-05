@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
 from unittest.mock import AsyncMock
 
@@ -73,7 +74,10 @@ def _patch_behavior(monkeypatch, db_session, *, needs_reply=1, action=None):
 
     def build(producer):
         return BehaviorService(
-            producer, BehaviorRepository(), FakeIntakeClassifier(needs_reply=needs_reply)
+            producer,
+            BehaviorRepository(),
+            FakeIntakeClassifier(needs_reply=needs_reply),
+            rng=random.Random(1),
         )
 
     monkeypatch.setattr("src.modules.behavior.handlers.build_behavior_service", build)
