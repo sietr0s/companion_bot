@@ -1,17 +1,5 @@
 import { useState } from 'react';
-import {
-  Button,
-  Card,
-  Form,
-  Input,
-  InputNumber,
-  Popconfirm,
-  Space,
-  Table,
-  Tag,
-  Typography,
-  message,
-} from 'antd';
+import { Button, Card, Form, Input, InputNumber, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageTitle } from '../../components/common/PageTitle';
 import {
@@ -39,8 +27,7 @@ export function InstagramAccountsPage() {
 
   const settingsQuery = useQuery({
     queryKey: ['instagram', 'settings', whitelistAccountId],
-    queryFn: () =>
-      InstagramClientsService.getSettingsApiV1PublicInstagramAccountIdSettingsGet(whitelistAccountId!),
+    queryFn: () => InstagramClientsService.getSettingsApiV1PublicInstagramAccountIdSettingsGet(whitelistAccountId!),
     enabled: Boolean(whitelistAccountId),
   });
 
@@ -107,10 +94,9 @@ export function InstagramAccountsPage() {
 
   const whitelistAdd = useMutation({
     mutationFn: (userPk: number) =>
-      InstagramClientsService.addUserToWhitelistApiV1PublicInstagramAccountIdWhitelistPost(
-        whitelistAccountId!,
-        { user_pk: userPk },
-      ),
+      InstagramClientsService.addUserToWhitelistApiV1PublicInstagramAccountIdWhitelistPost(whitelistAccountId!, {
+        user_pk: userPk,
+      }),
     onSuccess: () => {
       whitelistForm.resetFields();
       void queryClient.invalidateQueries({ queryKey: ['instagram', 'settings', whitelistAccountId] });
@@ -122,7 +108,7 @@ export function InstagramAccountsPage() {
     mutationFn: (userPk: number) =>
       InstagramClientsService.removeUserFromWhitelistApiV1PublicInstagramAccountIdWhitelistUserPkDelete(
         whitelistAccountId!,
-        userPk,
+        userPk
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['instagram', 'settings', whitelistAccountId] });
@@ -136,9 +122,7 @@ export function InstagramAccountsPage() {
     {
       title: 'Статус',
       dataIndex: 'is_connected',
-      render: (value: boolean) => (
-        <Tag color={value ? 'green' : 'default'}>{value ? 'connected' : 'offline'}</Tag>
-      ),
+      render: (value: boolean) => <Tag color={value ? 'green' : 'default'}>{value ? 'connected' : 'offline'}</Tag>,
     },
     {
       title: 'Создан',
@@ -202,7 +186,11 @@ export function InstagramAccountsPage() {
                 </Form.Item>
               </>
             ) : (
-              <Form.Item name="code" label={loginStep === 'two_factor' ? 'Код 2FA' : 'Код challenge'} rules={[{ required: true }]}>
+              <Form.Item
+                name="code"
+                label={loginStep === 'two_factor' ? 'Код 2FA' : 'Код challenge'}
+                rules={[{ required: true }]}
+              >
                 <Input />
               </Form.Item>
             )}
@@ -244,11 +232,7 @@ export function InstagramAccountsPage() {
           </Form>
           <Space wrap style={{ marginTop: 12 }}>
             {(settings?.whitelist_user_pks ?? []).map((pk) => (
-              <Tag
-                key={String(pk)}
-                closable
-                onClose={() => whitelistRemove.mutate(Number(pk))}
-              >
+              <Tag key={String(pk)} closable onClose={() => whitelistRemove.mutate(Number(pk))}>
                 {String(pk)}
               </Tag>
             ))}

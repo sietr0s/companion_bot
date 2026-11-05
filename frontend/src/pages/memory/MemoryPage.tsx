@@ -30,7 +30,6 @@ import {
   MemoryMessageRead,
   MemoryService,
   SummaryStateCreate,
-  SummaryStateRead,
   UserRead,
   UsersService,
   VectorTopicRead,
@@ -107,9 +106,7 @@ export function MemoryPage() {
   const topicsQuery = useQuery({
     queryKey: ['memory', 'topics', selectedId],
     queryFn: () =>
-      MemoryService.listConversationTopicsApiV1PublicMemoryConversationsConversationIdTopicsGet(
-        selectedId as string,
-      ),
+      MemoryService.listConversationTopicsApiV1PublicMemoryConversationsConversationIdTopicsGet(selectedId as string),
     enabled: Boolean(selectedId),
   });
   const topicDetailQuery = useQuery({
@@ -117,7 +114,7 @@ export function MemoryPage() {
     queryFn: () =>
       MemoryService.getConversationTopicApiV1PublicMemoryConversationsConversationIdTopicsTopicIdGet(
         selectedId as string,
-        selectedTopicId as string,
+        selectedTopicId as string
       ),
     enabled: Boolean(selectedId && selectedTopicId),
   });
@@ -136,9 +133,7 @@ export function MemoryPage() {
 
   const conversations = useMemo(() => {
     const items = [...(conversationsQuery.data?.items ?? [])];
-    items.sort(
-      (a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime(),
-    );
+    items.sort((a, b) => new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime());
     const query = search.trim().toLowerCase();
     if (!query) return items;
     return items.filter((item) => {
@@ -169,7 +164,7 @@ export function MemoryPage() {
 
   const threadSummary = useMemo(
     () => (summariesQuery.data?.items ?? []).find((item) => item.conversation_id === selectedId) ?? null,
-    [summariesQuery.data, selectedId],
+    [summariesQuery.data, selectedId]
   );
 
   const threadTopics = topicsQuery.data ?? [];
@@ -416,10 +411,7 @@ export function MemoryPage() {
                     {threadMessages.map((item: MemoryMessageRead) => {
                       const outgoing = item.direction === 'out';
                       return (
-                        <div
-                          key={item.id}
-                          className={outgoing ? 'memory-bubble-row out' : 'memory-bubble-row in'}
-                        >
+                        <div key={item.id} className={outgoing ? 'memory-bubble-row out' : 'memory-bubble-row in'}>
                           <div className={outgoing ? 'memory-bubble out' : 'memory-bubble in'}>
                             <div className="memory-bubble-meta">
                               <span>{outgoing ? 'Бот' : 'Пользователь'}</span>
@@ -428,10 +420,7 @@ export function MemoryPage() {
                               {item.message_type !== 'text' ? <Tag>{item.message_type}</Tag> : null}
                             </div>
                             <MarkdownContent className="memory-bubble-text">{item.text}</MarkdownContent>
-                            <Popconfirm
-                              title="Удалить сообщение?"
-                              onConfirm={() => deleteMessage.mutate(item.id)}
-                            >
+                            <Popconfirm title="Удалить сообщение?" onConfirm={() => deleteMessage.mutate(item.id)}>
                               <Button size="small" type="link" danger>
                                 Удалить
                               </Button>

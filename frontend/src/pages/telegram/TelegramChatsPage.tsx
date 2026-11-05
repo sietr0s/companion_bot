@@ -33,13 +33,15 @@ export function TelegramChatsPage() {
       TelegramClientsService.getMessagesApiV1PublicTelegramAccountIdChatsChatIdMessagesGet(
         accountId!,
         selectedChatId!,
-        50,
+        50
       ),
   });
 
   const whitelistMutation = useMutation({
     mutationFn: (chatId: number) =>
-      TelegramClientsService.addChatToWhitelistApiV1PublicTelegramAccountIdWhitelistPost(accountId!, { chat_id: chatId }),
+      TelegramClientsService.addChatToWhitelistApiV1PublicTelegramAccountIdWhitelistPost(accountId!, {
+        chat_id: chatId,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['telegram', 'chats', accountId] });
       void queryClient.invalidateQueries({ queryKey: ['telegram', 'settings', accountId] });
@@ -49,7 +51,10 @@ export function TelegramChatsPage() {
 
   const removeWhitelistMutation = useMutation({
     mutationFn: (chatId: number) =>
-      TelegramClientsService.removeChatFromWhitelistApiV1PublicTelegramAccountIdWhitelistChatIdDelete(accountId!, chatId),
+      TelegramClientsService.removeChatFromWhitelistApiV1PublicTelegramAccountIdWhitelistChatIdDelete(
+        accountId!,
+        chatId
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['telegram', 'chats', accountId] });
       void queryClient.invalidateQueries({ queryKey: ['telegram', 'settings', accountId] });
@@ -65,10 +70,7 @@ export function TelegramChatsPage() {
         title={`Чаты — ${phone}`}
         subtitle="Просмотр чатов и сообщений Telegram-аккаунта"
         extra={
-          <Button
-            icon={<SettingOutlined />}
-            onClick={() => navigate(`/telegram/${accountId}/settings`)}
-          >
+          <Button icon={<SettingOutlined />} onClick={() => navigate(`/telegram/${accountId}/settings`)}>
             Настройки
           </Button>
         }

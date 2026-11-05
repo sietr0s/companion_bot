@@ -22,7 +22,6 @@ from src.base.model import Base
 from src.bus import configure_bus, create_bus
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.interface import MessageProducer
-from src.core.config import settings
 from src.core.security import create_access_token
 from src.main import app
 from src.modules.auth.models import Auth

@@ -12,9 +12,9 @@ from src.domain.chat import Batch, Message, display_text
 from src.utils.prompt_loader import load_prompt
 
 if TYPE_CHECKING:
-    from src.modules.llm.providers.base import ChatProvider
+    from src.domain.ai import ChatProvider
 
-_INTAKE_PROMPT = load_prompt("intake")
+_INTAKE_PROMPT = load_prompt("intake", module="behavior")
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 INTAKE_HISTORY_MESSAGES = 10
 _ROLE = {"incoming": "User", "outgoing": "Assistant"}

@@ -58,7 +58,9 @@ async def auth_qr_start(
     return await service.start_qr_auth(session)
 
 
-@router.get("/qr/{account_id}/status", response_model=QrStatusResponse, summary="Статус QR-авторизации")
+@router.get(
+    "/qr/{account_id}/status", response_model=QrStatusResponse, summary="Статус QR-авторизации"
+)
 async def auth_qr_status(
     account_id: uuid.UUID,
     service: TelegramAccountService = Depends(get_telegram_account_service),
@@ -66,7 +68,9 @@ async def auth_qr_status(
     return await service.get_qr_status(account_id)
 
 
-@router.delete("/qr/{account_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Отменить QR-авторизацию")
+@router.delete(
+    "/qr/{account_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Отменить QR-авторизацию"
+)
 async def auth_qr_cancel(
     account_id: uuid.UUID,
     service: TelegramAccountService = Depends(get_telegram_account_service),
@@ -74,7 +78,9 @@ async def auth_qr_cancel(
     await service.cancel_qr_auth(account_id)
 
 
-@router.post("/qr/{account_id}/complete", response_model=AccountRead, summary="Завершить QR-авторизацию")
+@router.post(
+    "/qr/{account_id}/complete", response_model=AccountRead, summary="Завершить QR-авторизацию"
+)
 async def auth_qr_complete(
     account_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),

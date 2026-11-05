@@ -19,10 +19,10 @@ from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
 from src.core.exceptions import ConflictError, NotFoundError
-from src.modules.telegram_clients.exceptions import InvalidTelegramCodeError
 from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
 from src.modules.telegram_clients.adapters.quoted import quoted_from_telethon
 from src.modules.telegram_clients.constants import TgAuthStatus
+from src.modules.telegram_clients.exceptions import InvalidTelegramCodeError
 from src.modules.telegram_clients.models import (
     TelegramAccount,
     TelegramChatState,
@@ -48,9 +48,8 @@ from src.modules.telegram_clients.schemas.public import (
 
 logger = logging.getLogger(__name__)
 
-class TelegramAccountService(
-    BaseService[TelegramAccountRepository, TelegramAccount]
-):
+
+class TelegramAccountService(BaseService[TelegramAccountRepository, TelegramAccount]):
     """
     Сервис управления Telegram-аккаунтами.
 
@@ -58,12 +57,12 @@ class TelegramAccountService(
     """
 
     def __init__(
-            self,
-            repository: TelegramAccountRepository,
-            message_bus: MessageProducer,
-            client_manager: TelegramClientManager,
-            settings_repository: TelegramSettingsRepository,
-            chat_state_repository: TelegramChatStateRepository,
+        self,
+        repository: TelegramAccountRepository,
+        message_bus: MessageProducer,
+        client_manager: TelegramClientManager,
+        settings_repository: TelegramSettingsRepository,
+        chat_state_repository: TelegramChatStateRepository,
     ) -> None:
         super().__init__(repository)
         self.message_bus = message_bus
@@ -71,9 +70,7 @@ class TelegramAccountService(
         self.settings_repository = settings_repository
         self.chat_state_repository = chat_state_repository
 
-    async def request_code(
-            self, session: AsyncSession, data: dict
-    ) -> AuthStep1Response:
+    async def request_code(self, session: AsyncSession, data: dict) -> AuthStep1Response:
         """
         Шаг 1 авторизации: отправить SMS-код на номер.
 
@@ -110,9 +107,7 @@ class TelegramAccountService(
 
         return AuthStep1Response(account_id=account_id)
 
-    async def verify_code(
-            self, session: AsyncSession, data: dict
-    ) -> AuthStep2Response:
+    async def verify_code(self, session: AsyncSession, data: dict) -> AuthStep2Response:
         """
         Шаг 2 авторизации: ввести SMS-код.
 
@@ -138,9 +133,7 @@ class TelegramAccountService(
 
         return AuthStep2Response(account_id=data["account_id"], status=status)
 
-    async def verify_password(
-            self, session: AsyncSession, data: dict
-    ) -> AuthStep3Response:
+    async def verify_password(self, session: AsyncSession, data: dict) -> AuthStep3Response:
         """Шаг 3 авторизации: ввести пароль облачного шифрования (2FA)."""
         account = await self._get_account(session, data["account_id"])
 
@@ -177,15 +170,13 @@ class TelegramAccountService(
             )
 
     async def get_active_accounts(
-            self,
-            session: AsyncSession,
+        self,
+        session: AsyncSession,
     ) -> list[TelegramAccount]:
         """Получить активные Telegram-аккаунты."""
         return await self.repository.get_connected_accounts(session)
 
-    async def delete_account(
-            self, session: AsyncSession, account_id: uuid.UUID
-    ) -> None:
+    async def delete_account(self, session: AsyncSession, account_id: uuid.UUID) -> None:
         """Удалить Telegram-аккаунт."""
         account = await self._get_account(session, account_id)
 
@@ -207,7 +198,7 @@ class TelegramAccountService(
         await self.message_bus.publish(BusTopics.TG_ACCOUNT_DISCONNECTED, event.to_bus_dict())
 
     async def get_chats(
-            self, session: AsyncSession, account_id: uuid.UUID, limit: int = 100
+        self, session: AsyncSession, account_id: uuid.UUID, limit: int = 100
     ) -> list[dict]:
         """Получить все чаты аккаунта из Telegram API."""
         account = await self._get_account(session, account_id)
@@ -217,18 +208,15 @@ class TelegramAccountService(
         chats = await self.client_manager.get_chats(account_id, limit)
         settings = await self.settings_repository.get_by_account_id(session, account_id)
         whitelist = {str(value) for value in (settings.whitelist_chat_ids if settings else [])}
-        return [
-            {**chat, "is_in_whitelist": str(chat["id"]) in whitelist}
-            for chat in chats
-        ]
+        return [{**chat, "is_in_whitelist": str(chat["id"]) in whitelist} for chat in chats]
 
     async def get_messages(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
-            chat_id: int,
-            limit: int = 50,
-            offset_id: int = 0,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        chat_id: int,
+        limit: int = 50,
+        offset_id: int = 0,
     ) -> list[TgMessageReceived]:
         """Получить сообщения чата из Telegram API (on-demand)."""
         account = await self._get_account(session, account_id)
@@ -240,9 +228,9 @@ class TelegramAccountService(
         )
 
     async def _get_account(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
     ) -> TelegramAccount:
         """Получить аккаунт по ID."""
         account = await self.repository.get_by_id(session, account_id)
@@ -283,7 +271,7 @@ class TelegramAccountService(
         await self.client_manager.cancel_qr_login(account_id)
 
     async def complete_qr_auth(
-            self, session: AsyncSession, account_id: uuid.UUID
+        self, session: AsyncSession, account_id: uuid.UUID
     ) -> TelegramAccount:
         """
         Финализировать QR-авторизацию: создать запись в БД и опубликовать событие.
@@ -324,12 +312,11 @@ class TelegramAccountService(
 
         return account
 
-
     async def get_chat_state(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
-            chat_id: int,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        chat_id: int,
     ) -> TelegramChatState:
         """
         Получить состояние чтения чата.
@@ -346,11 +333,11 @@ class TelegramAccountService(
         return state
 
     async def update_last_read(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
-            chat_id: int,
-            message_id: int,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        chat_id: int,
+        message_id: int,
     ) -> TelegramChatState:
         """
         Обновить последнее прочитанное сообщение в чате.
@@ -363,9 +350,9 @@ class TelegramAccountService(
         )
 
     async def get_all_chats_state(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
     ) -> list[TelegramChatState]:
         """
         Получить все состояния чтения чатов аккаунта.
@@ -374,9 +361,9 @@ class TelegramAccountService(
         return await self.chat_state_repository.get_all_by_account(session, account_id)
 
     async def read_unread_messages(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
     ) -> int:
         """
         Прочитать непрочитанные сообщения для аккаунта.
@@ -441,10 +428,10 @@ class TelegramAccountService(
         return total_read
 
     async def should_read_message(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
-            chat_id: int,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        chat_id: int,
     ) -> bool:
         settings = await self.settings_repository.get_by_account_id(session, account_id)
         if not settings or not settings.use_whitelist:
@@ -455,10 +442,10 @@ class TelegramAccountService(
         return str(chat_id) in allowed
 
     async def handle_incoming_message(
-            self,
-            session: AsyncSession,
-            account_id: uuid.UUID,
-            event: NewMessage.Event,
+        self,
+        session: AsyncSession,
+        account_id: uuid.UUID,
+        event: NewMessage.Event,
     ) -> None:
         """
         Обработать входящее сообщение.

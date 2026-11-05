@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from src.core.config import settings
-from src.modules.stt.providers.base import SttProvider
 from src.modules.stt.providers.stub import StubStt
+
+if TYPE_CHECKING:
+    from src.modules.stt.providers.base import SttProvider
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 from src.modules.behavior.config import behavior_settings
-from src.modules.behavior.report import format_pre_softmax_log
+from src.utils.decision_report import format_pre_softmax_log
 
 if TYPE_CHECKING:
     import random

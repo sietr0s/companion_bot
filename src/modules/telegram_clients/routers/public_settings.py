@@ -34,7 +34,12 @@ async def get_settings(
     return TelegramSettingsRead.model_validate(settings)
 
 
-@router.post("", response_model=TelegramSettingsRead, status_code=status.HTTP_201_CREATED, summary="Создать настройки чтения")
+@router.post(
+    "",
+    response_model=TelegramSettingsRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать настройки чтения",
+)
 async def create_settings(
     account_id: uuid.UUID,
     data: TelegramSettingsCreate,
@@ -59,9 +64,7 @@ async def update_settings(
     settings_obj = await repository.get_by_account_id(session, account_id)
     if not settings_obj:
         raise NotFoundError(detail="Настройки не найдены")
-    settings = await service.update(
-        session, settings_obj.id, data.model_dump(exclude_unset=True)
-    )
+    settings = await service.update(session, settings_obj.id, data.model_dump(exclude_unset=True))
     return TelegramSettingsRead.model_validate(settings)
 
 

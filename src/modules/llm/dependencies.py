@@ -10,8 +10,8 @@ from src.core.model_cache import apply_model_cache
 from src.modules.llm.config import llm_settings
 from src.modules.llm.embedder import Embedder, QwenEmbedder
 from src.modules.llm.providers.base import ChatProvider
-from src.modules.llm.providers.mistral import MistralChat
 from src.modules.llm.providers.google import GeminiChat
+from src.modules.llm.providers.mistral import MistralChat
 from src.modules.llm.providers.openai_compat import (
     OPENAI_BASE_URL,
     OPENROUTER_BASE_URL,

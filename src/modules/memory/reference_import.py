@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 from uuid import uuid4
+
+from src.domain.ai import TopicIntelligence
+from src.modules.memory.services.indexing import TopicIndexer, cluster_window
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,13 +18,7 @@ if TYPE_CHECKING:
 
     from src.modules.memory.models import Message
 
-from src.modules.memory.clustering import (
-    normalize_cluster_blocks,
-    parse_cluster_json,
-    split_closed_open,
-)
-from src.modules.memory.constants import REFERENCE_CLUSTER_WINDOW, TOPIC_EMBED_MAX_CHARS
-from src.modules.memory.formatting import numbered_window, topic_embed_text
+from src.modules.memory.constants import REFERENCE_CLUSTER_WINDOW
 from src.modules.memory.repository import (
     ConversationRepository,
     MessageBatchRepository,
@@ -35,10 +32,7 @@ logger = logging.getLogger(__name__)
 _CLUSTER_RETRIES = 3
 
 
-class ClusterLLM(Protocol):
-    async def cluster_topics(self, numbered: str) -> str: ...
-
-    async def embed(self, texts: list[str], *, role: str) -> list[list[float]]: ...
+ClusterLLM = TopicIntelligence
 
 
 @dataclass(frozen=True)
@@ -187,45 +181,12 @@ async def load_reference_export(
             if skipped_to <= checkpoint:
                 break
             continue
-        topic_blocks = [b for b in closed if b.kind == "topic"]
-        by_seq = {m.sequence_number: m for m in slice_}
-        embed_texts = [
-            topic_embed_text(
-                block.topic,
-                [(by_seq[seq].direction, by_seq[seq].text) for seq in block.ids if seq in by_seq],
-                max_chars=TOPIC_EMBED_MAX_CHARS,
-            )
-            for block in topic_blocks
-        ]
-        embeddings = await llm.embed(embed_texts, role="document") if embed_texts else []
-        ei = 0
-        max_closed = checkpoint
-        for block in closed:
-            max_closed = max(max_closed, block.ids[-1])
-            if block.kind != "topic":
-                continue
-            await vectors.create(
-                session,
-                {
-                    "conversation_id": conversation.id,
-                    "text": block.topic,
-                    "kind": "reference",
-                    "embedding": embeddings[ei],
-                    "seq_from": block.ids[0],
-                    "seq_to": block.ids[-1],
-                    "partial": False,
-                },
-            )
-            ei += 1
-            topics_written += 1
-        await summaries.upsert_cluster_checkpoint(session, conversation.id, max_closed)
-        await session.commit()
-        logger.info(
-            "reference topics +%s checkpoint=%s/%s",
-            len(topic_blocks),
-            max_closed,
-            conversation.last_sequence_number,
+        count = await TopicIndexer(llm, vectors).store(
+            session, conversation.id, slice_, closed, kind="reference", partial=False
         )
+        topics_written += count
+        max_closed = max((block.ids[-1] for block in closed), default=checkpoint)
+        logger.info("reference topics +%s checkpoint=%s", count, max_closed)
         if max_closed <= checkpoint:
             break
 
@@ -237,30 +198,4 @@ async def load_reference_export(
 
 
 async def _cluster_window(llm: ClusterLLM, window: list[Message]):
-    seqs = [m.sequence_number for m in window]
-    numbered = numbered_window(window)
-    for attempt in range(1, _CLUSTER_RETRIES + 1):
-        raw = await llm.cluster_topics(numbered)
-        parsed = parse_cluster_json(raw)
-        if parsed is None:
-            logger.warning("cluster JSON invalid attempt %s preview=%r", attempt, (raw or "")[:500])
-            continue
-        parsed = normalize_cluster_blocks(parsed, seqs)
-        if parsed is None:
-            logger.warning(
-                "cluster normalize failed attempt %s preview=%r", attempt, (raw or "")[:500]
-            )
-            continue
-        split = split_closed_open(parsed, seqs, hard_cap=True)
-        if split is None:
-            logger.warning(
-                "cluster ids invalid attempt %s seqs=%s..%s preview=%r",
-                attempt,
-                seqs[0] if seqs else None,
-                seqs[-1] if seqs else None,
-                (raw or "")[:500],
-            )
-            continue
-        closed, _open = split
-        return closed
-    return None
+    return await cluster_window(llm, window, hard_cap=True, retries=_CLUSTER_RETRIES)

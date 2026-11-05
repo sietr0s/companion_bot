@@ -121,9 +121,7 @@ async def test_decide_delivery_blocks_voice_on_instagram(db_session):
             account_id=account.id,
             chat_id=11,
             messages=[
-                Message(
-                    text="this is a long enough spoken reply without urls or digits here"
-                )
+                Message(text="this is a long enough spoken reply without urls or digits here")
             ],
             asked_voice=1,
         ),

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.core.exceptions import NotFoundError
 from src.domain.chat import Person
 from src.modules.instagram_clients.schemas.events import IgMessageReceived
+
+if TYPE_CHECKING:
+    import uuid
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

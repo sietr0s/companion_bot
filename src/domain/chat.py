@@ -7,9 +7,9 @@ from collections.abc import Mapping
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-Channel = Literal["telegram", "instagram"]
-
 from pydantic import BaseModel, Field
+
+Channel = Literal["telegram", "instagram"]
 
 NEXT_MESSAGE_TAG = "<next_message>"
 _NEXT_MESSAGE_RE = re.compile(r"</?next_message\s*>", re.IGNORECASE)

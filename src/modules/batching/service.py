@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from src.core.bus_topics import BusTopics
-from src.modules.batching.config import batching_settings
 from src.domain.chat import Batch
+from src.modules.batching.config import batching_settings
 from src.modules.batching.schemas.events import (
     AddMessageCommand,
     BatchCompletedEvent,

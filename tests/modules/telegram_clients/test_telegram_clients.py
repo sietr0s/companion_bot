@@ -610,7 +610,9 @@ class TestTelegramClientServiceChatsMessages:
         event = MagicMock()
         event.chat_id = 123
         event.sender_id = 1
-        event.get_sender = AsyncMock(return_value=MagicMock(username=None, first_name="U", last_name=None))
+        event.get_sender = AsyncMock(
+            return_value=MagicMock(username=None, first_name="U", last_name=None)
+        )
         event.message.id = 42
         event.message.text = "ок"
         event.message.date = None
@@ -700,9 +702,10 @@ class TestTelegramClientServiceChatsMessages:
     ):
         settings_svc = TelegramSettingsService(TelegramSettingsRepository())
         await settings_svc.create_default_settings(db_session, connected_tg_account.id)
-        assert await tg_service.should_read_message(
-            db_session, connected_tg_account.id, chat_id=123
-        ) is False
+        assert (
+            await tg_service.should_read_message(db_session, connected_tg_account.id, chat_id=123)
+            is False
+        )
 
     async def test_whitelist_on_with_ids_allows_only_listed(
         self,
@@ -712,15 +715,15 @@ class TestTelegramClientServiceChatsMessages:
     ):
         settings_svc = TelegramSettingsService(TelegramSettingsRepository())
         settings = await settings_svc.create_default_settings(db_session, connected_tg_account.id)
-        await settings_svc.repository.update(
-            db_session, settings, {"whitelist_chat_ids": [123]}
+        await settings_svc.repository.update(db_session, settings, {"whitelist_chat_ids": [123]})
+        assert (
+            await tg_service.should_read_message(db_session, connected_tg_account.id, chat_id=123)
+            is True
         )
-        assert await tg_service.should_read_message(
-            db_session, connected_tg_account.id, chat_id=123
-        ) is True
-        assert await tg_service.should_read_message(
-            db_session, connected_tg_account.id, chat_id=999
-        ) is False
+        assert (
+            await tg_service.should_read_message(db_session, connected_tg_account.id, chat_id=999)
+            is False
+        )
 
     async def test_whitelist_off_reads_everything(
         self,
@@ -731,9 +734,10 @@ class TestTelegramClientServiceChatsMessages:
         settings_svc = TelegramSettingsService(TelegramSettingsRepository())
         settings = await settings_svc.create_default_settings(db_session, connected_tg_account.id)
         await settings_svc.repository.update(db_session, settings, {"use_whitelist": False})
-        assert await tg_service.should_read_message(
-            db_session, connected_tg_account.id, chat_id=999
-        ) is True
+        assert (
+            await tg_service.should_read_message(db_session, connected_tg_account.id, chat_id=999)
+            is True
+        )
 
 
 class TestTgEvents:
@@ -820,6 +824,7 @@ class TestTgHandlers:
 
         # Проверяем, что обработчик зарегистрирован
         from src.bus import get_consumer
+
         bus = get_consumer()
         assert BusTopics.TG_MESSAGE_SEND in bus.get_subscribers()
 
@@ -831,6 +836,7 @@ class TestTgHandlers:
         register_handlers()
 
         from src.bus import get_consumer
+
         bus = get_consumer()
         assert BusTopics.TG_MESSAGE_SEND in bus.get_subscribers()
 

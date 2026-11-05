@@ -6,18 +6,21 @@ def test_batches_to_turns_joins_bubbles_with_next_message():
     turns = batches_to_turns(
         [
             Batch(
-                channel="telegram", chat_id=1,
+                channel="telegram",
+                chat_id=1,
                 messages=[Message(text="hi", direction="outgoing")],
             ),
             Batch(
-                channel="telegram", chat_id=1,
+                channel="telegram",
+                chat_id=1,
                 messages=[
                     Message(text="макароны", direction="incoming"),
                     Message(text="100к", direction="incoming"),
                 ],
             ),
             Batch(
-                channel="telegram", chat_id=1,
+                channel="telegram",
+                chat_id=1,
                 messages=[Message(text="ок", direction="outgoing")],
             ),
         ]
@@ -34,14 +37,16 @@ def test_format_topic_title_and_role_lines():
             title="сервер",
             batches=[
                 Batch(
-                    channel="telegram", chat_id=1,
+                    channel="telegram",
+                    chat_id=1,
                     messages=[
                         Message(text="упал", direction="incoming"),
                         Message(text="логи пустые", direction="incoming"),
                     ],
                 ),
                 Batch(
-                    channel="telegram", chat_id=1,
+                    channel="telegram",
+                    chat_id=1,
                     messages=[Message(text="смотрю", direction="outgoing")],
                 ),
             ],

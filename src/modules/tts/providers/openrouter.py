@@ -6,7 +6,7 @@ import logging
 
 import httpx
 
-from src.modules.llm.providers.openai_compat import OPENROUTER_BASE_URL
+from src.core.endpoints import OPENROUTER_BASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,7 @@ class OpenRouterTts:
         self._voice = voice
         self._response_format = response_format
         self.last_generation_id: str | None = None
-        self.last_content_type: str = (
-            "audio/mpeg" if response_format == "mp3" else "audio/pcm"
-        )
+        self.last_content_type: str = "audio/mpeg" if response_format == "mp3" else "audio/pcm"
 
     async def synthesize(self, text: str) -> bytes | None:
         if not (text or "").strip():

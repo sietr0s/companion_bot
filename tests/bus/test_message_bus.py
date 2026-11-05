@@ -43,9 +43,7 @@ class TestBaseEvent:
 
     def test_user_created_model_dump_json(self):
         user_id = uuid.uuid4()
-        event = UserCreated(
-            user_id=user_id, platform="telegram", platform_user_id="42"
-        )
+        event = UserCreated(user_id=user_id, platform="telegram", platform_user_id="42")
         data = event.model_dump(mode="json")
         assert data["event_name"] == "users.event.created"
         assert data["user_id"] == str(user_id)

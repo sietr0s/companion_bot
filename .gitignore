@@ -1,4 +1,3 @@
-```
 # Python
 __pycache__/
 *.pyc
@@ -15,9 +14,13 @@ __pycache__/
 *.env.*
 
 # Local model weights (HF / sentence-transformers / torch)
-models/
+/models/
 
 # Dependencies
 .venv/
 venv/
-```
+
+# Frontend build outputs and downloaded dependencies
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo

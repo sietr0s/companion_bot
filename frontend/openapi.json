@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Companion Bot",
+    "title": "Modular Monolith",
     "version": "0.1.0"
   },
   "paths": {
@@ -120,11 +120,6 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_auth_accounts__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "page",
@@ -197,11 +192,6 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_auth_accounts__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -244,11 +234,6 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_auth_accounts__item_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -291,11 +276,6 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_auth_accounts__item_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -348,11 +328,6 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_auth_accounts__item_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -690,12 +665,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/code": {
@@ -736,12 +706,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/password": {
@@ -782,12 +747,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/qr": {
@@ -808,12 +768,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/public/telegram/auth/qr/{account_id}/status": {
@@ -823,11 +778,6 @@
         ],
         "summary": "Статус QR-авторизации",
         "operationId": "auth_qr_status_api_v1_public_telegram_auth_qr__account_id__status_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -871,11 +821,6 @@
         ],
         "summary": "Отменить QR-авторизацию",
         "operationId": "auth_qr_cancel_api_v1_public_telegram_auth_qr__account_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -912,11 +857,6 @@
         ],
         "summary": "Завершить QR-авторизацию",
         "operationId": "auth_qr_complete_api_v1_public_telegram_auth_qr__account_id__complete_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -960,11 +900,6 @@
         ],
         "summary": "Список Telegram-аккаунтов",
         "operationId": "get_accounts_api_v1_public_telegram__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "filters",
@@ -1047,11 +982,6 @@
         ],
         "summary": "Telegram-аккаунт",
         "operationId": "get_account_api_v1_public_telegram__account_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1093,11 +1023,6 @@
         ],
         "summary": "Удалить Telegram-аккаунт",
         "operationId": "delete_account_api_v1_public_telegram__account_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1134,11 +1059,6 @@
         ],
         "summary": "Список чатов аккаунта",
         "operationId": "get_chats_api_v1_public_telegram__account_id__chats_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1198,11 +1118,6 @@
         ],
         "summary": "Сообщения чата",
         "operationId": "get_messages_api_v1_public_telegram__account_id__chats__chat_id__messages_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1282,11 +1197,6 @@
         ],
         "summary": "Настройки чтения аккаунта",
         "operationId": "get_settings_api_v1_public_telegram__account_id__settings_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1328,11 +1238,6 @@
         ],
         "summary": "Создать настройки чтения",
         "operationId": "create_settings_api_v1_public_telegram__account_id__settings_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1384,11 +1289,6 @@
         ],
         "summary": "Обновить настройки чтения",
         "operationId": "update_settings_api_v1_public_telegram__account_id__settings_put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1440,11 +1340,6 @@
         ],
         "summary": "Удалить настройки чтения",
         "operationId": "delete_settings_api_v1_public_telegram__account_id__settings_delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1481,11 +1376,6 @@
         ],
         "summary": "Add Chat To Whitelist",
         "operationId": "add_chat_to_whitelist_api_v1_public_telegram__account_id__whitelist_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1539,11 +1429,6 @@
         ],
         "summary": "Remove Chat From Whitelist",
         "operationId": "remove_chat_from_whitelist_api_v1_public_telegram__account_id__whitelist__chat_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -1597,11 +1482,6 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_accounts__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "page",
@@ -1674,11 +1554,6 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_accounts__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1721,11 +1596,6 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_accounts__item_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1768,11 +1638,6 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_accounts__item_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1825,11 +1690,6 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_accounts__item_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -1867,11 +1727,6 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_settings__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "page",
@@ -1944,11 +1799,6 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_settings__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1991,11 +1841,6 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_settings__item_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2038,11 +1883,6 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_settings__item_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2095,11 +1935,6 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_settings__item_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2137,11 +1972,6 @@
         ],
         "summary": "Get List",
         "operationId": "get_list_api_v1_public_telegram_chat_states__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "page",
@@ -2214,11 +2044,6 @@
         ],
         "summary": "Create",
         "operationId": "create_api_v1_public_telegram_chat_states__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2261,11 +2086,6 @@
         ],
         "summary": "Get By Id",
         "operationId": "get_by_id_api_v1_public_telegram_chat_states__item_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2308,11 +2128,6 @@
         ],
         "summary": "Update",
         "operationId": "update_api_v1_public_telegram_chat_states__item_id__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -2365,11 +2180,6 @@
         ],
         "summary": "Delete",
         "operationId": "delete_api_v1_public_telegram_chat_states__item_id__delete",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "item_id",
@@ -7316,6 +7126,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

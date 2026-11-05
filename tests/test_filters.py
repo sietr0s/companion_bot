@@ -64,9 +64,7 @@ class TestApplyFilters:
         from sqlalchemy import select
 
         stmt = select(model_class)
-        filters = [
-            Filter(field="identifier", operator=FilterOperator.EQ, value="test@test.com")
-        ]
+        filters = [Filter(field="identifier", operator=FilterOperator.EQ, value="test@test.com")]
         result = apply_filters(stmt, model_class, filters)
         assert result is not None
 

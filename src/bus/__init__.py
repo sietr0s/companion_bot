@@ -35,10 +35,8 @@ def create_bus(message_bus: str | None = None) -> tuple[MessageProducer, Message
 
 
 def _ensure_bus() -> None:
-    global _producer, _consumer
     if _producer is None or _consumer is None:
-        _producer, _consumer = create_bus()
-        logger.info("Создана пара producer/consumer")
+        raise RuntimeError("Call configure_bus before accessing the application message bus")
 
 
 def get_producer() -> MessageProducer:

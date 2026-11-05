@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from langchain_openai import ChatOpenAI
 
+from src.core.endpoints import OPENAI_BASE_URL, OPENROUTER_BASE_URL
 from src.modules.llm.presets import DEFAULT_PRESETS, SamplingPreset
 from src.modules.llm.providers.invoke import (
     acomplete,
@@ -11,8 +12,7 @@ from src.modules.llm.providers.invoke import (
     resolve_preset,
 )
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-OPENAI_BASE_URL = "https://api.openai.com/v1"
+__all__ = ["OPENAI_BASE_URL", "OPENROUTER_BASE_URL", "OpenAICompatChat"]
 
 
 class OpenAICompatChat:
@@ -35,6 +35,4 @@ class OpenAICompatChat:
         return await acomplete(self._llm, system, user, resolve_preset(self._presets, preset))
 
     async def complete_messages(self, messages: list[tuple[str, str]], *, preset: str) -> str:
-        return await acomplete_messages(
-            self._llm, messages, resolve_preset(self._presets, preset)
-        )
+        return await acomplete_messages(self._llm, messages, resolve_preset(self._presets, preset))

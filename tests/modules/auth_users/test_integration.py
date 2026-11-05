@@ -34,7 +34,9 @@ async def test_client_with_db() -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.mark.asyncio
-async def test_register_does_not_create_telegram_user(test_client_with_db: AsyncClient, admin_token: str):
+async def test_register_does_not_create_telegram_user(
+    test_client_with_db: AsyncClient, admin_token: str
+):
     client = test_client_with_db
     register_resp = await client.post(
         "/api/v1/public/auth/register",

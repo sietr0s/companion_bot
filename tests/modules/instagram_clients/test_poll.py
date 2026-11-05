@@ -27,9 +27,7 @@ class InboxClient:
 @pytest.mark.asyncio
 async def test_first_poll_seeds_cursor_without_emit():
     own_pk = 1
-    client = InboxClient(
-        [_thread(11, [_item("10", 2, "old"), _item("20", 2, "newer")])]
-    )
+    client = InboxClient([_thread(11, [_item("10", 2, "old"), _item("20", 2, "newer")])])
     mgr = InstagramClientManager(client_factory=lambda: client)
     aid = uuid4()
     mgr.attach(aid, client)

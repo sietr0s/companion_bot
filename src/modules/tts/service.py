@@ -6,15 +6,18 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
-from src.modules.tts.providers.base import TtsProvider
 from src.modules.tts.schemas.events import (
     SynthesizeCommand,
-    SynthesizeSkippedEvent,
     SynthesizedEvent,
+    SynthesizeSkippedEvent,
 )
+
+if TYPE_CHECKING:
+    from src.bus.interface import MessageProducer
+    from src.modules.tts.providers.base import TtsProvider
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,4 @@ class TtsService:
             chat_id=command.chat_id,
             reason=reason,
         )
-        await self._message_bus.publish(
-            BusTopics.TTS_SYNTHESIZE_SKIPPED, event.to_bus_dict()
-        )
+        await self._message_bus.publish(BusTopics.TTS_SYNTHESIZE_SKIPPED, event.to_bus_dict())

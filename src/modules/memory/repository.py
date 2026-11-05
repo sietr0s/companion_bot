@@ -1,6 +1,7 @@
 """Memory module repositories."""
 
 import math
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import delete, func, select, update
@@ -110,6 +111,60 @@ class ConversationRepository(BaseRepository[Conversation]):
 class MessageBatchRepository(BaseRepository[MessageBatch]):
     def __init__(self) -> None:
         super().__init__(MessageBatch)
+
+    async def append_messages(
+        self,
+        session: AsyncSession,
+        conversation_id: UUID,
+        direction: str,
+        messages: list[dict],
+        *,
+        batch_id: UUID | None = None,
+        touch: bool = False,
+    ) -> int:
+        """Allocate sequences and persist a whole batch, or roll back all of it."""
+        try:
+            if touch:
+                await session.execute(
+                    update(Conversation)
+                    .where(Conversation.id == conversation_id)
+                    .values(last_activity_at=datetime.now(UTC))
+                )
+            if messages:
+                batch = MessageBatch(conversation_id=conversation_id, direction=direction)
+                if batch_id is not None:
+                    batch.id = batch_id
+                session.add(batch)
+                await session.flush()
+                first = await ConversationRepository().allocate_sequence_numbers(
+                    session, conversation_id, len(messages)
+                )
+                session.add_all(
+                    [
+                        Message(
+                            conversation_id=conversation_id,
+                            batch_id=batch.id,
+                            sequence_number=first + index,
+                            direction=direction,
+                            **data,
+                        )
+                        for index, data in enumerate(messages)
+                    ]
+                )
+                last = first + len(messages) - 1
+            else:
+                last = (
+                    await session.execute(
+                        select(Conversation.last_sequence_number).where(
+                            Conversation.id == conversation_id
+                        )
+                    )
+                ).scalar_one()
+            await session.commit()
+            return last
+        except Exception:
+            await session.rollback()
+            raise
 
 
 class MessageRepository(BaseRepository[Message]):
@@ -225,6 +280,30 @@ class SummaryStateRepository(BaseRepository[SummaryState]):
 class VectorRecordRepository(BaseRepository[VectorRecord]):
     def __init__(self) -> None:
         super().__init__(VectorRecord)
+
+    async def store_indexed_window(
+        self,
+        session: AsyncSession,
+        conversation_id: UUID,
+        records: list[dict],
+        checkpoint: int,
+    ) -> None:
+        """Persist a complete index window and its checkpoint in one transaction."""
+        try:
+            session.add_all(
+                [VectorRecord(conversation_id=conversation_id, **record) for record in records]
+            )
+            state = await SummaryStateRepository().get_by_conversation_id(session, conversation_id)
+            if state is None:
+                session.add(
+                    SummaryState(conversation_id=conversation_id, cluster_checkpoint=checkpoint)
+                )
+            else:
+                state.cluster_checkpoint = checkpoint
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
     async def list_for_conversation(
         self, session: AsyncSession, conversation_id: UUID

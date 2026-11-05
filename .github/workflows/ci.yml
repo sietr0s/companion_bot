@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruff:
+    name: Ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-lint.txt
+      - run: python -m pip install -r requirements-lint.txt
+      - name: Lint Python
+        run: ruff check src tests scripts server.py --output-format github
+      - name: Check Python formatting
+        run: ruff format --check src tests scripts server.py
+
+  tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Disposable test-only values; these are not deployment credentials.
+      JWT_SECRET_KEY: ci-test-only-key-with-at-least-32-characters
+      ADMIN_EMAIL: ci@example.com
+      ADMIN_PASSWORD: ci-test-only-password
+      MESSAGE_BUS: in_memory
+      LLM_PROVIDER: stub
+      STT_PROVIDER: stub
+      TTS_PROVIDER: stub
+      HF_HUB_OFFLINE: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lint.txt
+      - name: Install CPU PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Check dependencies
+        run: python -m pip check
+      - name: Run unit and integration tests
+        run: python -m pytest tests --ignore=tests/e2e --junitxml=test-results/pytest.xml
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: test-results/pytest.xml
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        # Existing ESLint 10 / eslint-plugin-react 7 peer declarations conflict.
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Lint TypeScript and React
+        run: npm run lint
+      - name: Generate API client, typecheck and build
+        run: npm run build

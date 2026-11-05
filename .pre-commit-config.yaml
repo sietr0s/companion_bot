@@ -3,7 +3,7 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.0
+    rev: v0.15.22
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -44,6 +44,7 @@ repos:
         always_run: true
         args:
           - tests/
+          - --ignore=tests/e2e
           - -v
           - --tb=short
-        stages: [push]
+        stages: [pre-push]

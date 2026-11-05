@@ -35,8 +35,7 @@ def main() -> None:
     schema["paths"] = {
         path: definition
         for path, definition in schema["paths"].items()
-        if path.startswith(FRONTEND_PATH_PREFIXES)
-        and path not in FRONTEND_EXCLUDED_PATHS
+        if path.startswith(FRONTEND_PATH_PREFIXES) and path not in FRONTEND_EXCLUDED_PATHS
     }
     all_schemas = schema.get("components", {}).get("schemas", {})
     used_schemas: set[str] = set()
@@ -50,9 +49,7 @@ def main() -> None:
             used_schemas.add(nested_name)
             pending.append(nested_name)
     schema["components"]["schemas"] = {
-        name: definition
-        for name, definition in all_schemas.items()
-        if name in used_schemas
+        name: definition for name, definition in all_schemas.items() if name in used_schemas
     }
     OUTPUT_PATH.write_text(
         json.dumps(schema, ensure_ascii=False, indent=2),

@@ -32,9 +32,7 @@ class InstagramSettingsService(BaseService[InstagramSettingsRepository, Instagra
         settings = await self.create_default_settings(session, account_id)
         pks = {int(value) for value in (settings.whitelist_user_pks or [])}
         pks.add(int(user_pk))
-        return await self.repository.update(
-            session, settings, {"whitelist_user_pks": sorted(pks)}
-        )
+        return await self.repository.update(session, settings, {"whitelist_user_pks": sorted(pks)})
 
     async def remove_user_from_whitelist(
         self, session: AsyncSession, account_id: uuid.UUID, user_pk: int

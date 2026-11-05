@@ -42,7 +42,9 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
         session: AsyncSession,
         data: dict[str, Any] | PydanticModel,
     ) -> InstagramAccount:
-        payload = data.model_dump(exclude_unset=True) if isinstance(data, PydanticModel) else dict(data)
+        payload = (
+            data.model_dump(exclude_unset=True) if isinstance(data, PydanticModel) else dict(data)
+        )
         payload.setdefault("is_connected", False)
         payload.setdefault("session_file", "pending")
         account = await self.repository.create(session, payload)
@@ -89,9 +91,7 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
             raise RuntimeError("InstagramClientManager is required for login")
         return self.client_manager
 
-    async def _require_account(
-        self, session: AsyncSession, account_id: UUID
-    ) -> InstagramAccount:
+    async def _require_account(self, session: AsyncSession, account_id: UUID) -> InstagramAccount:
         account = await self.repository.get_by_id(session, account_id)
         if account is None:
             raise NotFoundError(detail="Instagram-аккаунт не найден")

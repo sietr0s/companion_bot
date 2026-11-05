@@ -52,12 +52,8 @@ def get_telegram_chat_state_repository() -> TelegramChatStateRepository:
 
 def get_telegram_account_service(
     repo: TelegramAccountRepository = Depends(get_telegram_account_repository),
-    settings_repo: TelegramSettingsRepository = Depends(
-        get_telegram_settings_repository
-    ),
-    chat_state_repo: TelegramChatStateRepository = Depends(
-        get_telegram_chat_state_repository
-    ),
+    settings_repo: TelegramSettingsRepository = Depends(get_telegram_settings_repository),
+    chat_state_repo: TelegramChatStateRepository = Depends(get_telegram_chat_state_repository),
     client_manager: TelegramClientManager = Depends(get_telegram_client_manager),
 ) -> TelegramAccountService:
     return TelegramAccountService(

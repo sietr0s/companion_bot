@@ -6,12 +6,12 @@ plus the embedding model name. The TTS module imports the OpenAI-compat fields
 """
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings
 
+from src.core.settings import EnvironmentSettings
 from src.modules.llm.presets import SamplingPreset, parse_llm_presets
 
 
-class LLMSettings(BaseSettings):
+class LLMSettings(EnvironmentSettings):
     # Chat provider.
     LLM_PROVIDER: str = "mistral"
 
@@ -33,12 +33,6 @@ class LLMSettings(BaseSettings):
 
     # JSON object merged onto reply/rag/extract defaults. Blank keeps the defaults.
     LLM_PRESETS: str = ""
-
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",
-    }
 
     @field_validator("LLM_PROVIDER", mode="before")
     @classmethod

@@ -37,6 +37,13 @@ class UnauthorizedError(AppException):
         super().__init__(status_code=401, detail=detail)
 
 
+class ForbiddenError(AppException):
+    """Authenticated principal lacks permission (403)."""
+
+    def __init__(self, detail: str = "Недостаточно прав"):
+        super().__init__(status_code=403, detail=detail)
+
+
 class InvalidFilterError(AppException):
     """Некорректный или запрещённый фильтр (422)."""
 

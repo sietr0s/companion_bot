@@ -90,12 +90,16 @@ async def test_process_batch_does_not_index_small_window(db_session):
     )
     event = await svc.process_batch(db_session, cmd)
     rows = (
-        await db_session.execute(
-            select(Message)
-            .where(Message.conversation_id == event.conversation_id)
-            .order_by(Message.sequence_number)
+        (
+            await db_session.execute(
+                select(Message)
+                .where(Message.conversation_id == event.conversation_id)
+                .order_by(Message.sequence_number)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert [row.text for row in rows] == ["hello", "world"]
     assert (await db_session.execute(select(VectorRecord))).scalars().all() == []
     assert llm.cluster_calls == []

@@ -32,10 +32,7 @@ export function LoginPage() {
   });
 
   return (
-    <AuthLayout
-      title="Вход"
-      subtitle="Админ-панель работает поверх автогенерированного клиента из openapi.json"
-    >
+    <AuthLayout title="Вход" subtitle="Админ-панель работает поверх автогенерированного клиента из openapi.json">
       <Form layout="vertical" form={form} onFinish={(values) => loginMutation.mutate(values)}>
         <Form.Item
           label="Identifier"

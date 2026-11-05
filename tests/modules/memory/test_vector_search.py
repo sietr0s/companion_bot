@@ -18,7 +18,9 @@ def _vec(seed: float) -> list[float]:
 @pytest.mark.asyncio
 async def test_search_similar_orders_by_cosine(db_session):
     conv_repo = ConversationRepository()
-    conv = await conv_repo.create(db_session, {"channel": "telegram", "chat_id": 1, "user_id": uuid.uuid4()})
+    conv = await conv_repo.create(
+        db_session, {"channel": "telegram", "chat_id": 1, "user_id": uuid.uuid4()}
+    )
     vec_repo = VectorRecordRepository()
     near = await vec_repo.create(
         db_session,
@@ -40,7 +42,9 @@ async def test_search_similar_orders_by_cosine(db_session):
             "seq_to": 1,
         },
     )
-    other = await conv_repo.create(db_session, {"channel": "telegram", "chat_id": 2, "user_id": uuid.uuid4()})
+    other = await conv_repo.create(
+        db_session, {"channel": "telegram", "chat_id": 2, "user_id": uuid.uuid4()}
+    )
     await vec_repo.create(
         db_session,
         {
@@ -59,8 +63,12 @@ async def test_search_similar_orders_by_cosine(db_session):
 @pytest.mark.asyncio
 async def test_search_similar_splits_topic_and_reference(db_session):
     conv_repo = ConversationRepository()
-    conv = await conv_repo.create(db_session, {"channel": "telegram", "chat_id": 4, "user_id": uuid.uuid4()})
-    other = await conv_repo.create(db_session, {"channel": "telegram", "chat_id": 5, "user_id": uuid.uuid4()})
+    conv = await conv_repo.create(
+        db_session, {"channel": "telegram", "chat_id": 4, "user_id": uuid.uuid4()}
+    )
+    other = await conv_repo.create(
+        db_session, {"channel": "telegram", "chat_id": 5, "user_id": uuid.uuid4()}
+    )
     vec_repo = VectorRecordRepository()
     await vec_repo.create(
         db_session,
@@ -107,7 +115,9 @@ async def test_search_similar_splits_topic_and_reference(db_session):
 @pytest.mark.asyncio
 async def test_get_after_checkpoint(db_session):
     conv_repo = ConversationRepository()
-    conv = await conv_repo.create(db_session, {"channel": "telegram", "chat_id": 3, "user_id": uuid.uuid4()})
+    conv = await conv_repo.create(
+        db_session, {"channel": "telegram", "chat_id": 3, "user_id": uuid.uuid4()}
+    )
     for i, text in enumerate(["a", "b", "c"], start=1):
         await insert_message(db_session, conv.id, text=text, sequence_number=i)
     got = await MessageRepository().get_after_checkpoint(db_session, conv.id, checkpoint=1)

@@ -94,7 +94,6 @@ class TestTelegramSettingsInternalAPI:
 
         # Очистка
 
-
     @pytest.mark.asyncio
     async def test_get_settings_internal(self, test_client_with_db: AsyncClient):
         """Получение настроек через internal API."""
@@ -117,9 +116,7 @@ class TestTelegramSettingsInternalAPI:
             await session.commit()
 
         # Создаём настройки по умолчанию
-        create_resp = await client.post(
-            f"/api/v1/public/telegram/{account_id}/settings", json={}
-        )
+        create_resp = await client.post(f"/api/v1/public/telegram/{account_id}/settings", json={})
         assert create_resp.status_code == 201
 
         # Получаем настройки
@@ -129,7 +126,6 @@ class TestTelegramSettingsInternalAPI:
         assert data["use_whitelist"] is True  # default
 
         # Очистка
-
 
     @pytest.mark.asyncio
     async def test_update_settings_internal(self, test_client_with_db: AsyncClient):
@@ -171,7 +167,6 @@ class TestTelegramSettingsInternalAPI:
         # Остальные поля должны сохраниться
 
         # Очистка
-
 
 
 class TestTelegramSettingsPublicAPI:

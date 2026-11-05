@@ -65,9 +65,7 @@ class BehaviorService:
             raise ValidationError("account_id is required for intake")
         window = format_intake_window(command.recent, command.batch_messages)
         needs_reply, asked_voice = await self._classifier.classify(window)
-        row = await self._repo.get_or_create_account(
-            session, command.account_id, now, self._rng
-        )
+        row = await self._repo.get_or_create_account(session, command.account_id, now, self._rng)
         life = LifeSnapshot(row.activity, row.mood)
         ctx = DecisionContext(
             incoming_text=incoming,
