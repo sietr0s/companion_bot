@@ -27,6 +27,4 @@ class MistralChat:
         return await acomplete(self._llm, system, user, resolve_preset(self._presets, preset))
 
     async def complete_messages(self, messages: list[tuple[str, str]], *, preset: str) -> str:
-        return await acomplete_messages(
-            self._llm, messages, resolve_preset(self._presets, preset)
-        )
+        return await acomplete_messages(self._llm, messages, resolve_preset(self._presets, preset))

@@ -36,7 +36,7 @@ export function TelegramAccountsPage() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrStatus, setQrStatus] = useState<string>('pending');
   const [qrMessage, setQrMessage] = useState<string | null>(null);
-  const [qrLoading, setQrLoading] = useState(false);
+  const [, setQrLoading] = useState(false);
   const qrPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const accountsQuery = useQuery({
@@ -111,8 +111,7 @@ export function TelegramAccountsPage() {
     onError: (error: unknown) => void message.error(extractErrorMessage(error)),
   });
   const qrCancelMutation = useMutation({
-    mutationFn: () =>
-      TelegramClientsService.authQrCancelApiV1PublicTelegramAuthQrAccountIdDelete(qrAccountId!),
+    mutationFn: () => TelegramClientsService.authQrCancelApiV1PublicTelegramAuthQrAccountIdDelete(qrAccountId!),
     onSuccess: () => {
       setQrAccountId(null);
       setQrUrl(null);
@@ -129,7 +128,8 @@ export function TelegramAccountsPage() {
 
     const interval = setInterval(async () => {
       try {
-        const status = await TelegramClientsService.authQrStatusApiV1PublicTelegramAuthQrAccountIdStatusGet(qrAccountId);
+        const status =
+          await TelegramClientsService.authQrStatusApiV1PublicTelegramAuthQrAccountIdStatusGet(qrAccountId);
         setQrStatus(status.status);
         setQrMessage(status.message ?? null);
 
@@ -220,11 +220,7 @@ export function TelegramAccountsPage() {
               <div className="steps-content">
                 {!qrUrl ? (
                   <Space direction="vertical" align="center" style={{ width: '100%' }}>
-                    <Button
-                      type="primary"
-                      onClick={() => qrStartMutation.mutate()}
-                      loading={qrStartMutation.isPending}
-                    >
+                    <Button type="primary" onClick={() => qrStartMutation.mutate()} loading={qrStartMutation.isPending}>
                       Получить QR-код
                     </Button>
                   </Space>
@@ -242,9 +238,7 @@ export function TelegramAccountsPage() {
                       </Typography.Text>
                     )}
                     {qrStatus === 'error' && (
-                      <Typography.Text type="danger">
-                        {qrMessage || 'Ошибка авторизации'}
-                      </Typography.Text>
+                      <Typography.Text type="danger">{qrMessage || 'Ошибка авторизации'}</Typography.Text>
                     )}
                     {qrStatus === 'pending' && (
                       <Space>

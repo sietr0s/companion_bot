@@ -2,6 +2,10 @@
 
 Модульный монолит: FastAPI, PostgreSQL, event-driven шина (in-memory или Kafka).
 
+Правила расширения и границы модулей: [ADR 0001](docs/adr/0001-module-consistency.md).
+Работа в облачной среде: [development.md](docs/development.md).
+Покрытие, code smells и security gates в GitHub: [code-quality.md](docs/code-quality.md).
+
 ## Быстрый старт
 
 ```bash

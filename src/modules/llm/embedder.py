@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Literal, Protocol
 
-from src.core.config import settings
 from src.core.model_cache import apply_model_cache
+from src.modules.llm.config import llm_settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class Embedder(Protocol):
 
 
 class QwenEmbedder:
-    """Lazy-loads SentenceTransformer(settings.EMBEDDING_MODEL) on first embed."""
+    """Lazy-loads SentenceTransformer(llm_settings.EMBEDDING_MODEL) on first embed."""
 
     def __init__(self) -> None:
         self._model = None
@@ -28,17 +28,15 @@ class QwenEmbedder:
             from sentence_transformers import SentenceTransformer
 
             apply_model_cache()
-            logger.info("Загрузка embedding-модели %s", settings.EMBEDDING_MODEL)
-            self._model = SentenceTransformer(settings.EMBEDDING_MODEL)
-            logger.info("Embedding-модель %s готова", settings.EMBEDDING_MODEL)
+            logger.info("Загрузка embedding-модели %s", llm_settings.EMBEDDING_MODEL)
+            self._model = SentenceTransformer(llm_settings.EMBEDDING_MODEL)
+            logger.info("Embedding-модель %s готова", llm_settings.EMBEDDING_MODEL)
         return self._model
 
     def preload(self) -> None:
         self._get_model()
 
-    def embed(
-        self, texts: list[str], *, role: Literal["query", "document"]
-    ) -> list[list[float]]:
+    def embed(self, texts: list[str], *, role: Literal["query", "document"]) -> list[list[float]]:
         model = self._get_model()
         # Qwen3-Embedding: queries use the built-in "query" prompt; documents are raw.
         if role == "query":

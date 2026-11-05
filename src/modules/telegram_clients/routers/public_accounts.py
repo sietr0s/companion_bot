@@ -21,8 +21,15 @@ from src.modules.telegram_clients.services import TelegramAccountService
 router = APIRouter()
 
 ACCOUNT_FILTER_FIELDS = {
-    "id", "telegram_id", "phone", "is_connected", "first_name",
-    "last_name", "username", "created_at", "updated_at",
+    "id",
+    "telegram_id",
+    "phone",
+    "is_connected",
+    "first_name",
+    "last_name",
+    "username",
+    "created_at",
+    "updated_at",
 }
 
 
@@ -58,7 +65,9 @@ async def get_account(
     return account
 
 
-@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить Telegram-аккаунт")
+@router.delete(
+    "/{account_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить Telegram-аккаунт"
+)
 async def delete_account(
     account_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
@@ -77,7 +86,11 @@ async def get_chats(
     return await service.get_chats(session, account_id, limit=limit)
 
 
-@router.get("/{account_id}/chats/{chat_id}/messages", response_model=list[MessageRead], summary="Сообщения чата")
+@router.get(
+    "/{account_id}/chats/{chat_id}/messages",
+    response_model=list[MessageRead],
+    summary="Сообщения чата",
+)
 async def get_messages(
     account_id: uuid.UUID,
     chat_id: int,
@@ -86,7 +99,9 @@ async def get_messages(
     session: AsyncSession = Depends(get_db_session),
     service: TelegramAccountService = Depends(get_telegram_account_service),
 ) -> list[MessageRead]:
-    messages = await service.get_messages(session, account_id, chat_id, limit=limit, offset_id=offset_id)
+    messages = await service.get_messages(
+        session, account_id, chat_id, limit=limit, offset_id=offset_id
+    )
     return [
         MessageRead(
             id=message.message_id,

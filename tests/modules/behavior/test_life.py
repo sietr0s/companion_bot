@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
 import random
+from datetime import UTC, datetime, timedelta
 
 from src.modules.behavior.life import roll_life, should_roll
 

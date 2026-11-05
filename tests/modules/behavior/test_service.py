@@ -1,3 +1,4 @@
+import random
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -21,7 +22,7 @@ async def test_decide_intake_ignore_when_forced(db_session):
         producer,
         BehaviorRepository(),
         FakeIntakeClassifier(needs_reply=0),
-        rng=__import__("random").Random(1),
+        rng=random.Random(1),
     )
     event = await svc.decide_intake(
         db_session,
@@ -55,9 +56,7 @@ async def test_decide_intake_classifies_recent_window(db_session):
             return 1, 0
 
     producer = AsyncMock()
-    svc = BehaviorService(
-        producer, BehaviorRepository(), Capture(), rng=__import__("random").Random(1)
-    )
+    svc = BehaviorService(producer, BehaviorRepository(), Capture(), rng=random.Random(1))
     await svc.decide_intake(
         db_session,
         DecideIntakeCommand(
@@ -90,7 +89,9 @@ async def test_decide_delivery_blocks_voice_on_url(db_session):
     db_session.add(account)
     await db_session.flush()
     producer = AsyncMock()
-    svc = BehaviorService(producer, BehaviorRepository(), FakeIntakeClassifier())
+    svc = BehaviorService(
+        producer, BehaviorRepository(), FakeIntakeClassifier(), rng=random.Random(1)
+    )
     event = await svc.decide_delivery(
         db_session,
         DecideDeliveryCommand(
@@ -112,7 +113,9 @@ async def test_decide_delivery_blocks_voice_on_instagram(db_session):
     db_session.add(account)
     await db_session.flush()
     producer = AsyncMock()
-    svc = BehaviorService(producer, BehaviorRepository(), FakeIntakeClassifier())
+    svc = BehaviorService(
+        producer, BehaviorRepository(), FakeIntakeClassifier(), rng=random.Random(1)
+    )
     event = await svc.decide_delivery(
         db_session,
         DecideDeliveryCommand(
@@ -121,9 +124,7 @@ async def test_decide_delivery_blocks_voice_on_instagram(db_session):
             account_id=account.id,
             chat_id=11,
             messages=[
-                Message(
-                    text="this is a long enough spoken reply without urls or digits here"
-                )
+                Message(text="this is a long enough spoken reply without urls or digits here")
             ],
             asked_voice=1,
         ),

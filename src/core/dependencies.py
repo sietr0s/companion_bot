@@ -14,7 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_session
-from src.core.exceptions import UnauthorizedError
+from src.core.exceptions import ForbiddenError, UnauthorizedError
 from src.core.security import decode_access_token
 
 # Схема авторизации — извлекает Bearer-токен из заголовка
@@ -67,9 +67,8 @@ async def get_current_admin(
     if not user_id_str:
         raise UnauthorizedError(detail="Токен не содержит идентификатор пользователя")
     if role != "admin":
-        raise UnauthorizedError(detail="Недостаточно прав")
+        raise ForbiddenError()
     try:
         return uuid.UUID(user_id_str)
     except ValueError:
         raise UnauthorizedError(detail="Некорректный идентификатор в токене")
-

@@ -72,9 +72,7 @@ async def test_restore_dead_session_marks_disconnected(
 
 
 @pytest.mark.asyncio
-async def test_restore_live_session_attaches(
-    db_session: AsyncSession, tmp_path: Path, monkeypatch
-):
+async def test_restore_live_session_attaches(db_session: AsyncSession, tmp_path: Path, monkeypatch):
     monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
     manager = InstagramClientManager(client_factory=LiveClient)
     service = _service(manager)

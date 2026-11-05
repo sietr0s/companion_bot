@@ -18,7 +18,7 @@ from src.modules.instagram_clients.services.account import InstagramAccountServi
 from src.modules.instagram_clients.services.settings import InstagramSettingsService
 
 
-class TwoFactorRequired(Exception):
+class TwoFactorRequired(Exception):  # noqa: N818 - emulate instagrapi's exception name
     pass
 
 
@@ -58,9 +58,7 @@ def _service(manager: InstagramClientManager, producer) -> InstagramAccountServi
 
 
 @pytest.mark.asyncio
-async def test_login_success_dumps_settings(
-    db_session: AsyncSession, tmp_path: Path, monkeypatch
-):
+async def test_login_success_dumps_settings(db_session: AsyncSession, tmp_path: Path, monkeypatch):
     monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
     client = ScriptedClient()
     manager = InstagramClientManager(client_factory=lambda: client)
@@ -77,9 +75,7 @@ async def test_login_success_dumps_settings(
 
 
 @pytest.mark.asyncio
-async def test_login_two_factor_then_code(
-    db_session: AsyncSession, tmp_path: Path, monkeypatch
-):
+async def test_login_two_factor_then_code(db_session: AsyncSession, tmp_path: Path, monkeypatch):
     monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
     client = ScriptedClient(require_2fa=True)
     manager = InstagramClientManager(client_factory=lambda: client)

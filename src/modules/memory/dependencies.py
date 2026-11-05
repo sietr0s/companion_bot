@@ -4,8 +4,8 @@ from fastapi import Depends
 
 from src.bus import get_producer
 from src.bus.interface import MessageProducer
-from src.modules.llm.dependencies import get_llm_service
-from src.modules.llm.service import LLMService
+from src.composition.ai import get_memory_intelligence
+from src.domain.ai import MemoryIntelligence
 from src.modules.memory.repository import (
     ConversationRepository,
     MessageRepository,
@@ -19,6 +19,7 @@ from src.modules.memory.service import (
     SummaryStateService,
     VectorRecordService,
 )
+from src.modules.memory.services.topics import TopicQueryService
 
 
 def get_conversation_repository() -> ConversationRepository:
@@ -35,6 +36,13 @@ def get_summary_state_repository() -> SummaryStateRepository:
 
 def get_vector_record_repository() -> VectorRecordRepository:
     return VectorRecordRepository()
+
+
+def get_topic_query_service(
+    vectors: VectorRecordRepository = Depends(get_vector_record_repository),
+    messages: MessageRepository = Depends(get_message_repository),
+) -> TopicQueryService:
+    return TopicQueryService(vectors, messages)
 
 
 def get_conversation_service(
@@ -63,7 +71,7 @@ def get_vector_record_service(
 
 def build_memory_service(
     message_bus: MessageProducer | None = None,
-    llm: LLMService | None = None,
+    llm: MemoryIntelligence | None = None,
 ) -> MemoryService:
     return MemoryService(
         conversations=ConversationRepository(),
@@ -71,7 +79,7 @@ def build_memory_service(
         summaries=SummaryStateRepository(),
         vectors=VectorRecordRepository(),
         message_bus=message_bus or get_producer(),
-        llm=llm or get_llm_service(),
+        llm=llm or get_memory_intelligence(),
     )
 
 
@@ -80,7 +88,7 @@ def get_memory_service(
     messages: MessageRepository = Depends(get_message_repository),
     summaries: SummaryStateRepository = Depends(get_summary_state_repository),
     vectors: VectorRecordRepository = Depends(get_vector_record_repository),
-    llm: LLMService = Depends(get_llm_service),
+    llm: MemoryIntelligence = Depends(get_memory_intelligence),
 ) -> MemoryService:
     return MemoryService(
         conversations=conversations,

@@ -90,7 +90,9 @@ async def extract_reply(msg: Any) -> QuotedMessage | None:
     if not isinstance(text, str):
         text = None
     return QuotedMessage(
-        message_id=getattr(reply, "id", None) if isinstance(getattr(reply, "id", None), int) else reply_id,
+        message_id=getattr(reply, "id", None)
+        if isinstance(getattr(reply, "id", None), int)
+        else reply_id,
         sender_name=_display_name(sender),
         text=text,
     )

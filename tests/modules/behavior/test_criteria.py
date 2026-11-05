@@ -5,7 +5,7 @@ from src.modules.behavior.criteria import (
     OutgoingLengthCriterion,
     VoiceStreakCriterion,
 )
-from src.modules.behavior.engine import ChatSnapshot, DecisionContext, LifeSnapshot
+from src.modules.behavior.engine import ChatSnapshot, DecisionContext
 
 
 def test_outgoing_length_deltas():

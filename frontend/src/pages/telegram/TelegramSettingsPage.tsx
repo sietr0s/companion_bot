@@ -40,9 +40,7 @@ export function TelegramSettingsPage() {
   }, [settingsForm, settingsQuery.data, settingsQuery.error]);
 
   const settingsMutation = useMutation({
-    mutationFn: async (values: {
-      use_whitelist: boolean;
-    }) => {
+    mutationFn: async (values: { use_whitelist: boolean }) => {
       if (settingsQuery.data) {
         return TelegramClientsService.updateSettingsApiV1PublicTelegramAccountIdSettingsPut(accountId!, {
           use_whitelist: values.use_whitelist,

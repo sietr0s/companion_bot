@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-import random
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from src.modules.behavior.engine import LifeSnapshot
+
+if TYPE_CHECKING:
+    import random
 
 ACTIVITIES = ("working", "resting", "running", "public")
 MOODS = ("good", "neutral", "bad")

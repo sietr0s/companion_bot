@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
-from src.modules.stt.downloader import MediaDownloader
-from src.modules.stt.providers.base import SttProvider
 from src.modules.stt.schemas.events import (
     TranscribeCommand,
-    TranscribeFailedEvent,
     TranscribedEvent,
+    TranscribeFailedEvent,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from src.bus.interface import MessageProducer
+    from src.modules.stt.downloader import MediaDownloader
+    from src.modules.stt.providers.base import SttProvider
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +61,7 @@ class SttService:
                 message_id=command.message_id,
                 reason=str(exc),
             )
-            await self._message_bus.publish(
-                BusTopics.STT_TRANSCRIBE_FAILED, failed.to_bus_dict()
-            )
+            await self._message_bus.publish(BusTopics.STT_TRANSCRIBE_FAILED, failed.to_bus_dict())
         finally:
             if path is not None:
                 path.unlink(missing_ok=True)

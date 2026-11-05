@@ -2,8 +2,6 @@
 
 from uuid import UUID
 
-from pydantic import Field
-
 from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
 from src.domain.chat import Batch, ChatRef, Message

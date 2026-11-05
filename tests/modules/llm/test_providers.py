@@ -316,7 +316,7 @@ async def test_generate_reply_sends_chat_roles_not_one_human_blob():
                     "batches": [
                         {
                             "channel": "telegram",
-                    "chat_id": 1,
+                            "chat_id": 1,
                             "messages": [{"direction": "incoming", "text": "потетим"}],
                         }
                     ],
@@ -329,12 +329,12 @@ async def test_generate_reply_sends_chat_roles_not_one_human_blob():
                     "batches": [
                         {
                             "channel": "telegram",
-                    "chat_id": 1,
+                            "chat_id": 1,
                             "messages": [{"direction": "incoming", "text": "скучно"}],
                         },
                         {
                             "channel": "telegram",
-                    "chat_id": 1,
+                            "chat_id": 1,
                             "messages": [{"direction": "outgoing", "text": "пойдём гулять"}],
                         },
                     ],

@@ -134,14 +134,18 @@ class LLMService:
 
     async def retrieve_pre(self, batch_messages: list, fallback: str | None = None) -> str:
         user = "\n".join(message_texts(batch_messages))
-        raw = await self._chat_or_default().complete(load_prompt("retrieve_pre"), user, preset="rag")
+        raw = await self._chat_or_default().complete(
+            load_prompt("retrieve_pre"), user, preset="rag"
+        )
         return _sanitize_search_query(raw, fallback=fallback or user)
 
     async def retrieve_post(self, query: str, hits: list[str]) -> list[str]:
         if not hits:
             return []
         user = f"Query:\n{query}\n\nSnippets:\n" + "\n".join(f"- {hit}" for hit in hits)
-        raw = await self._chat_or_default().complete(load_prompt("retrieve_post"), user, preset="rag")
+        raw = await self._chat_or_default().complete(
+            load_prompt("retrieve_post"), user, preset="rag"
+        )
         lines = [line.strip().lstrip("- ").strip() for line in raw.splitlines() if line.strip()]
         unused = list(hits)
         kept: list[str] = []

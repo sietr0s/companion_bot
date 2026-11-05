@@ -1,12 +1,8 @@
 """Схемы событий шины модуля memory."""
 
-from datetime import UTC, datetime
-
-from pydantic import Field
-
 from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
-from src.domain.chat import Batch, ChatRef, ConversationContext, Message, QuotedMessage
+from src.domain.chat import Batch, ChatRef, ConversationContext, QuotedMessage
 
 __all__ = [
     "QuotedMessage",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
 from unittest.mock import AsyncMock
 
@@ -66,13 +67,18 @@ async def _drain(transport: InMemoryTransport, timeout: float = 3.0) -> None:
 def _patch_behavior(monkeypatch, db_session, *, needs_reply=1, action=None):
     def _decide(policy, ctx, rng, temperature=None):
         picked = action or policy.fallback
-        return Decision(action=picked, scores={a: 1.0 for a in policy.legal_actions}, blocked={})
+        return Decision(action=picked, scores=dict.fromkeys(policy.legal_actions, 1.0), blocked={})
 
     monkeypatch.setattr("src.modules.behavior.service.decide", _decide)
     monkeypatch.setattr("src.modules.orchestrator.service.asyncio.sleep", AsyncMock())
 
     def build(producer):
-        return BehaviorService(producer, BehaviorRepository(), FakeIntakeClassifier(needs_reply=needs_reply))
+        return BehaviorService(
+            producer,
+            BehaviorRepository(),
+            FakeIntakeClassifier(needs_reply=needs_reply),
+            rng=random.Random(1),
+        )
 
     monkeypatch.setattr("src.modules.behavior.handlers.build_behavior_service", build)
     monkeypatch.setattr(
@@ -99,20 +105,20 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session)
 
     pre_calls: list[list[str]] = []
     orig_pre = LLMService.retrieve_pre
 
-    async def spy_pre(self, batch_messages):
+    async def spy_pre(self, batch_messages, fallback=None):
         texts = [
             getattr(item, "text", None) or item.get("text") if not isinstance(item, str) else item
             for item in batch_messages
         ]
         pre_calls.append(texts)
-        return await orig_pre(self, batch_messages)
+        return await orig_pre(self, batch_messages, fallback=fallback)
 
     monkeypatch.setattr(LLMService, "retrieve_pre", spy_pre)
 
@@ -147,7 +153,7 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
     assert sent_args.args[1] == 12345
     assert "hello companion" in sent_args.args[2]
 
-    assert pre_calls == [["hello companion"]]
+    assert pre_calls == [["User: hello companion"]]
     rows = (await db_session.execute(select(VectorRecord))).scalars().all()
     assert rows == []
 
@@ -170,8 +176,8 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session)
 
     class FakeDl:
@@ -227,8 +233,8 @@ async def test_ignore_does_not_send(db_session, monkeypatch):
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.core.config.settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.core.config.settings.BATCH_IDLE_SECONDS", 0)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
+    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session, action="ignore")
     manager = AsyncMock()
     manager.send_message = AsyncMock()

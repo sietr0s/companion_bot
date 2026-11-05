@@ -58,8 +58,7 @@ async def safe_handle(
 
     except AppException as e:
         logger.warning(
-            "Бизнес-ошибка в обработчике %s для топика '%s': %s (status=%s). "
-            "Сообщение: %s",
+            "Бизнес-ошибка в обработчике %s для топика '%s': %s (status=%s). Сообщение: %s",
             handler_name,
             topic,
             e.detail,
@@ -69,8 +68,7 @@ async def safe_handle(
 
     except (ConnectionError, TimeoutError) as e:
         logger.error(
-            "Сетевая ошибка в обработчике %s для топика '%s': %s. "
-            "Сообщение: %s",
+            "Сетевая ошибка в обработчике %s для топика '%s': %s. Сообщение: %s",
             handler_name,
             topic,
             e,

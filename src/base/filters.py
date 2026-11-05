@@ -60,9 +60,7 @@ def parse_filters(
         try:
             filters.append(Filter(field=field, operator=operator, value=value))
         except ValueError as exc:
-            raise InvalidFilterError(
-                detail=f"Некорректный оператор фильтра: {operator!r}"
-            ) from exc
+            raise InvalidFilterError(detail=f"Некорректный оператор фильтра: {operator!r}") from exc
     return filters
 
 

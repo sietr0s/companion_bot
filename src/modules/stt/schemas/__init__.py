@@ -1,7 +1,7 @@
 from src.modules.stt.schemas.events import (
     TranscribeCommand,
-    TranscribeFailedEvent,
     TranscribedEvent,
+    TranscribeFailedEvent,
 )
 
 __all__ = ["TranscribeCommand", "TranscribedEvent", "TranscribeFailedEvent"]

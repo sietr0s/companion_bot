@@ -7,15 +7,13 @@ from pydantic import BaseModel, Field
 
 from src.bus.schemas import BaseEvent
 from src.core.bus_topics import BusTopics
-from src.domain.chat import Batch, Message
+from src.domain.chat import Batch, ChatRef, ConversationContext, Message
 
 
-class GenerateReplyCommand(BaseModel):
+class GenerateReplyCommand(ChatRef, ConversationContext):
+    """Generate a reply from structured, channel-independent memory."""
+
     conversation_id: UUID
-    telegram_chat_id: int
-    telegram_account_id: UUID | None = None
-    context: str
-    persona: str = "default"
 
 
 class SummarizeCommand(BaseModel):
@@ -24,21 +22,17 @@ class SummarizeCommand(BaseModel):
     max_chars: int = 1000
 
 
-class ReplyGeneratedEvent(BaseEvent):
+class ReplyGeneratedEvent(ChatRef, BaseEvent):
     event_name: str = BusTopics.LLM_REPLY_GENERATED
     conversation_id: UUID
-    telegram_chat_id: int
-    telegram_account_id: UUID | None = None
     messages: list[Message]
     batch: Batch | None = None
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class ReplySuppressedEvent(BaseEvent):
+class ReplySuppressedEvent(ChatRef, BaseEvent):
     event_name: str = BusTopics.LLM_REPLY_SUPPRESSED
     conversation_id: UUID
-    telegram_chat_id: int
-    telegram_account_id: UUID | None = None
     reason: str = "no_response_needed"
     suppressed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

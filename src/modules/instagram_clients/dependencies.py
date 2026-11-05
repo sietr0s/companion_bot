@@ -4,7 +4,6 @@ from fastapi import Depends
 
 from src.bus import get_producer
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
-
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
     InstagramChatStateRepository,
@@ -15,7 +14,6 @@ from src.modules.instagram_clients.services import (
     InstagramChatStateService,
     InstagramSettingsService,
 )
-
 
 _instagram_client_manager: InstagramClientManager | None = None
 

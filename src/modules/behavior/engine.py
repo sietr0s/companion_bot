@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
 from src.modules.behavior.config import behavior_settings
-from src.modules.behavior.report import format_pre_softmax_log
+from src.utils.decision_report import format_pre_softmax_log
 
 if TYPE_CHECKING:
     import random
@@ -84,7 +84,11 @@ def softmax_probabilities(
 ) -> dict[str, float]:
     """Share of non-negative weights. Temperature 1 = linear; <1 sharpens."""
     temp = temperature if temperature > 0 else 1.0
-    masses = {key: max(value, 0.0) ** (1.0 / temp) for key, value in weights.items()}
+    scale = max(weights.values(), default=0.0)
+    if scale <= 0:
+        return dict.fromkeys(weights, 0.0)
+    # Scaling preserves ratios and prevents tiny/huge weights underflowing/overflowing.
+    masses = {key: (max(value, 0.0) / scale) ** (1.0 / temp) for key, value in weights.items()}
     total = sum(masses.values())
     if total <= 0:
         return dict.fromkeys(weights, 0.0)

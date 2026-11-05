@@ -1,10 +1,4 @@
-import type {
-  AuthService,
-  HealthService,
-  MemoryService,
-  TelegramClientsService,
-  UsersService,
-} from '../api/generated';
+import type { AuthService, HealthService, MemoryService, TelegramClientsService, UsersService } from '../api/generated';
 
 export interface ApiClient {
   auth: typeof AuthService;

@@ -9,9 +9,9 @@ from src.base.routers import create_crud_router
 from src.core.dependencies import get_current_admin, get_db_session
 from src.modules.memory.dependencies import (
     get_conversation_service,
-    get_memory_service,
     get_message_service,
     get_summary_state_service,
+    get_topic_query_service,
     get_vector_record_service,
 )
 from src.modules.memory.schemas.public import (
@@ -30,7 +30,7 @@ from src.modules.memory.schemas.public import (
     VectorTopicDetailRead,
     VectorTopicRead,
 )
-from src.modules.memory.service import MemoryService
+from src.modules.memory.services.topics import TopicQueryService
 
 router = APIRouter(
     prefix="/api/v1/public/memory",
@@ -90,7 +90,7 @@ router.include_router(
 async def list_conversation_topics(
     conversation_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    service: MemoryService = Depends(get_memory_service),
+    service: TopicQueryService = Depends(get_topic_query_service),
 ) -> list[VectorTopicRead]:
     return await service.list_topics(session, conversation_id)
 
@@ -103,6 +103,6 @@ async def get_conversation_topic(
     conversation_id: UUID,
     topic_id: UUID,
     session: AsyncSession = Depends(get_db_session),
-    service: MemoryService = Depends(get_memory_service),
+    service: TopicQueryService = Depends(get_topic_query_service),
 ) -> VectorTopicDetailRead:
     return await service.get_topic(session, conversation_id, topic_id)

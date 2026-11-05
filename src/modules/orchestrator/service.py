@@ -8,8 +8,8 @@ from uuid import UUID, uuid4
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
 from src.domain.chat import Batch, ChatRef, ConversationContext, Message, message_texts
-from src.modules.behavior.report import format_decision_log
 from src.modules.orchestrator.schemas.state import OrchestratorState
+from src.utils.decision_report import format_decision_log
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class OrchestratorService:
     ) -> None:
         self._consumer = message_consumer
         self._producer = message_producer
-        self._states: dict[tuple[str, int], OrchestratorState] = {}
+        self._states: dict[tuple[str, str, int], OrchestratorState] = {}
         self._background: set[asyncio.Task] = set()
 
     def register_all_handlers(self) -> None:
@@ -105,8 +105,8 @@ class OrchestratorService:
     def _on_incoming_message(self) -> None:
         async def on_message_received(payload: dict) -> None:
             text = (payload.get("text") or "").strip()
-            chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id")
+            int(payload["chat_id"])
+            payload.get("account_id")
             media = payload.get("media") or []
             types = {
                 (item.get("type") if isinstance(item, dict) else getattr(item, "type", None))
@@ -167,8 +167,8 @@ class OrchestratorService:
     def _on_stt(self) -> None:
         @self._consumer.subscribe(BusTopics.STT_TRANSCRIBED)
         async def on_transcribed(payload: dict) -> None:
-            chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id")
+            int(payload["chat_id"])
+            payload.get("account_id")
             state = self._state_from_payload(payload)
             self._merge_chat(state, payload)
             text = (payload.get("text") or "").strip()
@@ -205,7 +205,6 @@ class OrchestratorService:
                 {"batch": batch.model_dump(mode="json")},
             )
 
-    # TODO: Шаг хуйни
     def _on_memory(self) -> None:
         @self._consumer.subscribe(BusTopics.MEMORY_BATCH_PROCESSED)
         async def on_batch_processed(payload: dict) -> None:
@@ -228,7 +227,9 @@ class OrchestratorService:
                 BusTopics.BEHAVIOR_DECIDE_INTAKE,
                 {
                     **chat.bus_ids(),
-                    "batch_messages": state.batch_messages.model_dump(mode="json"),
+                    "batch_messages": (
+                        state.batch_messages or Batch(**chat.model_dump())
+                    ).model_dump(mode="json"),
                     "recent": [m.model_dump(mode="json") for m in state.memory.recent_messages()],
                 },
             )
@@ -237,7 +238,7 @@ class OrchestratorService:
         @self._consumer.subscribe(BusTopics.BEHAVIOR_INTAKE_DECIDED)
         async def on_intake_decided(payload: dict) -> None:
             chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id")
+            payload.get("account_id")
             state = self._state_from_payload(payload)
             if payload.get("action") == "ignore":
                 logger.info(
@@ -253,7 +254,9 @@ class OrchestratorService:
                         mood=payload.get("mood"),
                     ),
                 )
-                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
+                self._states.pop(
+                    ChatRef.from_payload(self._with_channel(payload)).state_key(), None
+                )
                 return
             state.asked_voice = int(payload.get("asked_voice") or 0)
             if not state.chat.conversation_id:
@@ -313,7 +316,7 @@ class OrchestratorService:
     def _on_tts(self) -> None:
         @self._consumer.subscribe(BusTopics.TTS_SYNTHESIZED)
         async def on_synthesized(payload: dict) -> None:
-            account_id = payload.get("account_id")
+            payload.get("account_id")
             state = self._states.get(ChatRef.from_payload(self._with_channel(payload)).state_key())
             texts = list(state.pending_outgoing_texts) if state else []
             joined = ". ".join(texts) or payload.get("text") or ""
@@ -341,7 +344,9 @@ class OrchestratorService:
                 if state.delivery_report is not None:
                     state.delivery_report["action"] = "text"
             if not account_id or not texts:
-                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
+                self._states.pop(
+                    ChatRef.from_payload(self._with_channel(payload)).state_key(), None
+                )
                 return
             ids = ChatRef.from_payload(self._with_channel(payload)).adapter_ids()
             for text in texts:
@@ -353,8 +358,8 @@ class OrchestratorService:
     def _on_llm(self) -> None:
         @self._consumer.subscribe(BusTopics.LLM_REPLY_GENERATED)
         async def on_reply_generated(payload: dict) -> None:
-            chat_id = int(payload["chat_id"])
-            account_id = payload.get("account_id")
+            int(payload["chat_id"])
+            payload.get("account_id")
             messages = payload.get("messages") or []
             texts = message_texts(messages)
             state = self._state_from_payload(payload)
@@ -377,7 +382,7 @@ class OrchestratorService:
             chat_id = payload.get("chat_id")
             if chat_id is None:
                 return
-            account_id = payload.get("account_id")
+            payload.get("account_id")
             self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
 
     def _on_message_sent(self) -> None:
@@ -435,7 +440,9 @@ class OrchestratorService:
                         incoming_types=report.get("incoming_types") or [],
                     ),
                 )
-                self._states.pop(ChatRef.from_payload(self._with_channel(payload)).state_key(), None)
+                self._states.pop(
+                    ChatRef.from_payload(self._with_channel(payload)).state_key(), None
+                )
 
         self._consumer.subscribe(BusTopics.TG_MESSAGE_SENT)(on_message_sent)
         self._consumer.subscribe(BusTopics.IG_MESSAGE_SENT)(on_message_sent)

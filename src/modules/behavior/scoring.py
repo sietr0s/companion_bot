@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 GREETINGS = frozenset({"привет", "здарова", "хай", "йо"})
 _EMOTICON_RE = re.compile(r"[:;]-?[)D(]|[\U0001F300-\U0001FAFF]")

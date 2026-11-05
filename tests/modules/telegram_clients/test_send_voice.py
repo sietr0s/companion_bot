@@ -1,14 +1,13 @@
-from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
-from src.core.bus_topics import BusTopics
-from src.modules.telegram_clients.handlers import register_handlers
 from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
+from src.core.bus_topics import BusTopics
+from src.modules.telegram_clients.handlers import register_handlers
 
 
 @pytest.mark.asyncio

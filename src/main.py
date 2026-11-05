@@ -9,25 +9,25 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from src.bus import configure_bus
+from src.composition.container import ApplicationContainer
 from src.core.config import settings
-from src.core.container import ApplicationContainer
 from src.core.database import create_async_session, dispose_db, init_db
 from src.core.exceptions import AppException
-from src.core.seed import seed_admin
 from src.modules.auth.handlers import register_handlers as register_auth_handlers
 from src.modules.auth.routers import public_router as auth_router
+from src.modules.auth.seed import seed_admin
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
 from src.modules.behavior.handlers import register_handlers as register_behavior_handlers
+from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
+from src.modules.instagram_clients.handlers import register_handlers as register_ig_handlers
+from src.modules.instagram_clients.routers import public_router as ig_router
 from src.modules.llm.handlers import register_handlers as register_llm_handlers
 from src.modules.memory.handlers import register_handlers as register_memory_handlers
 from src.modules.memory.routers import public_router as memory_router
 from src.modules.orchestrator.handlers import register_handlers as register_orchestrator_handlers
 from src.modules.stt.handlers import register_handlers as register_stt_handlers
-from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
-from src.modules.instagram_clients.handlers import register_handlers as register_ig_handlers
 from src.modules.telegram_clients.dependencies import configure_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
-from src.modules.instagram_clients.routers import public_router as ig_router
 from src.modules.telegram_clients.routers import public_router as tg_router
 from src.modules.tts.handlers import register_handlers as register_tts_handlers
 from src.modules.users.handlers import register_handlers as register_users_handlers

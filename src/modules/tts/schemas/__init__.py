@@ -1,7 +1,7 @@
 from src.modules.tts.schemas.events import (
     SynthesizeCommand,
-    SynthesizeSkippedEvent,
     SynthesizedEvent,
+    SynthesizeSkippedEvent,
 )
 
 __all__ = ["SynthesizeCommand", "SynthesizeSkippedEvent", "SynthesizedEvent"]

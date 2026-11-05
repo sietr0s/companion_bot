@@ -1,5 +1,5 @@
 from src.core.config import settings
-from src.modules.llm.providers.openai_compat import OPENROUTER_BASE_URL
+from src.core.endpoints import OPENROUTER_BASE_URL
 from src.modules.tts.providers.base import TtsProvider
 from src.modules.tts.providers.stub import StubTts
 

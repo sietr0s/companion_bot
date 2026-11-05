@@ -250,9 +250,7 @@ class TelegramClientManager:
 
         return media
 
-    async def download_voice(
-        self, account_id: uuid.UUID, chat_id: int, message_id: int
-    ) -> Path:
+    async def download_voice(self, account_id: uuid.UUID, chat_id: int, message_id: int) -> Path:
         client = self.get_client(account_id)
         if not client:
             raise NotFoundError(detail=f"Клиент для account_id={account_id} не подключён")
