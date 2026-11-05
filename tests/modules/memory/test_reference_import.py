@@ -4,13 +4,13 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from src.modules.memory.constants import EMBEDDING_DIM
-from src.modules.memory.models import Message, VectorRecord
-from src.modules.memory.reference_import import (
+from scripts.import_reference import (
     extract_text,
     load_reference_export,
     parse_telegram_export,
 )
+from src.modules.memory.constants import EMBEDDING_DIM
+from src.modules.memory.models import Message, VectorRecord
 from src.modules.memory.repository import ConversationRepository
 
 
@@ -108,8 +108,8 @@ async def test_load_reference_export_writes_reference_kind(db_session, tmp_path:
 async def test_load_reference_skips_failed_window_and_continues(
     db_session, tmp_path: Path, monkeypatch
 ):
-    monkeypatch.setattr("src.modules.memory.reference_import.REFERENCE_CLUSTER_WINDOW", 2)
-    monkeypatch.setattr("src.modules.memory.reference_import._CLUSTER_RETRIES", 1)
+    monkeypatch.setattr("scripts.import_reference.REFERENCE_CLUSTER_WINDOW", 2)
+    monkeypatch.setattr("scripts.import_reference._CLUSTER_RETRIES", 1)
 
     class FlakyLLM(_StubLLM):
         async def cluster_topics(self, numbered: str) -> str:
@@ -138,3 +138,47 @@ async def test_load_reference_skips_failed_window_and_continues(
     assert stats["topics"] == 1
     records = list((await db_session.execute(select(VectorRecord))).scalars().all())
     assert records[0].seq_from == 3
+
+
+@pytest.mark.asyncio
+async def test_replace_reference_resets_checkpoints_batches_and_preserves_live_chat(
+    db_session, tmp_path
+):
+    from uuid import uuid4
+
+    from src.modules.memory.models import MessageBatch
+    from src.modules.memory.repository import SummaryStateRepository
+
+    conversations = ConversationRepository()
+    live = await conversations.get_or_create(
+        db_session, channel="telegram", chat_id=-42, account_id=uuid4()
+    )
+    path = tmp_path / "export.json"
+    payload = {
+        "name": "Reference",
+        "id": 42,
+        "messages": [
+            {"type": "message", "from_id": "user42", "text": "one"},
+            {"type": "message", "from_id": "user42", "text": "two"},
+        ],
+    }
+    path.write_text(json.dumps(payload))
+    await load_reference_export(db_session, _StubLLM(), path)
+    reference = await conversations.get_by_channel_chat_account(
+        db_session, channel="telegram", chat_id=-42, account_id=None
+    )
+    assert reference is not None and reference.id != live.id
+    await SummaryStateRepository().upsert(db_session, reference.id, "obsolete", 2)
+    old_ids = set((await db_session.execute(select(Message.id))).scalars())
+    stats = await load_reference_export(db_session, _StubLLM(), path, replace=True)
+    await db_session.commit()
+    assert stats["topics"] == 1
+    messages = list((await db_session.execute(select(Message))).scalars())
+    assert [m.sequence_number for m in messages] == [1, 2]
+    assert not old_ids.intersection(m.id for m in messages)
+    assert len(list((await db_session.execute(select(MessageBatch))).scalars())) == 1
+    summary = await SummaryStateRepository().get_by_conversation_id(db_session, reference.id)
+    assert summary.current_summary is None
+    assert summary.checkpoint == 0
+    assert summary.cluster_checkpoint == 2
+    assert await conversations.get_state(db_session, live.id) == live

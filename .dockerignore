@@ -51,12 +51,14 @@ docker-compose*.yml
 .gitignore
 
 # Documentation
-*.md
+README.md
 docs/
 
 # Local env
 .env.local
 .env.*.local
+.env
+.env.*
 
 # Database
 *.db
@@ -74,3 +76,10 @@ models/
 # Misc
 .DS_Store
 Thumbs.db
+
+# The backend image does not contain frontend tools, tests, or analyzer outputs.
+frontend/
+tests/
+reports/
+.hypothesis/
+.mypy_cache/

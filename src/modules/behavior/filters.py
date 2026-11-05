@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from src.modules.behavior.scoring import word_count
+from src.modules.behavior.utils import word_count
 
 if TYPE_CHECKING:
     from src.modules.behavior.engine import DecisionContext

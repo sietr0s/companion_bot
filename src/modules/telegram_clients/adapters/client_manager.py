@@ -26,8 +26,8 @@ from telethon.errors import (
 from src.core.config import settings
 from src.core.exceptions import NotFoundError
 from src.modules.telegram_clients.adapters.qr_auth import QrAuthManager
-from src.modules.telegram_clients.adapters.quoted import quoted_from_telethon
 from src.modules.telegram_clients.schemas.events import Media, Sender, TgMessageReceived
+from src.modules.telegram_clients.utils import quoted_from_telethon
 
 logger = logging.getLogger(__name__)
 
@@ -99,19 +99,9 @@ class TelegramClientManager:
         phone_code_hash для последующей верификации.
         """
         session_path = self.get_session_path(account_id)
-        logger.info(
-            "[tg client] send_code: account_id=%s, phone=%s, session_path=%s",
-            account_id,
-            phone,
-            session_path,
-        )
+        logger.info("[tg client] send_code: account_id=%s", account_id)
         client = self.create_client(session_path)
         await client.connect()
-        logger.info(
-            "[tg client] connected: account_id=%s, authorized=%s",
-            account_id,
-            await client.is_user_authorized(),
-        )
 
         result = await client.send_code_request(phone)
         self._phone_code_hashes[account_id] = result.phone_code_hash
@@ -121,10 +111,8 @@ class TelegramClientManager:
         timeout = getattr(result, "timeout", None)
         next_type = getattr(result, "next_type", None)
         logger.info(
-            "[tg client] send_code done: account_id=%s, phone_code_hash=%s, "
-            "code_type=%s, timeout=%s, next_type=%s",
+            "[tg client] send_code done: account_id=%s, code_type=%s, timeout=%s, next_type=%s",
             account_id,
-            result.phone_code_hash,
             code_type,
             timeout,
             next_type,
@@ -149,13 +137,7 @@ class TelegramClientManager:
 
         phone_code_hash = self._phone_code_hashes.get(account_id, "")
         phone = self._phones.get(account_id, "")
-        logger.info(
-            "[tg client] sign_in: account_id=%s, phone=%s, code=%s, phone_code_hash=%s",
-            account_id,
-            phone,
-            code,
-            phone_code_hash,
-        )
+        logger.info("[tg client] sign_in: account_id=%s", account_id)
 
         try:
             await client.sign_in(

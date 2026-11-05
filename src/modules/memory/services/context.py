@@ -6,25 +6,21 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.ai import MemoryIntelligence
-from src.domain.chat import ChatRef, Topic
+from src.domain.chat import ChatRef, ConversationContext, Topic
 from src.modules.memory.constants import (
     RETRIEVE_PRE_WINDOW,
     SNIPPET_MAX_MESSAGES,
     VECTOR_TOP_K,
 )
-from src.modules.memory.formatting import (
-    retrieve_pre_input,
-)
-from src.modules.memory.mapping import to_domain_batches, to_topic
+from src.modules.memory.domain import HistoryWindow
 from src.modules.memory.repository import (
     ConversationRepository,
     MessageRepository,
     SummaryStateRepository,
     VectorRecordRepository,
 )
-from src.modules.memory.schemas.events import (
-    BuildContextCommand,
-    ContextBuiltEvent,
+from src.modules.memory.utils import (
+    retrieve_pre_input,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +82,7 @@ class ContextBuilder:
             )
             if SNIPPET_MAX_MESSAGES > 0 and len(msgs) > SNIPPET_MAX_MESSAGES:
                 msgs = msgs[-SNIPPET_MAX_MESSAGES:]
-            conv = await self._conversations.get_by_id(session, hit.conversation_id)
+            conv = await self._conversations.get_state(session, hit.conversation_id)
             topic_chat = ChatRef(
                 channel=chat.channel,
                 chat_id=conv.chat_id if conv else chat.chat_id,
@@ -94,36 +90,29 @@ class ContextBuilder:
                 conversation_id=hit.conversation_id,
             )
             topics.append(
-                to_topic(
+                Topic(
                     title=title,
                     kind=hit.kind,
                     conversation_id=hit.conversation_id,
                     seq_from=seq_from,
                     seq_to=seq_to,
-                    batches=to_domain_batches(msgs, topic_chat),
+                    batches=HistoryWindow(msgs).to_batches(topic_chat),
                 )
             )
         return topics
 
     async def build_context(
-        self, session: AsyncSession, command: BuildContextCommand
-    ) -> ContextBuiltEvent:
+        self, session: AsyncSession, chat: ChatRef, last_n_messages: int
+    ) -> ConversationContext:
+        conversation_id = chat.conversation_id
+        if conversation_id is None:
+            raise ValueError("A conversation is required to build memory context")
         messages = await self._messages.get_last_messages(
-            session,
-            conversation_id=command.conversation_id,
-            limit=command.last_n_messages,
+            session, conversation_id, limit=last_n_messages
         )
-        summary_state = await self._summaries.get_by_conversation_id(
-            session, command.conversation_id
-        )
+        summary_state = await self._summaries.get_by_conversation_id(session, conversation_id)
         summary = summary_state.current_summary if summary_state else None
-        chat = ChatRef(
-            channel=command.channel,
-            chat_id=command.chat_id,
-            account_id=command.account_id,
-            conversation_id=command.conversation_id,
-        )
-        recent_batches = to_domain_batches(messages, chat)
+        recent_batches = HistoryWindow(messages).to_batches(chat)
         recent_pairs = [(msg.direction, msg.text) for msg in messages]
 
         retrieved: list[Topic] = []
@@ -137,7 +126,7 @@ class ContextBuilder:
                 session,
                 query=query,
                 query_embedding=qvec,
-                conversation_id=command.conversation_id,
+                conversation_id=conversation_id,
                 kind="topic",
                 recent_min_seq=recent_min_seq,
                 chat=chat,
@@ -155,15 +144,6 @@ class ContextBuilder:
             retrieved = []
             references = []
 
-        event = ContextBuiltEvent(
-            conversation_id=command.conversation_id,
-            channel=command.channel,
-            chat_id=command.chat_id,
-            account_id=command.account_id,
-            retrieved_count=len(retrieved),
-            summary=summary,
-            retrieved=retrieved,
-            references=references,
-            recent=recent_batches,
+        return ConversationContext(
+            summary=summary, retrieved=retrieved, references=references, recent=recent_batches
         )
-        return event

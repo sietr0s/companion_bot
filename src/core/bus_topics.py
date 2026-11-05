@@ -33,7 +33,6 @@ class BusTopics:
 
     BATCH_ADD_MESSAGE: str = "batching.command.add_message"
     BATCH_READY: str = "batching.event.batch.ready"
-    BATCH_COMPLETED: str = "batching.event.batch.completed"
 
     MEMORY_PROCESS_BATCH: str = "memory.command.process_batch"
     MEMORY_BUILD_CONTEXT: str = "memory.command.build_context"

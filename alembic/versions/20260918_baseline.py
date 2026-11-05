@@ -10,26 +10,9 @@ from collections.abc import Sequence
 from alembic import op
 
 from src.base.model import Base
-from src.modules.auth.models import Auth  # noqa: F401
-from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState  # noqa: F401
-from src.modules.instagram_clients.models import (  # noqa: F401
-    InstagramAccount,
-    InstagramChatState,
-    InstagramSettings,
-)
-from src.modules.memory.models import (  # noqa: F401
-    Conversation,
-    Message,
-    MessageBatch,
-    SummaryState,
-    VectorRecord,
-)
-from src.modules.telegram_clients.models import (  # noqa: F401
-    TelegramAccount,
-    TelegramChatState,
-    TelegramSettings,
-)
-from src.modules.users.models import User  # noqa: F401
+from src.composition.models import load_models
+
+load_models()
 
 revision: str = "20260918_baseline"
 down_revision: str | Sequence[str] | None = None

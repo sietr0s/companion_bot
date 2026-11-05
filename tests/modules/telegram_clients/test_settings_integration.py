@@ -1,66 +1,23 @@
 """
 Интеграционные тесты настроек Telegram-аккаунта.
 
-Проверяют CRUD операции с настройками через internal и public API.
+Проверяют CRUD операции с настройками через manager и public API.
 """
 
 import uuid
-from collections.abc import AsyncGenerator
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.core.dependencies import get_db_session
-from src.main import app
+from httpx import AsyncClient
 
 
-@pytest_asyncio.fixture
-async def test_client_with_db() -> AsyncGenerator[AsyncClient, None]:
-    """
-    HTTP клиент с тестовой БД.
-    Переопределяет get_db_session для использования test.db.
-    """
-    from tests.conftest import TestSessionLocal, test_engine
-
-    # Создаём таблицы
-    async with test_engine.begin() as conn:
-        from src.base.model import Base
-
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Генератор сессий
-    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
-        async with TestSessionLocal() as session:
-            yield session
-
-    # Переопределяем зависимость get_db_session
-    app.dependency_overrides[get_db_session] = override_get_db_session
-
-    # Создаём клиент
-    transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://test",
-    ) as client:
-        yield client
-
-    # Очищаем
-    app.dependency_overrides.clear()
-
-    # Удаляем таблицы
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-
-class TestTelegramSettingsInternalAPI:
-    """Тесты internal API настроек Telegram."""
+class TestTelegramSettingsManagerAPI:
+    """Тесты manager API настроек Telegram."""
 
     @pytest.mark.asyncio
-    async def test_create_settings_internal(self, test_client_with_db: AsyncClient):
-        """Создание настроек через internal API."""
-        client = test_client_with_db
+    async def test_create_settings_manager(self, api_client: AsyncClient, admin_token: str):
+        """Создание настроек через manager API."""
+        client = api_client
+        client.headers["Authorization"] = f"Bearer {admin_token}"
 
         # Создаём Auth аккаунт
         # Создаём Telegram аккаунт через БД напрямую
@@ -95,9 +52,10 @@ class TestTelegramSettingsInternalAPI:
         # Очистка
 
     @pytest.mark.asyncio
-    async def test_get_settings_internal(self, test_client_with_db: AsyncClient):
-        """Получение настроек через internal API."""
-        client = test_client_with_db
+    async def test_get_settings_manager(self, api_client: AsyncClient, admin_token: str):
+        """Получение настроек через manager API."""
+        client = api_client
+        client.headers["Authorization"] = f"Bearer {admin_token}"
 
         # Создаём Auth аккаунт
         # Создаём Telegram аккаунт через БД
@@ -128,9 +86,10 @@ class TestTelegramSettingsInternalAPI:
         # Очистка
 
     @pytest.mark.asyncio
-    async def test_update_settings_internal(self, test_client_with_db: AsyncClient):
-        """Обновление настроек через internal API."""
-        client = test_client_with_db
+    async def test_update_settings_manager(self, api_client: AsyncClient, admin_token: str):
+        """Обновление настроек через manager API."""
+        client = api_client
+        client.headers["Authorization"] = f"Bearer {admin_token}"
 
         # Создаём Auth аккаунт
         # Создаём Telegram аккаунт через БД
@@ -173,13 +132,13 @@ class TestTelegramSettingsPublicAPI:
     """Тесты public API настроек Telegram (с JWT аутентификацией)."""
 
     @pytest.mark.asyncio
-    async def test_get_settings_public_requires_auth(self, test_client_with_db: AsyncClient):
+    async def test_get_settings_public_requires_auth(self, api_client: AsyncClient):
         """Public API требует JWT аутентификации."""
-        client = test_client_with_db
+        client = api_client
 
         # Пытаемся получить настройки без токена
         fake_account_id = uuid.uuid4()
         resp = await client.get(f"/api/v1/public/telegram/{fake_account_id}/settings")
 
-        # Должен вернуть 404 Not Found (настройки не найдены)
-        assert resp.status_code == 404
+        # Отказ до обращения к БД: без Bearer-токена менеджерские ручки недоступны.
+        assert resp.status_code == 401

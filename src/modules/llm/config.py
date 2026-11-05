@@ -1,8 +1,8 @@
 """LLM module settings.
 
 Chat provider selection (`mistral | openrouter | openai | openai_compat | stub`)
-plus the embedding model name. The TTS module imports the OpenAI-compat fields
-(LLM_API_KEY, LLM_BASE_URL) from here when using an OpenRouter-style endpoint.
+plus the embedding model name. TTS reads the same endpoint variable names
+through its application settings; it does not import this module.
 """
 
 from pydantic import field_validator, model_validator

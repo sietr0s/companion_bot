@@ -12,7 +12,6 @@ from src.domain.chat import Batch
 from src.modules.batching.config import batching_settings
 from src.modules.batching.schemas.events import (
     AddMessageCommand,
-    BatchCompletedEvent,
     BatchReadyEvent,
 )
 
@@ -37,7 +36,7 @@ class BatchService:
     def __init__(
         self,
         message_bus: MessageProducer,
-        pending: dict[tuple[str, int], PendingBatch] | None = None,
+        pending: dict[tuple[str, str, int], PendingBatch] | None = None,
         max_size: int | None = None,
         idle_timeout: float | None = None,
     ) -> None:
@@ -121,28 +120,3 @@ class BatchService:
 
             self._arm_wait(key)
             return None
-
-    async def complete_batch(
-        self,
-        batch_id: UUID,
-        *,
-        channel: str,
-        chat_id: int,
-        account_id: UUID | None = None,
-        success: bool = True,
-        error_message: str | None = None,
-    ) -> None:
-        if account_id is not None:
-            key = self._key(channel, account_id, chat_id)
-            async with self._lock(key):
-                self._cancel_wait(key)
-                self._pending.pop(key, None)
-        event = BatchCompletedEvent(
-            batch_id=batch_id,
-            channel=channel,
-            chat_id=chat_id,
-            account_id=account_id,
-            success=success,
-            error_message=error_message,
-        )
-        await self._message_bus.publish(BusTopics.BATCH_COMPLETED, event.model_dump(mode="json"))

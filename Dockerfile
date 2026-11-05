@@ -1,15 +1,18 @@
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
     libgomp1 \
-    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-ci-constraints.txt ./
+# Optional combined CA bundle for proxy-backed cloud builds; never retained in layers.
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
+    pip install --no-cache-dir --upgrade pip setuptools -c requirements-ci-constraints.txt && \
+    pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt && \
+    pip install --no-cache-dir -r requirements.txt -c requirements-ci-constraints.txt
 
 COPY . .
 

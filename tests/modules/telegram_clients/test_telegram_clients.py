@@ -22,15 +22,15 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
     TelegramSettingsRepository,
 )
+from src.modules.telegram_clients.schemas.api import (
+    CodeRequest,
+    PasswordRequest,
+)
 from src.modules.telegram_clients.schemas.events import (
     Sender,
     TgAccountConnected,
     TgAccountDisconnected,
     TgMessageReceived,
-)
-from src.modules.telegram_clients.schemas.public import (
-    CodeRequest,
-    PasswordRequest,
 )
 from src.modules.telegram_clients.services.account import TelegramAccountService
 from src.modules.telegram_clients.services.settings import TelegramSettingsService

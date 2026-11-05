@@ -18,9 +18,6 @@ from src.modules.memory.repository import (
     SummaryStateRepository,
     VectorRecordRepository,
 )
-from src.modules.memory.schemas.events import (
-    MaintainMemoryCommand,
-)
 from src.modules.memory.services.indexing import TopicIndexer, cluster_window
 
 logger = logging.getLogger(__name__)
@@ -99,12 +96,14 @@ class MemoryMaintenance:
             self._maintain_locks[conversation_id] = lock
         return lock
 
-    async def maintain_memory(self, session: AsyncSession, command: MaintainMemoryCommand) -> None:
-        async with self._maintain_lock(command.conversation_id):
-            await self._maybe_cluster(session, conversation_id=command.conversation_id)
-            if command.current_sequence:
+    async def maintain_memory(
+        self, session: AsyncSession, conversation_id: UUID, current_sequence: int
+    ) -> None:
+        async with self._maintain_lock(conversation_id):
+            await self._maybe_cluster(session, conversation_id=conversation_id)
+            if current_sequence:
                 await self._maybe_summarize(
                     session,
-                    conversation_id=command.conversation_id,
-                    current_sequence=command.current_sequence,
+                    conversation_id=conversation_id,
+                    current_sequence=current_sequence,
                 )

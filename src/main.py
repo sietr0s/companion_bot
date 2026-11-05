@@ -10,28 +10,28 @@ from fastapi.responses import JSONResponse
 
 from src.bus import configure_bus
 from src.composition.container import ApplicationContainer
+from src.composition.models import load_models
 from src.core.config import settings
 from src.core.database import create_async_session, dispose_db, init_db
 from src.core.exceptions import AppException
-from src.modules.auth.handlers import register_handlers as register_auth_handlers
-from src.modules.auth.routers import public_router as auth_router
+from src.modules.auth.routers import router as auth_router
 from src.modules.auth.seed import seed_admin
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
 from src.modules.behavior.handlers import register_handlers as register_behavior_handlers
 from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
 from src.modules.instagram_clients.handlers import register_handlers as register_ig_handlers
-from src.modules.instagram_clients.routers import public_router as ig_router
+from src.modules.instagram_clients.routers import router as ig_router
 from src.modules.llm.handlers import register_handlers as register_llm_handlers
 from src.modules.memory.handlers import register_handlers as register_memory_handlers
-from src.modules.memory.routers import public_router as memory_router
+from src.modules.memory.routers import router as memory_router
 from src.modules.orchestrator.handlers import register_handlers as register_orchestrator_handlers
 from src.modules.stt.handlers import register_handlers as register_stt_handlers
 from src.modules.telegram_clients.dependencies import configure_telegram_client_manager
 from src.modules.telegram_clients.handlers import register_handlers as register_tg_handlers
-from src.modules.telegram_clients.routers import public_router as tg_router
+from src.modules.telegram_clients.routers import router as tg_router
 from src.modules.tts.handlers import register_handlers as register_tts_handlers
 from src.modules.users.handlers import register_handlers as register_users_handlers
-from src.modules.users.routers import public_router as users_router
+from src.modules.users.routers import router as users_router
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,6 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     consumer = container.consumer
     producer = container.producer
 
-    register_auth_handlers(consumer)
     register_users_handlers(consumer, producer)
     register_tg_handlers(consumer, container.telegram_client_manager, producer)
     register_ig_handlers(consumer, container.instagram_client_manager, producer)
@@ -124,6 +123,7 @@ async def health_check() -> dict[str, str]:
 
 def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     """Создать изолированный экземпляр приложения."""
+    load_models()
     container = container or ApplicationContainer.create()
     configure_bus(container.producer, container.consumer)
     configure_telegram_client_manager(container.telegram_client_manager)

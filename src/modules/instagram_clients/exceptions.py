@@ -20,16 +20,12 @@ class InstagramChallengeRequiredError(ConflictError):
         super().__init__(detail="challenge_required")
 
 
-# Preserve the existing public names used by routers and adapters.
-InstagramTwoFactorRequired = InstagramTwoFactorRequiredError
-InstagramChallengeRequired = InstagramChallengeRequiredError
-
 __all__ = [
     "AppException",
     "BadRequestError",
     "ConflictError",
-    "InstagramChallengeRequired",
-    "InstagramTwoFactorRequired",
+    "InstagramChallengeRequiredError",
+    "InstagramTwoFactorRequiredError",
     "NotFoundError",
     "UnauthorizedError",
     "ValidationError",

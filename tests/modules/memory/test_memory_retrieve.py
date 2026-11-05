@@ -21,7 +21,7 @@ from src.modules.memory.schemas.events import (
     ProcessBatchCommand,
     UpdateMemoryCommand,
 )
-from src.modules.memory.service import MemoryService
+from src.modules.memory.services import MemoryService
 from tests.modules.memory.seed import insert_message
 
 

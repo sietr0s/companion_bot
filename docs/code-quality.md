@@ -34,8 +34,8 @@ HTML покрытия показывает конкретные непройде
 
 ## Точка отсчёта и пороги
 
-После расширения измерения backend покрыт на **82,27% строк / 59,13% ветвей**;
-комбинированный показатель coverage.py — **78,92%**. Выполняются 343 теста,
+После расширения измерения backend покрыт на **84,29% строк / 60,56% ветвей**;
+комбинированный показатель coverage.py — **80,86%**. Выполняются 364 теста,
 в том числе шесть генеративных проверок Hypothesis. В CI они детерминированы,
 но перебирают множество входов, а не один зафиксированный пример.
 
@@ -46,13 +46,13 @@ Frontend: **29 тестов**, **12,23% строк / 16,86% ветвей** по 
 памяти и управления аккаунтами, затем реальные интеграции.
 
 Пороги в `quality-policy.json` закреплены рядом с фактическими значениями:
-backend 78,5% combined / 59% branches; frontend 12% lines / 16,5% branches.
+backend 80,5% combined / 60% branches; frontend 12% lines / 16,5% branches.
 Это минимальные ограничения регрессии, а не целевые показатели качества.
 При увеличении покрытия следует повышать их. Не понижать пороги ради зелёного CI.
 
 ## Существующий долг не скрывается
 
-`quality-baseline.json` содержит исходные замечания: 142 mypy, 17 сложных функций,
+`quality-baseline.json` содержит исходные замечания: 110 mypy, 16 сложных функций,
 4 low Bandit, 2 Vulture. MI <20 и дубликатов заданного размера на момент внедрения нет.
 Замечания Bandit относятся к `assert` защитных проверок шины и `random` для
 поведенческого выбора, а не генерации ключей. Vulture отмечает параметры callback,
@@ -110,7 +110,7 @@ python scripts/audit_python.py
 Backend coverage (с тестовыми env-параметрами из `ci.yml`):
 
 ```bash
-HYPOTHESIS_PROFILE=ci pytest tests --ignore=tests/e2e --cov=src --cov-branch \
+HYPOTHESIS_PROFILE=ci pytest tests --cov=src --cov-branch \
   --cov-report=json:reports/coverage/backend/coverage.json \
   --cov-report=html:reports/coverage/backend/html
 python scripts/coverage_gate.py backend reports/coverage/backend/coverage.json
@@ -121,15 +121,14 @@ npm run build
 python ../scripts/coverage_gate.py frontend coverage/coverage-summary.json
 ```
 
-В подготовленной cloud-среде frontend собирается в отдельной копии, поскольку
-checkout исторически содержит отслеживаемую часть `node_modules`. Для неё:
-`python scripts/quality_report.py --jscpd /workspace/companion-setup/frontend/node_modules/.bin/jscpd`.
-Редактировать следует исходники checkout, затем обновлять копию перед тестами.
+`node_modules`, bytecode, egg-info и результаты сборки исключены из Git.
+Для чистой установки достаточно команд выше; отдельная копия frontend не нужна.
 
 ## Что отчёты не доказывают
 
-E2E с настоящими Telegram/Instagram/LLM-аккаунтами пока не выполняются в CI:
-требуются отдельные тестовые credentials. Анализаторы не доказывают отсутствие
+Рабочих E2E с настоящими Telegram/Instagram/LLM-аккаунтами пока нет:
+старый неподключённый harness удалён; auth HTTP-сценарии перенесены в интеграционные
+тесты. Для внешних E2E потребуются отдельный стенд и тестовые credentials. Анализаторы не доказывают отсутствие
 всех ошибок или уязвимостей. Также пока нет браузерных E2E, нагрузочных и mutation
 тестов. При расширении системы эти уровни добавляются под конкретные риски,
 а не заменяют текущие unit/integration/property проверки.

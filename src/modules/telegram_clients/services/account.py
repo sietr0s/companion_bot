@@ -20,7 +20,6 @@ from src.core.bus_topics import BusTopics
 from src.core.database import create_async_session
 from src.core.exceptions import ConflictError, NotFoundError
 from src.modules.telegram_clients.adapters.client_manager import TelegramClientManager
-from src.modules.telegram_clients.adapters.quoted import quoted_from_telethon
 from src.modules.telegram_clients.constants import TgAuthStatus
 from src.modules.telegram_clients.exceptions import InvalidTelegramCodeError
 from src.modules.telegram_clients.models import (
@@ -32,19 +31,20 @@ from src.modules.telegram_clients.repository import (
     TelegramChatStateRepository,
     TelegramSettingsRepository,
 )
-from src.modules.telegram_clients.schemas.events import (
-    Sender,
-    TgAccountConnected,
-    TgAccountDisconnected,
-    TgMessageReceived,
-)
-from src.modules.telegram_clients.schemas.public import (
+from src.modules.telegram_clients.schemas.api import (
     AuthStep1Response,
     AuthStep2Response,
     AuthStep3Response,
     QrStartResponse,
     QrStatusResponse,
 )
+from src.modules.telegram_clients.schemas.events import (
+    Sender,
+    TgAccountConnected,
+    TgAccountDisconnected,
+    TgMessageReceived,
+)
+from src.modules.telegram_clients.utils import quoted_from_telethon
 
 logger = logging.getLogger(__name__)
 
@@ -454,7 +454,7 @@ class TelegramAccountService(BaseService[TelegramAccountRepository, TelegramAcco
         1. Проверка настроек (should_read_message)
         2. Публикация события в шину
         3. Обновление состояния чтения чата
-        4. Загрузка медиа в storage
+        Метаданные медиа передаются в событии; storage API здесь не вызывается.
 
         Args:
             session: SQLAlchemy async сессия

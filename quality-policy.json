@@ -3,8 +3,8 @@
   "maximum_function_complexity": 10,
   "minimum_maintainability_index": 20,
   "vulture_minimum_confidence": 80,
-  "backend_minimum_coverage": 78.5,
-  "backend_minimum_branch_coverage": 59,
+  "backend_minimum_coverage": 80.5,
+  "backend_minimum_branch_coverage": 60,
   "frontend_minimum_line_coverage": 12,
   "frontend_minimum_branch_coverage": 16.5
 }

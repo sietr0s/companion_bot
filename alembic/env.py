@@ -7,27 +7,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 from src.base.model import Base
+from src.composition.models import load_models
 from src.core.config import settings
-from src.modules.auth.models import Auth  # noqa: F401
-from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState  # noqa: F401
-from src.modules.memory.models import (  # noqa: F401
-    Conversation,
-    Message,
-    MessageBatch,
-    SummaryState,
-    VectorRecord,
-)
-from src.modules.telegram_clients.models import (  # noqa: F401
-    TelegramAccount,
-    TelegramChatState,
-    TelegramSettings,
-)
-from src.modules.users.models import User  # noqa: F401
-from src.modules.instagram_clients.models import (  # noqa: F401
-    InstagramAccount,
-    InstagramChatState,
-    InstagramSettings,
-)
+
+load_models()
 
 config = context.config
 

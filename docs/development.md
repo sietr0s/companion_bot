@@ -1,110 +1,121 @@
-# Разработка в облачной среде
+# Разработка и запуск
 
-## GitHub Actions
+## Требования и зависимости
 
-Workflow `.github/workflows/ci.yml` запускается на push, pull request и вручную.
-Дополнительный workflow `Code quality` проверяет типы, сложность, мёртвый код,
-дублирование и уязвимости. Покрытие, пороги, известный долг и расположение отчётов
-описаны в [code-quality.md](code-quality.md).
-Три независимых задания проверяют:
+Python 3.12, Node.js 24, PostgreSQL 15/pgvector. Установка описана в
+[README](../README.md). `requirements.txt` содержит runtime-зависимости;
+`requirements-dev.txt` добавляет pytest/Hypothesis, SQLite driver и Ruff;
+`requirements-quality.txt` — mypy, Radon, Bandit, Vulture и pip-audit.
+`requirements-ci-constraints.txt` закрепляет проверенный Linux/Python 3.12 набор.
 
-* Ruff: линтинг и форматирование `src`, `tests`, `scripts`, `server.py`.
-* Backend: установку CPU PyTorch, совместимость зависимостей и pytest с JUnit-отчётом.
-* Frontend: установку по lockfile, ESLint, генерацию API-клиента, TypeScript и Vite build.
+SQLite используется только в тестах. Kafka, Telethon, instagrapi, chat SDK и
+локальные ML-библиотеки относятся к действующим возможностям приложения и
+сохраняются, даже если CI заменяет внешние вызовы fake-провайдерами.
 
-Backend-тесты работают на SQLite с in-memory шиной, stub-провайдерами и отключёнными
-скачиваниями Hugging Face. Реальные секреты, PostgreSQL и Telegram для этого задания
-не нужны. `tests/e2e` требуют отдельных учётных данных и не запускаются в CI.
-JUnit-отчёт сохраняется в artifact `backend-test-results`, в том числе при сбое тестов.
-Новый push в ту же ветку отменяет её предыдущий незавершённый запуск.
+## Локально
 
-Локальные эквиваленты:
+Скопировать `.env.example` в `.env`, задать обязательные JWT/admin значения и
+подключение `DB_*`. Пример использует stub chat/STT/TTS, in-memory bus.
+Для реальных интеграций — [integrations.md](integrations.md).
 
 ```bash
-python -m pip install -r requirements-dev.txt
-ruff check src tests scripts server.py
-ruff format --check src tests scripts server.py
-pytest tests --ignore=tests/e2e
+source .venv/bin/activate
+alembic upgrade head
+CREATE_TABLES_ON_STARTUP=False uvicorn src.main:app --reload
+```
+
+Миграции — основной способ создания схемы. `CREATE_TABLES_ON_STARTUP=True`
+по умолчанию оставлен как dev-режим `create_all`, но не обновляет существующую
+схему и не заменяет Alembic. Рекомендуемые примеры выставляют `False`.
+
+Frontend:
+
+```bash
 cd frontend
 npm ci --legacy-peer-deps --no-audit --no-fund
-npm run lint
-npm run build
-```
-
-Для локального pytest нужны тестовые `JWT_SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-и stub-провайдеры. В подготовленной облачной среде эти параметры задаёт временно
-`/workspace/companion-setup/run-tests.py` без записи секретов на диск.
-
-Python 3.12, Node.js 24, PostgreSQL 15 с pgvector. Для локальной разработки
-используются in-memory шина и `LLM_PROVIDER=stub`, `STT_PROVIDER=stub`,
-`TTS_PROVIDER=stub`; интеграционные ключи нужны только при включении реальных API.
-Qwen embeddings остаются реальными и прогреваются при старте приложения.
-
-## Установка и проверки
-
-В подготовленной среде доступны:
-
-```bash
-bash /workspace/companion-setup/install.sh
-bash /workspace/companion-setup/start-db.sh
-python3.12 /workspace/companion-setup/run-tests.py
-cd /workspace/companion_bot
-.venv/bin/ruff check src tests/test_architecture.py tests/modules/memory/test_transactions.py
-cd /workspace/companion-setup/frontend
-npm run build
-```
-
-Установщик использует CPU PyTorch и зафиксированные версии Python-зависимостей
-вне checkout; исходные requirements остаются источником прямых зависимостей.
-Frontend устанавливается с `npm ci --legacy-peer-deps` для согласованного
-воспроизведения peer resolution из lockfile. Проверенные версии инструментов и
-результаты dependency-аудита описаны в `code-quality.md`.
-
-В checkout исторически отслеживается часть `node_modules` и Python bytecode.
-Чтобы установка не переписывала эти файлы, frontend собирается из копии
-`/workspace/companion-setup/frontend`. Редактировать следует исходники в checkout,
-затем обновить копию установщиком. Генерация TypeScript-клиента из OpenAPI
-выполняется штатным `npm run generate:api`. Правило `/models/` в `.gitignore`
-относится только к весам моделей, а не к API-моделям frontend.
-
-Тестовый runner создаёт временные JWT/admin параметры только в процессе,
-использует SQLite и не требует реальных секретов. Проверки реальных Telegram
-сессий в `tests/e2e` отдельно требуют явной настройки пользователя.
-
-## Запуск приложения
-
-Задать `JWT_SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` в настройках среды.
-Не помещать их значения в чат, git или скрипты установки.
-
-```bash
-bash /workspace/companion-setup/start-db.sh
-cd /workspace/companion_bot
-.venv/bin/alembic upgrade head
-CREATE_TABLES_ON_STARTUP=False .venv/bin/uvicorn src.main:app --host 127.0.0.1 --port 8000
-```
-
-БД разработки привязана только к loopback, локальная аутентификация — trust;
-такая конфигурация предназначена для изолированной среды разработки.
-Не применять её к внешней БД или развёртыванию production.
-
-В другом терминале:
-
-```bash
-cd /workspace/companion-setup/frontend
 npm run dev -- --host 127.0.0.1
 ```
 
-Готовность backend проверяется ответом `GET /health`, затем логином через
-`POST /api/v1/public/auth/login` с JSON `identifier` и `password` из настроек
-и чтением `/api/v1/public/users/` с возвращённым Bearer-токеном. Токен и пароль
-не выводить в лог. Проверка только открытого порта не подтверждает готовность.
+Vite проксирует `/api` и `/health` на backend:8000. После изменения backend API:
 
-Первый запуск скачивает `Qwen/Qwen3-Embedding-0.6B`. Прокси должен разрешать
-`huggingface.co`, `*.huggingface.co`, `*.xethub.hf.co`. На момент подготовки среды
-проверка старта остановилась на `403 Forbidden` сетевой политики при прогреве Qwen;
-изменения доменов сохранены в черновике, но ещё требуют применения пользователем.
-После применения повторить запуск и функциональные запросы. TLS-проверку не отключать.
+```bash
+python scripts/generate_frontend_openapi.py
+cd frontend
+npm run generate:api
+npm run build
+```
 
-Снимок сохраняет зависимости и файлы, но не работающие процессы. PostgreSQL,
-uvicorn и Vite нужно запускать снова в новой задаче. Использовать имеющийся checkout:
-облачная задача уже изолирована, отдельный git worktree не нужен.
+Генератор фильтрует HTTP-контракт панели. Не редактировать generated-клиент вручную.
+
+## Docker
+
+```bash
+cp .env.docker.example .env
+# Задать собственные JWT/admin/DB пароли в .env.
+docker compose up --build
+```
+
+Compose передаёт настройки через `.env`; отдельный `.env.docker` не требуется.
+`docker-entrypoint.sh` выполняет `alembic upgrade head`, затем запускает uvicorn.
+Backend image содержит CPU PyTorch и runtime-пакеты; frontend image использует Node 24.
+Markdown-промпты входят в image. Тесты, frontend node_modules, отчёты и локальные
+`.env` в backend image не копируются.
+
+API: порт 8000; admin UI: 3000; PostgreSQL: 5432.
+Профили: `--profile kafka` (Kafka/ZooKeeper/console), `--profile admin` (pgAdmin).
+Сессии сохраняются в `sessions/`, веса — в `models/`, БД — в named volume.
+Не использовать `docker compose down -v` как обычный шаг обновления: это удаляет данные.
+
+Первый запуск прогревает Qwen и, при выборе faster-whisper, speech model.
+Нужны сетевой доступ и место для весов. `stub` chat не заменяет embedding-модель.
+За прокси сохранить TLS-проверку; optional BuildKit secret `proxy_ca` позволяет
+передать combined CA bundle только на время установки Python-пакетов:
+
+```bash
+docker build --secret id=proxy_ca,src=/path/to/combined-ca-bundle.pem -t companion-bot .
+```
+
+## Проверки и CI
+
+```bash
+python -m pip install -r requirements-dev.txt -r requirements-quality.txt -c requirements-ci-constraints.txt
+ruff check src tests scripts
+ruff format --check src tests scripts
+pytest tests
+python scripts/quality_report.py
+python scripts/audit_python.py
+cd frontend
+npm run lint
+npm run test:coverage
+npm run build
+```
+
+Для pytest нужны тестовые `JWT_SECRET_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` и
+`LLM_PROVIDER=stub`, `STT_PROVIDER=stub`, `TTS_PROVIDER=stub`; они заданы в `ci.yml`.
+Тесты не подключаются к рабочим Telegram/Instagram/LLM-сервисам. Подробные команды
+покрытия, quality baseline и расположение отчётов — [code-quality.md](code-quality.md).
+Реальных внешних E2E сейчас нет: старые заглушки удалены, полезные auth HTTP-сценарии
+проверяются в обычных интеграционных тестах.
+
+`CI` проверяет Ruff, backend tests/coverage и frontend lint/tests/build.
+`Code quality` проверяет типы, сложность, мёртвый код, дубликаты, безопасность и
+сам workflow. Повторные dependency-аудиты и Dependabot выполняются еженедельно
+после merge конфигурации в default branch.
+
+## Подготовленная cloud-среда
+
+Основной checkout — `/workspace/companion_bot`; отдельный worktree не нужен.
+Проверенный чистый Python env — `/workspace/companion-clean-env`; PostgreSQL запускается вспомогательным
+`/workspace/companion-setup/start-db.sh`. Вспомогательные cloud-скрипты не являются
+частью проекта: portable-команды выше остаются основным рабочим процессом.
+
+Frontend может собираться в `/workspace/companion-setup/frontend` для изоляции
+установки. При редактировании обновлять эту копию; canonical исходники — checkout.
+`node_modules`, bytecode, egg-info и отчёты больше не отслеживаются в Git.
+
+Процессы после snapshot нужно запускать заново. Признак готовности — ответ
+`GET /health`, затем login через `POST /api/v1/public/auth/login` и авторизованный
+`GET /api/v1/public/users/`, без вывода токена/пароля в лог.
+Если proxy блокирует прогрев модели, проверить разрешённые HF/CDN destinations
+и повторить запуск после применения настроек; один открытый порт не доказывает
+готовность приложения.

@@ -19,14 +19,6 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/memory/clustering.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
       "path": "src/bus/error_handler.py",
       "rule": "type-arg",
       "message": "Missing type arguments for generic type \"Callable\"",
@@ -52,38 +44,6 @@
     {
       "tool": "mypy",
       "path": "src/modules/instagram_clients/models.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/embedding_type.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"TypeDecorator\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/embedding_type.py",
-      "rule": "no-untyped-def",
-      "message": "Function is missing a return type annotation",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/schemas/public.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/instagram_clients/schemas/public.py",
       "rule": "type-arg",
       "message": "Missing type arguments for generic type \"list\"",
       "score": 1,
@@ -171,30 +131,6 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/memory/mapping.py",
-      "rule": "no-untyped-def",
-      "message": "Function is missing a type annotation for one or more parameters",
-      "score": 1,
-      "count": 2
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/mapping.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/formatting.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 2
-    },
-    {
-      "tool": "mypy",
       "path": "src/modules/behavior/classifiers.py",
       "rule": "assignment",
       "message": "Incompatible types in assignment (expression has type \"Message | tuple[str, Any]\", variable has type \"Message\")",
@@ -259,22 +195,6 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/orchestrator/service.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"list\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/repository.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"dict\"",
-      "score": 1,
-      "count": 2
-    },
-    {
-      "tool": "mypy",
       "path": "src/base/service.py",
       "rule": "type-arg",
       "message": "Missing type arguments for generic type \"BaseRepository\"",
@@ -288,54 +208,6 @@
       "message": "Returning Any from function declared to return \"ModelType\"",
       "score": 1,
       "count": 2
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/services/context.py",
-      "rule": "arg-type",
-      "message": "Argument \"conversation_id\" to \"get_last_messages\" of \"MessageRepository\" has incompatible type \"UUID | None\"; expected \"UUID\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/services/context.py",
-      "rule": "arg-type",
-      "message": "Argument 2 to \"get_by_conversation_id\" of \"SummaryStateRepository\" has incompatible type \"UUID | None\"; expected \"UUID\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/reference_import.py",
-      "rule": "no-untyped-def",
-      "message": "Function is missing a return type annotation",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/services/maintenance.py",
-      "rule": "arg-type",
-      "message": "Argument 1 to \"_maintain_lock\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/services/maintenance.py",
-      "rule": "arg-type",
-      "message": "Argument \"conversation_id\" to \"_maybe_cluster\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/memory/services/maintenance.py",
-      "rule": "arg-type",
-      "message": "Argument \"conversation_id\" to \"_maybe_summarize\" of \"MemoryMaintenance\" has incompatible type \"UUID | None\"; expected \"UUID\"",
-      "score": 1,
-      "count": 1
     },
     {
       "tool": "mypy",
@@ -405,14 +277,6 @@
       "tool": "mypy",
       "path": "src/modules/batching/service.py",
       "rule": "arg-type",
-      "message": "Argument 1 to \"pop\" of \"dict\" has incompatible type \"tuple[str, str, int]\"; expected \"tuple[str, int]\"",
-      "score": 1,
-      "count": 2
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/batching/service.py",
-      "rule": "arg-type",
       "message": "Argument \"channel\" to \"Batch\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
       "score": 1,
       "count": 1
@@ -422,30 +286,6 @@
       "path": "src/modules/batching/service.py",
       "rule": "arg-type",
       "message": "Argument \"channel\" to \"BatchReadyEvent\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/batching/service.py",
-      "rule": "arg-type",
-      "message": "Argument 1 to \"get\" of \"dict\" has incompatible type \"tuple[str, str, int]\"; expected \"tuple[str, int]\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/batching/service.py",
-      "rule": "index",
-      "message": "Invalid index type \"tuple[str, str, int]\" for \"dict[tuple[str, int], PendingBatch]\"; expected type \"tuple[str, int]\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/batching/service.py",
-      "rule": "arg-type",
-      "message": "Argument \"channel\" to \"BatchCompletedEvent\" has incompatible type \"str\"; expected \"Literal['telegram', 'instagram']\"",
       "score": 1,
       "count": 1
     },
@@ -503,15 +343,7 @@
       "rule": "type-arg",
       "message": "Missing type arguments for generic type \"dict\"",
       "score": 1,
-      "count": 5
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/auth/service.py",
-      "rule": "return-value",
-      "message": "Incompatible return value type (got \"Auth\", expected \"AuthRead\")",
-      "score": 1,
-      "count": 2
+      "count": 3
     },
     {
       "tool": "mypy",
@@ -539,33 +371,17 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/telegram_clients/services/account.py",
-      "rule": "type-arg",
-      "message": "Missing type arguments for generic type \"dict\"",
-      "score": 1,
-      "count": 4
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/services/account.py",
-      "rule": "union-attr",
-      "message": "Item \"None\" of \"list[Any] | None\" has no attribute \"__iter__\" (not iterable)",
+      "path": "src/modules/llm/providers/mistral.py",
+      "rule": "call-arg",
+      "message": "Unexpected keyword argument \"model\" for \"ChatMistralAI\"",
       "score": 1,
       "count": 1
     },
     {
       "tool": "mypy",
-      "path": "src/modules/telegram_clients/services/account.py",
-      "rule": "untyped-decorator",
-      "message": "Untyped decorator makes function \"on_new_message\" untyped",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/services/account.py",
-      "rule": "no-untyped-def",
-      "message": "Function is missing a type annotation for one or more parameters",
+      "path": "src/modules/llm/providers/mistral.py",
+      "rule": "arg-type",
+      "message": "Argument \"api_key\" to \"ChatMistralAI\" has incompatible type \"str\"; expected \"SecretStr | None\"",
       "score": 1,
       "count": 1
     },
@@ -611,33 +427,9 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/telegram_clients/routers/public_auth.py",
-      "rule": "return-value",
-      "message": "Incompatible return value type (got \"TelegramAccount\", expected \"AccountRead\")",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/routers/public_accounts.py",
+      "path": "src/modules/llm/providers/openai_compat.py",
       "rule": "arg-type",
-      "message": "Argument 1 to \"from_list\" of \"PaginatedResponse\" has incompatible type \"Sequence[TelegramAccount]\"; expected \"list[AccountRead]\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/routers/public_accounts.py",
-      "rule": "return-value",
-      "message": "Incompatible return value type (got \"TelegramAccount\", expected \"AccountRead\")",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/telegram_clients/routers/public_accounts.py",
-      "rule": "return-value",
-      "message": "Incompatible return value type (got \"list[dict[Any, Any]]\", expected \"list[ChatRead]\")",
+      "message": "Argument \"api_key\" to \"ChatOpenAI\" has incompatible type \"str\"; expected \"SecretStr | Callable[[], str] | Callable[[], Awaitable[str]] | None\"",
       "score": 1,
       "count": 1
     },
@@ -667,30 +459,6 @@
     },
     {
       "tool": "mypy",
-      "path": "src/modules/llm/providers/mistral.py",
-      "rule": "call-arg",
-      "message": "Unexpected keyword argument \"model\" for \"ChatMistralAI\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/llm/providers/mistral.py",
-      "rule": "arg-type",
-      "message": "Argument \"api_key\" to \"ChatMistralAI\" has incompatible type \"str\"; expected \"SecretStr | None\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
-      "path": "src/modules/llm/providers/openai_compat.py",
-      "rule": "arg-type",
-      "message": "Argument \"api_key\" to \"ChatOpenAI\" has incompatible type \"str\"; expected \"SecretStr | Callable[[], str] | Callable[[], Awaitable[str]] | None\"",
-      "score": 1,
-      "count": 1
-    },
-    {
-      "tool": "mypy",
       "path": "src/modules/llm/service.py",
       "rule": "type-arg",
       "message": "Missing type arguments for generic type \"list\"",
@@ -700,6 +468,38 @@
     {
       "tool": "mypy",
       "path": "src/modules/memory/handlers.py",
+      "rule": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "score": 1,
+      "count": 4
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "union-attr",
+      "message": "Item \"None\" of \"list[Any] | None\" has no attribute \"__iter__\" (not iterable)",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
+      "rule": "untyped-decorator",
+      "message": "Untyped decorator makes function \"on_new_message\" untyped",
+      "score": 1,
+      "count": 1
+    },
+    {
+      "tool": "mypy",
+      "path": "src/modules/telegram_clients/services/account.py",
       "rule": "no-untyped-def",
       "message": "Function is missing a type annotation for one or more parameters",
       "score": 1,
@@ -763,7 +563,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/telegram_clients/adapters/quoted.py",
+      "path": "src/modules/telegram_clients/utils.py",
       "rule": "cyclomatic",
       "message": "extract_forward",
       "score": 16,
@@ -771,7 +571,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/telegram_clients/adapters/quoted.py",
+      "path": "src/modules/telegram_clients/utils.py",
       "rule": "cyclomatic",
       "message": "extract_reply",
       "score": 11,
@@ -827,15 +627,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/memory/reference_import.py",
-      "rule": "cyclomatic",
-      "message": "load_reference_export",
-      "score": 16,
-      "count": 1
-    },
-    {
-      "tool": "complexity",
-      "path": "src/modules/memory/clustering.py",
+      "path": "src/modules/memory/domain.py",
       "rule": "cyclomatic",
       "message": "normalize_cluster_blocks",
       "score": 18,
@@ -843,7 +635,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/memory/clustering.py",
+      "path": "src/modules/memory/domain.py",
       "rule": "cyclomatic",
       "message": "split_closed_open",
       "score": 17,
@@ -851,7 +643,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/memory/clustering.py",
+      "path": "src/modules/memory/utils.py",
       "rule": "cyclomatic",
       "message": "parse_cluster_json",
       "score": 13,
@@ -859,7 +651,7 @@
     },
     {
       "tool": "complexity",
-      "path": "src/modules/memory/clustering.py",
+      "path": "src/modules/memory/utils.py",
       "rule": "cyclomatic",
       "message": "_unwrap_content",
       "score": 12,

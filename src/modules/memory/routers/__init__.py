@@ -1,5 +1,5 @@
-"""Роутеры модуля memory."""
+"""Memory HTTP composition."""
 
-from .public import router as public_router
+from .manager import router
 
-__all__ = ["public_router"]
+__all__ = ["router"]

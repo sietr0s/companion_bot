@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.bus_topics import BusTopics
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
 from src.modules.instagram_clients.config import instagram_clients_settings
-from src.modules.instagram_clients.exceptions import InstagramTwoFactorRequired
+from src.modules.instagram_clients.exceptions import InstagramTwoFactorRequiredError
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
     InstagramSettingsRepository,
@@ -82,7 +82,7 @@ async def test_login_two_factor_then_code(db_session: AsyncSession, tmp_path: Pa
     producer = AsyncMock()
     service = _service(manager, producer)
     account = await service.create(db_session, {"username": "bot"})
-    with pytest.raises(InstagramTwoFactorRequired):
+    with pytest.raises(InstagramTwoFactorRequiredError):
         await service.login(db_session, account.id, username="bot", password="secret")
     result = await service.complete_two_factor(db_session, account.id, code="123456")
     assert result.is_connected is True

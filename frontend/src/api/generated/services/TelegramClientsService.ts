@@ -30,6 +30,131 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TelegramClientsService {
     /**
+     * Список Telegram-аккаунтов
+     * @param filters field+operator+value
+     * @param page
+     * @param limit
+     * @param orderBy Поле сортировки; '-' = DESC
+     * @returns PaginatedResponse_AccountRead_ Successful Response
+     * @throws ApiError
+     */
+    public static getAccountsApiV1PublicTelegramGet(
+        filters?: Array<string>,
+        page: number = 1,
+        limit: number = 100,
+        orderBy: string = '-created_at',
+    ): CancelablePromise<PaginatedResponse_AccountRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/',
+            query: {
+                'filters': filters,
+                'page': page,
+                'limit': limit,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Telegram-аккаунт
+     * @param accountId
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static getAccountApiV1PublicTelegramAccountIdGet(
+        accountId: string,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/{account_id}',
+            path: {
+                'account_id': accountId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Удалить Telegram-аккаунт
+     * @param accountId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteAccountApiV1PublicTelegramAccountIdDelete(
+        accountId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/telegram/{account_id}',
+            path: {
+                'account_id': accountId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Список чатов аккаунта
+     * @param accountId
+     * @param limit
+     * @returns ChatRead Successful Response
+     * @throws ApiError
+     */
+    public static getChatsApiV1PublicTelegramAccountIdChatsGet(
+        accountId: string,
+        limit: number = 100,
+    ): CancelablePromise<Array<ChatRead>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/{account_id}/chats',
+            path: {
+                'account_id': accountId,
+            },
+            query: {
+                'limit': limit,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Сообщения чата
+     * @param accountId
+     * @param chatId
+     * @param limit
+     * @param offsetId
+     * @returns MessageRead Successful Response
+     * @throws ApiError
+     */
+    public static getMessagesApiV1PublicTelegramAccountIdChatsChatIdMessagesGet(
+        accountId: string,
+        chatId: number,
+        limit: number = 50,
+        offsetId?: number,
+    ): CancelablePromise<Array<MessageRead>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/{account_id}/chats/{chat_id}/messages',
+            path: {
+                'account_id': accountId,
+                'chat_id': chatId,
+            },
+            query: {
+                'limit': limit,
+                'offset_id': offsetId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Шаг 1: отправить номер телефона
      * @param requestBody
      * @returns AuthStep1Response Successful Response
@@ -158,27 +283,24 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Список Telegram-аккаунтов
-     * @param filters field+operator+value
+     * Get List
      * @param page
-     * @param limit
-     * @param orderBy Поле сортировки; '-' = DESC
+     * @param pageSize
+     * @param orderBy
      * @returns PaginatedResponse_AccountRead_ Successful Response
      * @throws ApiError
      */
-    public static getAccountsApiV1PublicTelegramGet(
-        filters?: Array<string>,
+    public static getListApiV1PublicTelegramAccountsGet(
         page: number = 1,
-        limit: number = 100,
-        orderBy: string = '-created_at',
+        pageSize: number = 100,
+        orderBy?: (string | null),
     ): CancelablePromise<PaginatedResponse_AccountRead_> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/public/telegram/',
+            url: '/api/v1/public/telegram/accounts/',
             query: {
-                'filters': filters,
                 'page': page,
-                'limit': limit,
+                'page_size': pageSize,
                 'order_by': orderBy,
             },
             errors: {
@@ -187,19 +309,38 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Telegram-аккаунт
-     * @param accountId
+     * Create
+     * @param requestBody
      * @returns AccountRead Successful Response
      * @throws ApiError
      */
-    public static getAccountApiV1PublicTelegramAccountIdGet(
-        accountId: string,
+    public static createApiV1PublicTelegramAccountsPost(
+        requestBody: AccountCreate,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/accounts/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get By Id
+     * @param itemId
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static getByIdApiV1PublicTelegramAccountsItemIdGet(
+        itemId: string,
     ): CancelablePromise<AccountRead> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/public/telegram/{account_id}',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
             path: {
-                'account_id': accountId,
+                'item_id': itemId,
             },
             errors: {
                 422: `Validation Error`,
@@ -207,75 +348,43 @@ export class TelegramClientsService {
         });
     }
     /**
-     * Удалить Telegram-аккаунт
-     * @param accountId
+     * Update
+     * @param itemId
+     * @param requestBody
+     * @returns AccountRead Successful Response
+     * @throws ApiError
+     */
+    public static updateApiV1PublicTelegramAccountsItemIdPut(
+        itemId: string,
+        requestBody: AccountUpdate,
+    ): CancelablePromise<AccountRead> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete
+     * @param itemId
      * @returns void
      * @throws ApiError
      */
-    public static deleteAccountApiV1PublicTelegramAccountIdDelete(
-        accountId: string,
+    public static deleteApiV1PublicTelegramAccountsItemIdDelete(
+        itemId: string,
     ): CancelablePromise<void> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/v1/public/telegram/{account_id}',
+            url: '/api/v1/public/telegram/accounts/{item_id}',
             path: {
-                'account_id': accountId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Список чатов аккаунта
-     * @param accountId
-     * @param limit
-     * @returns ChatRead Successful Response
-     * @throws ApiError
-     */
-    public static getChatsApiV1PublicTelegramAccountIdChatsGet(
-        accountId: string,
-        limit: number = 100,
-    ): CancelablePromise<Array<ChatRead>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/telegram/{account_id}/chats',
-            path: {
-                'account_id': accountId,
-            },
-            query: {
-                'limit': limit,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Сообщения чата
-     * @param accountId
-     * @param chatId
-     * @param limit
-     * @param offsetId
-     * @returns MessageRead Successful Response
-     * @throws ApiError
-     */
-    public static getMessagesApiV1PublicTelegramAccountIdChatsChatIdMessagesGet(
-        accountId: string,
-        chatId: number,
-        limit: number = 50,
-        offsetId?: number,
-    ): CancelablePromise<Array<MessageRead>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/telegram/{account_id}/chats/{chat_id}/messages',
-            path: {
-                'account_id': accountId,
-                'chat_id': chatId,
-            },
-            query: {
-                'limit': limit,
-                'offset_id': offsetId,
+                'item_id': itemId,
             },
             errors: {
                 422: `Validation Error`,
@@ -411,115 +520,6 @@ export class TelegramClientsService {
             path: {
                 'account_id': accountId,
                 'chat_id': chatId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get List
-     * @param page
-     * @param pageSize
-     * @param orderBy
-     * @returns PaginatedResponse_AccountRead_ Successful Response
-     * @throws ApiError
-     */
-    public static getListApiV1PublicTelegramAccountsGet(
-        page: number = 1,
-        pageSize: number = 100,
-        orderBy?: (string | null),
-    ): CancelablePromise<PaginatedResponse_AccountRead_> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/telegram/accounts/',
-            query: {
-                'page': page,
-                'page_size': pageSize,
-                'order_by': orderBy,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Create
-     * @param requestBody
-     * @returns AccountRead Successful Response
-     * @throws ApiError
-     */
-    public static createApiV1PublicTelegramAccountsPost(
-        requestBody: AccountCreate,
-    ): CancelablePromise<AccountRead> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/public/telegram/accounts/',
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get By Id
-     * @param itemId
-     * @returns AccountRead Successful Response
-     * @throws ApiError
-     */
-    public static getByIdApiV1PublicTelegramAccountsItemIdGet(
-        itemId: string,
-    ): CancelablePromise<AccountRead> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/telegram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Update
-     * @param itemId
-     * @param requestBody
-     * @returns AccountRead Successful Response
-     * @throws ApiError
-     */
-    public static updateApiV1PublicTelegramAccountsItemIdPut(
-        itemId: string,
-        requestBody: AccountUpdate,
-    ): CancelablePromise<AccountRead> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/public/telegram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Delete
-     * @param itemId
-     * @returns void
-     * @throws ApiError
-     */
-    public static deleteApiV1PublicTelegramAccountsItemIdDelete(
-        itemId: string,
-    ): CancelablePromise<void> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/public/telegram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
             },
             errors: {
                 422: `Validation Error`,
