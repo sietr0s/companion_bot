@@ -52,7 +52,7 @@ jobs:
         run: python scripts/security_summary.py
       - name: Upload detailed analysis and security reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: code-quality-and-security
           path: reports/
