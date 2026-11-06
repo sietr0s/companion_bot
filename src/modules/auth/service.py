@@ -19,9 +19,8 @@ from src.core.security import create_access_token, hash_password, verify_passwor
 from src.modules.auth.constants import ERROR_MESSAGES
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
+from src.modules.auth.schemas.api import TokenResponse
 from src.modules.auth.schemas.events import UserDeleted, UserLoggedIn, UserRegistered
-from src.modules.auth.schemas.internal import AuthRead, VerifyTokenResponse
-from src.modules.auth.schemas.public import TokenResponse
 
 
 class AuthService(BaseService[AuthRepository, Auth]):
@@ -181,75 +180,3 @@ class AuthService(BaseService[AuthRepository, Auth]):
         # Публикуем событие в шину
         event = UserDeleted(auth_id=auth_id)
         await self.message_bus.publish(BusTopics.USER_DELETED, event.to_bus_dict())
-
-    async def create_account(
-        self,
-        session: AsyncSession,
-        data: dict,
-    ) -> AuthRead:
-        """Создать учётную запись (internal)."""
-        # Проверяем уникальность identifier
-        existing = await self.repository.get_by_identifier(session, data["identifier"])
-        if existing:
-            raise ConflictError(
-                detail=ERROR_MESSAGES["duplicate_identifier"].format(
-                    identifier_type=data["identifier_type"]
-                )
-            )
-
-        account = await self.repository.create(session, data)
-        return account
-
-    async def update_account(
-        self,
-        session: AsyncSession,
-        auth_id: uuid.UUID,
-        data: dict,
-    ) -> AuthRead:
-        """Обновить учётную запись (internal)."""
-        account = await self.get_by_id(session, auth_id)
-        if not account:
-            raise UnauthorizedError(detail="Учётная запись не найдена")
-
-        updated = await self.repository.update(session, account, data)
-        return updated
-
-    async def delete_account_internal(
-        self,
-        session: AsyncSession,
-        auth_id: uuid.UUID,
-    ) -> None:
-        """Удалить учётную запись без проверки пароля (internal)."""
-        account = await self.get_by_id(session, auth_id)
-        if not account:
-            raise UnauthorizedError(detail="Учётная запись не найдена")
-        await self.repository.delete(session, account)
-
-    async def verify_token_internal(
-        self,
-        token: str,
-    ) -> VerifyTokenResponse:
-        """Проверить валидность токена (internal)."""
-        from jwt import ExpiredSignatureError, InvalidTokenError
-
-        from src.core.security import decode_access_token
-
-        try:
-            payload = decode_access_token(token)
-            auth_id = payload.get("sub")
-            role = payload.get("role")
-
-            return VerifyTokenResponse(
-                valid=True,
-                auth_id=uuid.UUID(auth_id) if auth_id else None,
-                role=role,
-            )
-        except ExpiredSignatureError:
-            # Токен истёк
-            return VerifyTokenResponse(valid=False)
-        except InvalidTokenError:
-            # Невалидный токен
-            return VerifyTokenResponse(valid=False)
-        except (ValueError, AttributeError):
-            # Ошибка парсинга payload
-            return VerifyTokenResponse(valid=False)

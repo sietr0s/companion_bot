@@ -11,9 +11,8 @@ from src.utils.prompt_loader import load_prompt, render_prompt
 
 if TYPE_CHECKING:
     from src.bus.interface import MessageProducer
+    from src.domain.ai import ChatProvider
     from src.modules.llm.embedder import Embedder
-    from src.modules.llm.providers.base import ChatProvider
-from src.modules.llm.formatting import batches_to_turns, memory_system_suffix
 from src.modules.llm.schemas.events import (
     GenerateReplyCommand,
     ReplyGeneratedEvent,
@@ -21,29 +20,7 @@ from src.modules.llm.schemas.events import (
     SummarizeCommand,
     SummaryGeneratedEvent,
 )
-
-_MAX_QUERY_CHARS = 160
-_MAX_QUERY_WORDS = 16
-
-
-def _sanitize_search_query(raw: str, *, fallback: str) -> str:
-    compact_fallback = " ".join((fallback or "").split())[:_MAX_QUERY_CHARS].strip()
-    text = (raw or "").strip().strip("\"'")
-    if text.lower().startswith("query:"):
-        text = text[6:].strip()
-    text = " ".join(text.split())
-    words = text.split()
-    sentences = [
-        part for part in text.replace("!", ".").replace("?", ".").split(".") if part.strip()
-    ]
-    if (
-        not text
-        or len(text) > _MAX_QUERY_CHARS
-        or len(words) > _MAX_QUERY_WORDS
-        or len(sentences) > 1
-    ):
-        return compact_fallback
-    return text
+from src.modules.llm.utils import batches_to_turns, memory_system_suffix, sanitize_search_query
 
 
 class LLMService:
@@ -137,7 +114,7 @@ class LLMService:
         raw = await self._chat_or_default().complete(
             load_prompt("retrieve_pre"), user, preset="rag"
         )
-        return _sanitize_search_query(raw, fallback=fallback or user)
+        return sanitize_search_query(raw, fallback=fallback or user)
 
     async def retrieve_post(self, query: str, hits: list[str]) -> list[str]:
         if not hits:

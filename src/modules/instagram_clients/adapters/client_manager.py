@@ -53,7 +53,7 @@ class InstagramClientManager:
         return self._client_factory()
 
     async def login(self, account_id: uuid.UUID, username: str, password: str) -> Any:
-        from src.modules.instagram_clients.adapters.login import raise_login_exception
+        from src.modules.instagram_clients.utils import raise_login_exception
 
         client = self._pending.get(account_id) or self.make_client()
 
@@ -75,7 +75,7 @@ class InstagramClientManager:
             return logged
 
     async def complete_two_factor(self, account_id: uuid.UUID, code: str) -> Any:
-        from src.modules.instagram_clients.adapters.login import raise_login_exception
+        from src.modules.instagram_clients.utils import raise_login_exception
 
         client = self._pending.get(account_id)
         if client is None:
@@ -95,7 +95,7 @@ class InstagramClientManager:
             return logged
 
     async def complete_challenge(self, account_id: uuid.UUID, code: str) -> Any:
-        from src.modules.instagram_clients.adapters.login import raise_login_exception
+        from src.modules.instagram_clients.utils import raise_login_exception
 
         client = self._pending.get(account_id)
         if client is None:

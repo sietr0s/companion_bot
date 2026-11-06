@@ -33,3 +33,12 @@ frontend/dist/
 .mypy_cache/
 frontend/coverage/
 frontend/reports/
+
+# Python build and packaging outputs
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Isolated offline API database
+safe-mode.db*

@@ -24,7 +24,7 @@ from src.modules.behavior.schemas.events import (
     IntakeDecidedEvent,
     NoteDeliveryCommand,
 )
-from src.modules.behavior.scoring import detect_emotion, strip_emotion_suffix
+from src.modules.behavior.utils import detect_emotion, strip_emotion_suffix
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

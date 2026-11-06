@@ -6,6 +6,6 @@ export type InstagramSettingsRead = {
     id: string;
     account_id: string;
     use_whitelist: boolean;
-    whitelist_user_pks?: null;
+    whitelist_user_pks?: (Array<number> | null);
 };
 

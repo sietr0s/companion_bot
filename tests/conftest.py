@@ -24,6 +24,7 @@ from src.base.model import Base
 from src.bus import configure_bus, create_bus
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.interface import MessageProducer
+from src.core.dependencies import get_db_session
 from src.core.security import create_access_token
 from src.main import app
 from src.modules.auth.models import Auth
@@ -218,3 +219,21 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         base_url="http://test",
     ) as c:
         yield c
+
+
+@pytest_asyncio.fixture
+async def api_client() -> AsyncGenerator[AsyncClient, None]:
+    """Shared real HTTP/SQLite boundary; restore only this fixture's overrides."""
+
+    async def session_override() -> AsyncGenerator[AsyncSession, None]:
+        async with TestSessionLocal() as session:
+            yield session
+
+    previous = dict(app.dependency_overrides)
+    app.dependency_overrides[get_db_session] = session_override
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous)

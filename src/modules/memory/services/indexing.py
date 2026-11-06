@@ -6,23 +6,23 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.ai import TopicIntelligence
-from src.modules.memory.clustering import (
+from src.modules.memory.constants import CLUSTER_RETRIES, TOPIC_EMBED_MAX_CHARS
+from src.modules.memory.domain import (
+    HistoryMessage,
+    IndexedTopic,
     TopicBlock,
     normalize_cluster_blocks,
-    parse_cluster_json,
     split_closed_open,
 )
-from src.modules.memory.constants import CLUSTER_RETRIES, TOPIC_EMBED_MAX_CHARS
-from src.modules.memory.formatting import numbered_window, topic_embed_text
-from src.modules.memory.models import Message
 from src.modules.memory.repository import VectorRecordRepository
+from src.modules.memory.utils import numbered_window, parse_cluster_json, topic_embed_text
 
 logger = logging.getLogger(__name__)
 
 
 async def cluster_window(
     llm: TopicIntelligence,
-    window: list[Message],
+    window: list[HistoryMessage],
     *,
     hard_cap: bool,
     retries: int = CLUSTER_RETRIES,
@@ -49,7 +49,7 @@ class TopicIndexer:
         self,
         session: AsyncSession,
         conversation_id: UUID,
-        window: list[Message],
+        window: list[HistoryMessage],
         blocks: list[TopicBlock],
         *,
         kind: str,
@@ -70,14 +70,15 @@ class TopicIndexer:
         embeddings = await self._llm.embed(texts, role="document") if texts else []
         # Validate the complete response before writing any records.
         records = [
-            {
-                "text": block.topic,
-                "kind": kind,
-                "embedding": embedding,
-                "seq_from": block.ids[0],
-                "seq_to": block.ids[-1],
-                "partial": partial,
-            }
+            IndexedTopic(
+                conversation_id=conversation_id,
+                text=block.topic,
+                kind=kind,
+                embedding=embedding,
+                seq_from=block.ids[0],
+                seq_to=block.ids[-1],
+                partial=partial,
+            )
             for block, embedding in zip(topics, embeddings, strict=True)
         ]
         await self._vectors.store_indexed_window(

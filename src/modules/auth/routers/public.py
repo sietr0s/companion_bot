@@ -5,13 +5,9 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.base.routers import create_crud_router
 from src.core.dependencies import get_current_user, get_db_session
 from src.modules.auth.dependencies import get_auth_service
-from src.modules.auth.schemas.public import (
-    AuthAccountCreate,
-    AuthAccountRead,
-    AuthAccountUpdate,
+from src.modules.auth.schemas.api import (
     ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
@@ -74,16 +70,3 @@ async def delete_account(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> None:
     await auth_service.delete_account(session, auth_id)
-
-
-router.include_router(
-    create_crud_router(
-        get_service=get_auth_service,
-        create_schema=AuthAccountCreate,
-        update_schema=AuthAccountUpdate,
-        response_schema=AuthAccountRead,
-        prefix="/accounts",
-        tags=["Auth Accounts"],
-        entity_name="Auth",
-    )
-)

@@ -51,12 +51,14 @@ docker-compose*.yml
 .gitignore
 
 # Documentation
-*.md
+README.md
 docs/
 
 # Local env
 .env.local
 .env.*.local
+.env
+.env.*
 
 # Database
 *.db
@@ -75,6 +77,14 @@ models/
 .DS_Store
 Thumbs.db
 
-# Agent skills are development resources.
+# The backend image does not contain frontend tools, tests, or analyzer outputs.
+frontend/
+tests/
+reports/
+.hypothesis/
+.mypy_cache/
+
+# Agent workflow instructions are development-only.
 .agents/
 AGENTS.md
+safe-mode.db*

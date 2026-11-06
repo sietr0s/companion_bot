@@ -26,9 +26,9 @@ jobs:
           cache-dependency-path: requirements-lint.txt
       - run: python -m pip install -r requirements-lint.txt
       - name: Lint Python
-        run: ruff check src tests scripts server.py --output-format github
+        run: ruff check src tests scripts --output-format github
       - name: Check Python formatting
-        run: ruff format --check src tests scripts server.py
+        run: ruff format --check src tests scripts
 
   tests:
     name: Backend tests
@@ -39,6 +39,7 @@ jobs:
       JWT_SECRET_KEY: ci-test-only-key-with-at-least-32-characters
       ADMIN_EMAIL: ci@example.com
       ADMIN_PASSWORD: ci-test-only-password
+      SAFE_MODE: 'false'
       MESSAGE_BUS: in_memory
       LLM_PROVIDER: stub
       STT_PROVIDER: stub
@@ -52,7 +53,7 @@ jobs:
         id: backend_setup
       - name: Run unit and integration tests
         run: >-
-          python -m pytest tests --ignore=tests/e2e
+          python -m pytest tests
           --junitxml=reports/backend-tests.xml
           --cov=src --cov-branch
           --cov-report=term-missing

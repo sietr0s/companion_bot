@@ -2,23 +2,19 @@
 
 from fastapi import Depends
 
+from src.base.service import BaseService
 from src.bus import get_producer
 from src.bus.interface import MessageProducer
 from src.composition.ai import get_memory_intelligence
 from src.domain.ai import MemoryIntelligence
+from src.modules.memory.models import Conversation, Message, SummaryState, VectorRecord
 from src.modules.memory.repository import (
     ConversationRepository,
     MessageRepository,
     SummaryStateRepository,
     VectorRecordRepository,
 )
-from src.modules.memory.service import (
-    ConversationService,
-    MemoryService,
-    MessageService,
-    SummaryStateService,
-    VectorRecordService,
-)
+from src.modules.memory.services import MemoryService
 from src.modules.memory.services.topics import TopicQueryService
 
 
@@ -47,26 +43,26 @@ def get_topic_query_service(
 
 def get_conversation_service(
     repository: ConversationRepository = Depends(get_conversation_repository),
-) -> ConversationService:
-    return ConversationService(repository)
+) -> BaseService[ConversationRepository, Conversation]:
+    return BaseService(repository)
 
 
 def get_message_service(
     repository: MessageRepository = Depends(get_message_repository),
-) -> MessageService:
-    return MessageService(repository)
+) -> BaseService[MessageRepository, Message]:
+    return BaseService(repository)
 
 
 def get_summary_state_service(
     repository: SummaryStateRepository = Depends(get_summary_state_repository),
-) -> SummaryStateService:
-    return SummaryStateService(repository)
+) -> BaseService[SummaryStateRepository, SummaryState]:
+    return BaseService(repository)
 
 
 def get_vector_record_service(
     repository: VectorRecordRepository = Depends(get_vector_record_repository),
-) -> VectorRecordService:
-    return VectorRecordService(repository)
+) -> BaseService[VectorRecordRepository, VectorRecord]:
+    return BaseService(repository)
 
 
 def build_memory_service(
@@ -80,21 +76,4 @@ def build_memory_service(
         vectors=VectorRecordRepository(),
         message_bus=message_bus or get_producer(),
         llm=llm or get_memory_intelligence(),
-    )
-
-
-def get_memory_service(
-    conversations: ConversationRepository = Depends(get_conversation_repository),
-    messages: MessageRepository = Depends(get_message_repository),
-    summaries: SummaryStateRepository = Depends(get_summary_state_repository),
-    vectors: VectorRecordRepository = Depends(get_vector_record_repository),
-    llm: MemoryIntelligence = Depends(get_memory_intelligence),
-) -> MemoryService:
-    return MemoryService(
-        conversations=conversations,
-        messages=messages,
-        summaries=summaries,
-        vectors=vectors,
-        message_bus=get_producer(),
-        llm=llm,
     )

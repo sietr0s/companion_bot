@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from src.modules.memory.domain import IndexedTopic, NewMessage
 from src.modules.memory.models import (
     Conversation,
     Message,
@@ -34,7 +35,10 @@ async def test_failed_batch_rolls_back_sequences_and_all_messages(db_session):
             db_session,
             conversation_id,
             "incoming",
-            [{"text": "valid", "message_type": "text"}, {"text": None, "message_type": "text"}],
+            [
+                NewMessage(text="valid", message_type="text"),
+                NewMessage(text=None, message_type="text"),
+            ],
         )
     last = await db_session.scalar(
         select(Conversation.last_sequence_number).where(Conversation.id == conversation_id)
@@ -42,10 +46,9 @@ async def test_failed_batch_rolls_back_sequences_and_all_messages(db_session):
     assert last == 0
     assert await db_session.scalar(select(func.count()).select_from(Message)) == 0
     assert await db_session.scalar(select(func.count()).select_from(MessageBatch)) == 0
-    # The same session can recover and accept the next complete batch.
     assert (
         await MessageBatchRepository().append_messages(
-            db_session, conversation_id, "incoming", [{"text": "retry", "message_type": "text"}]
+            db_session, conversation_id, "incoming", [NewMessage(text="retry", message_type="text")]
         )
         == 1
     )
@@ -63,8 +66,8 @@ async def test_failed_index_does_not_save_a_topic_or_advance_checkpoint(db_sessi
             db_session,
             conversation_id,
             [
-                {"text": "valid", "seq_from": 6, "seq_to": 7},
-                {"text": None, "seq_from": 8, "seq_to": 9},
+                IndexedTopic(conversation_id=conversation_id, text="valid", seq_from=6, seq_to=7),
+                IndexedTopic(conversation_id=conversation_id, text=None, seq_from=8, seq_to=9),
             ],
             9,
         )
@@ -81,11 +84,15 @@ async def test_duplicate_batch_does_not_consume_sequence_numbers(db_session):
     batch_id = uuid4()
     batches = MessageBatchRepository()
     await batches.append_messages(
-        db_session, conversation_id, "incoming", [{"text": "one"}], batch_id=batch_id
+        db_session, conversation_id, "incoming", [NewMessage(text="one")], batch_id=batch_id
     )
     with pytest.raises(IntegrityError):
         await batches.append_messages(
-            db_session, conversation_id, "incoming", [{"text": "duplicate"}], batch_id=batch_id
+            db_session,
+            conversation_id,
+            "incoming",
+            [NewMessage(text="duplicate")],
+            batch_id=batch_id,
         )
     assert (
         await db_session.scalar(

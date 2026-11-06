@@ -6,10 +6,11 @@ from src.core.exceptions import NotFoundError
 from src.modules.memory.constants import EMBEDDING_DIM
 from src.modules.memory.repository import (
     ConversationRepository,
+    MessageRepository,
     VectorRecordRepository,
 )
+from src.modules.memory.services.topics import TopicQueryService
 from tests.modules.memory.seed import insert_message
-from tests.modules.memory.test_memory_retrieve import RecordingLLM, _service
 
 
 def _vec(seed: float) -> list[float]:
@@ -56,7 +57,7 @@ async def test_list_topics_for_conversation(db_session):
             "seq_to": 1,
         },
     )
-    svc = _service(RecordingLLM())
+    svc = TopicQueryService(VectorRecordRepository(), MessageRepository())
     topics = await svc.list_topics(db_session, conv.id)
     assert len(topics) == 1
     topic = topics[0]
@@ -71,10 +72,10 @@ async def test_list_topics_for_conversation(db_session):
 @pytest.mark.asyncio
 async def test_get_topic_includes_messages(db_session):
     conv, record = await _seed_topic(db_session)
-    svc = _service(RecordingLLM())
+    svc = TopicQueryService(VectorRecordRepository(), MessageRepository())
     detail = await svc.get_topic(db_session, conv.id, record.id)
     assert [m.text for m in detail.messages] == ["сервер упал", "смотрю логи"]
-    assert detail.title == "Проблема с сервером"
+    assert detail.topic.title == "Проблема с сервером"
 
 
 @pytest.mark.asyncio
@@ -84,6 +85,6 @@ async def test_get_topic_wrong_conversation(db_session):
         db_session,
         {"channel": "telegram", "chat_id": 79, "user_id": uuid.uuid4()},
     )
-    svc = _service(RecordingLLM())
+    svc = TopicQueryService(VectorRecordRepository(), MessageRepository())
     with pytest.raises(NotFoundError):
         await svc.get_topic(db_session, other.id, record.id)

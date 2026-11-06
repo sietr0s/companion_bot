@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
@@ -45,7 +45,6 @@ class OrchestratorService:
         state = self._states.get(key)
         if state is None:
             state = OrchestratorState(
-                correlation_id=uuid4(),
                 chat=ChatRef(
                     channel=channel,  # type: ignore[arg-type]
                     chat_id=int(chat_id),
@@ -89,18 +88,6 @@ class OrchestratorService:
             BusTopics.TTS_SYNTHESIZE,
             {**ids, "text": joined},
         )
-
-    @staticmethod
-    def _as_messages(raw: list) -> list[Message]:
-        out: list[Message] = []
-        for item in raw:
-            if isinstance(item, Message):
-                out.append(item)
-            elif isinstance(item, str):
-                out.append(Message(text=item, direction="incoming"))
-            else:
-                out.append(Message.model_validate(item))
-        return out
 
     def _on_incoming_message(self) -> None:
         async def on_message_received(payload: dict) -> None:
@@ -281,7 +268,6 @@ class OrchestratorService:
             if not action:
                 logger.error("delivery_decided without action chat=%s", payload.get("chat_id"))
                 return
-            state.pending_delivery = action
             state.delivery_report = {
                 "action": action,
                 "text": "\n".join(texts),
@@ -298,7 +284,6 @@ class OrchestratorService:
             ids = state.chat.adapter_ids()
             if action == "voice" and state.chat.channel == "instagram":
                 action = "text"
-                state.pending_delivery = "text"
             topic = (
                 BusTopics.IG_MESSAGE_SEND
                 if state.chat.channel == "instagram"
@@ -339,10 +324,8 @@ class OrchestratorService:
             if not texts and payload.get("text"):
                 texts = [str(payload["text"])]
             logger.warning("TTS failed, sending text fallback chat=%s reason=%s", chat_id, reason)
-            if state:
-                state.pending_delivery = "text"
-                if state.delivery_report is not None:
-                    state.delivery_report["action"] = "text"
+            if state and state.delivery_report is not None:
+                state.delivery_report["action"] = "text"
             if not account_id or not texts:
                 self._states.pop(
                     ChatRef.from_payload(self._with_channel(payload)).state_key(), None

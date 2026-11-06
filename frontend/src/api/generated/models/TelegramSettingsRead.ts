@@ -6,6 +6,6 @@ export type TelegramSettingsRead = {
     id: string;
     account_id: string;
     use_whitelist: boolean;
-    whitelist_chat_ids?: null;
+    whitelist_chat_ids?: (Array<number> | null);
 };
 

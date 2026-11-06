@@ -21,7 +21,7 @@ def create_bus(message_bus: str | None = None) -> tuple[MessageProducer, Message
     """Создать независимую пару producer/consumer."""
     from src.core.config import settings
 
-    transport_name = message_bus or settings.MESSAGE_BUS
+    transport_name = "in_memory" if settings.SAFE_MODE else message_bus or settings.MESSAGE_BUS
     if transport_name == "kafka":
         from src.bus.kafka.consumer import KafkaConsumerRouter
         from src.bus.kafka.producer import KafkaProducerBus

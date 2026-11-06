@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from src.modules.behavior.config import behavior_settings
-from src.modules.behavior.scoring import is_night, is_short_greeting, word_count
+from src.modules.behavior.utils import is_night, is_short_greeting, word_count
 
 if TYPE_CHECKING:
     from src.modules.behavior.engine import DecisionContext

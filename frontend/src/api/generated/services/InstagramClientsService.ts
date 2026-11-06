@@ -94,6 +94,115 @@ export class InstagramClientsService {
         });
     }
     /**
+     * Get List
+     * @param page
+     * @param pageSize
+     * @param orderBy
+     * @returns PaginatedResponse_InstagramAccountRead_ Successful Response
+     * @throws ApiError
+     */
+    public static getListApiV1PublicInstagramAccountsGet(
+        page: number = 1,
+        pageSize: number = 100,
+        orderBy?: (string | null),
+    ): CancelablePromise<PaginatedResponse_InstagramAccountRead_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/instagram/accounts/',
+            query: {
+                'page': page,
+                'page_size': pageSize,
+                'order_by': orderBy,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create
+     * @param requestBody
+     * @returns InstagramAccountRead Successful Response
+     * @throws ApiError
+     */
+    public static createApiV1PublicInstagramAccountsPost(
+        requestBody: InstagramAccountCreate,
+    ): CancelablePromise<InstagramAccountRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/instagram/accounts/',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get By Id
+     * @param itemId
+     * @returns InstagramAccountRead Successful Response
+     * @throws ApiError
+     */
+    public static getByIdApiV1PublicInstagramAccountsItemIdGet(
+        itemId: string,
+    ): CancelablePromise<InstagramAccountRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/instagram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update
+     * @param itemId
+     * @param requestBody
+     * @returns InstagramAccountRead Successful Response
+     * @throws ApiError
+     */
+    public static updateApiV1PublicInstagramAccountsItemIdPut(
+        itemId: string,
+        requestBody: InstagramAccountUpdate,
+    ): CancelablePromise<InstagramAccountRead> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/public/instagram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete
+     * @param itemId
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteApiV1PublicInstagramAccountsItemIdDelete(
+        itemId: string,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/public/instagram/accounts/{item_id}',
+            path: {
+                'item_id': itemId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Settings
      * @param accountId
      * @returns InstagramSettingsRead Successful Response
@@ -202,115 +311,6 @@ export class InstagramClientsService {
             path: {
                 'account_id': accountId,
                 'user_pk': userPk,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get List
-     * @param page
-     * @param pageSize
-     * @param orderBy
-     * @returns PaginatedResponse_InstagramAccountRead_ Successful Response
-     * @throws ApiError
-     */
-    public static getListApiV1PublicInstagramAccountsGet(
-        page: number = 1,
-        pageSize: number = 100,
-        orderBy?: (string | null),
-    ): CancelablePromise<PaginatedResponse_InstagramAccountRead_> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/instagram/accounts/',
-            query: {
-                'page': page,
-                'page_size': pageSize,
-                'order_by': orderBy,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Create
-     * @param requestBody
-     * @returns InstagramAccountRead Successful Response
-     * @throws ApiError
-     */
-    public static createApiV1PublicInstagramAccountsPost(
-        requestBody: InstagramAccountCreate,
-    ): CancelablePromise<InstagramAccountRead> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/public/instagram/accounts/',
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get By Id
-     * @param itemId
-     * @returns InstagramAccountRead Successful Response
-     * @throws ApiError
-     */
-    public static getByIdApiV1PublicInstagramAccountsItemIdGet(
-        itemId: string,
-    ): CancelablePromise<InstagramAccountRead> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/public/instagram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Update
-     * @param itemId
-     * @param requestBody
-     * @returns InstagramAccountRead Successful Response
-     * @throws ApiError
-     */
-    public static updateApiV1PublicInstagramAccountsItemIdPut(
-        itemId: string,
-        requestBody: InstagramAccountUpdate,
-    ): CancelablePromise<InstagramAccountRead> {
-        return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/public/instagram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Delete
-     * @param itemId
-     * @returns void
-     * @throws ApiError
-     */
-    public static deleteApiV1PublicInstagramAccountsItemIdDelete(
-        itemId: string,
-    ): CancelablePromise<void> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/public/instagram/accounts/{item_id}',
-            path: {
-                'item_id': itemId,
             },
             errors: {
                 422: `Validation Error`,

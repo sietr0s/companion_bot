@@ -6,16 +6,17 @@
 избегаем разбросанных os.getenv() по коду.
 """
 
-import logging
 from urllib.parse import quote
 
 from src.core.settings import EnvironmentSettings
 
-logger = logging.getLogger(__name__)
-
 
 class Settings(EnvironmentSettings):
     """Настройки приложения, загружаемые из .env или переменных окружения."""
+
+    # Offline API development: isolated local data, no integration/AI workers.
+    SAFE_MODE: bool = False
+    SAFE_MODE_DATABASE_PATH: str = "safe-mode.db"
 
     # БД — собирается из компонентов
     DB_HOST: str = "localhost"
@@ -29,6 +30,8 @@ class Settings(EnvironmentSettings):
     @property
     def DATABASE_URL(self) -> str:  # noqa: N802 — property имитирует поле Settings
         """Собирает полный URL для подключения к БД с URL-кодированием пароля."""
+        if self.SAFE_MODE:
+            return f"sqlite+aiosqlite:///{self.SAFE_MODE_DATABASE_PATH}"
         return (
             f"{self.DB_DRIVER}://{self.DB_USER}"
             f":{quote(self.DB_PASSWORD, safe='')}"
@@ -50,7 +53,6 @@ class Settings(EnvironmentSettings):
     # Приложение
     APP_TITLE: str = "Modular Monolith"
     DEBUG: bool = False
-    PORT: int = 8000
 
     # Создание таблиц при старте (для разработки)
     # В production использовать только Alembic миграции
@@ -67,49 +69,12 @@ class Settings(EnvironmentSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
-    # SMTP
-    SMTP_HOST: str = "localhost"
-    SMTP_PORT: int = 587
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_USE_TLS: bool = True
-    SMTP_FROM_EMAIL: str = "noreply@example.com"
-    SMTP_FROM_NAME: str = "App"
-
-    # Шаблоны
-    TEMPLATES_DIR: str = "templates"
-
-    # Classifier
-    CLASSIFIER_CATEGORY_MIN_SCORE: float = 0.8
-
-    # Media
-    MEDIA_STORAGE_PROVIDER: str = "local"  # "local" | "s3"
-    MEDIA_STORAGE_PATH: str = "uploads"  # для LocalStorage
-    MEDIA_MAX_SIZE_MB: int = 50  # лимит загрузки
-
-    # Telegram Bot (aiogram)
-    TG_BOT_TOKEN: str = ""
-    TG_BOT_MODE: str = "polling"  # "polling" | "webhook"
-    TG_BOT_WEBHOOK_SECRET: str = ""
-    APP_URL: str = "http://localhost:8000"  # для webhook
-
-    # Classifier (AI-классификация)
-    CLASSIFIER_MODEL_NAME: str = "knowledgator/gliclass-large-v1.0"
-    CLASSIFIER_DEVICE: int = -1  # -1 = CPU, 0 = GPU
-    CLASSIFIER_THRESHOLD: float = 0.5
-
-    # Embeddings (local sentence-transformers)
-    EMBEDDING_MODEL: str = "Qwen/Qwen3-Embedding-0.6B"
+    # Local model cache shared by embeddings and speech recognition.
     MODEL_CACHE_DIR: str = "models"
 
-    # LLM chat (LangChain). Embeddings stay local.
-    # mistral | openrouter | openai | openai_compat | stub
-    LLM_PROVIDER: str = "mistral"
-    MISTRAL_API_KEY: str = ""
-    MISTRAL_MODEL: str = "mistral-small-latest"
+    # OpenAI-compatible endpoint used by the TTS adapter; chat owns its own settings.
     LLM_API_KEY: str = ""
     LLM_BASE_URL: str = ""
-    LLM_MODEL: str = "openai/gpt-4o-mini"
 
     # LangSmith tracing for LangChain calls
     LANGSMITH_TRACING: bool = False
@@ -129,8 +94,6 @@ class Settings(EnvironmentSettings):
     # Admin (seed-пользователь) — обязательные поля, без дефолтов
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
-    ADMIN_FIRST_NAME: str = "Admin"
-    ADMIN_LAST_NAME: str = ""
 
 
 # Глобальный экземпляр настроек — импортируется во всех модулях

@@ -12,3 +12,13 @@ Fetch current guidelines for online reviews; the snapshot supports offline revie
 Read the matching SKILL.md and only the relevant references. Related-skills links
 may refer to optional skills in the upstream repository which are not installed here.
 See the root AGENTS.md for project-specific applicability and precedence.
+
+# Project design interview skills
+
+Source: [mattpocock/skills](https://github.com/mattpocock/skills), installed 2026-11-06.
+
+- `grill-me/SKILL.md`: original entry point from `skills/productivity/grill-me`.
+- `grilling/SKILL.md`: original interview workflow from `skills/productivity/grilling`.
+
+Invoke `grill-me` for a design interview. If the agent has no Skill invocation tool,
+read the referenced `grilling/SKILL.md` directly and follow its workflow.

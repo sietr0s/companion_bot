@@ -1,3 +1,5 @@
-from .public import router as public_router
+"""Module HTTP composition: export the access-level routers through one router."""
 
-__all__ = ["public_router"]
+from .manager import router
+
+__all__ = ["router"]

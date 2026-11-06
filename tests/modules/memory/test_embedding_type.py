@@ -4,8 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.base.model import BaseModel
 from src.modules.memory.constants import EMBEDDING_DIM
-from src.modules.memory.embedding_type import EmbeddingVector
-from src.modules.memory.models import VectorRecord
+from src.modules.memory.models import EmbeddingVector, VectorRecord
 
 
 class _VecRow(BaseModel):

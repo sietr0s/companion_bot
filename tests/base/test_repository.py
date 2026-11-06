@@ -40,7 +40,7 @@ class TestBaseRepository:
 
     async def test_create_from_pydantic(self, db_session: AsyncSession, repo: AuthRepository):
         """Создание сущности через Pydantic-модель."""
-        from src.modules.users.schemas.public import UserCreate
+        from src.modules.users.schemas.api import UserCreate
 
         user_repo = UserRepository()
         data = UserCreate(

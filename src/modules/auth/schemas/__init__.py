@@ -1,1 +1,1 @@
-"""Auth schemas: public, internal, events."""
+"""Authentication HTTP schemas and bus events."""

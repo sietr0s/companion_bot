@@ -1,11 +1,6 @@
 """Исключения модуля telegram_clients."""
 
-from src.core.exceptions import BadRequestError, NotFoundError
-
-
-class TelegramAccountNotFoundError(NotFoundError):
-    def __init__(self, detail: str = "Telegram-аккаунт не найден"):
-        super().__init__(detail=detail)
+from src.core.exceptions import BadRequestError
 
 
 class InvalidTelegramCodeError(BadRequestError):

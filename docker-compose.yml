@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: companion_bot_app
     env_file:
-      - .env.docker
+      - .env
     ports:
       - "8000:8000"
     environment:
@@ -29,8 +29,6 @@ services:
       TG_API_ID: ${TG_API_ID:-0}
       TG_API_HASH: ${TG_API_HASH:-}
       TG_SESSION_DIR: /app/sessions
-      TEMPLATES_DIR: /app/templates
-      MEDIA_STORAGE_PATH: /app/uploads
       MODEL_CACHE_DIR: /app/models
       LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
       LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
@@ -38,9 +36,7 @@ services:
       LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-}
     volumes:
       - ./sessions:/app/sessions
-      - ./templates:/app/templates:ro
       - ./models:/app/models
-      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -173,6 +169,4 @@ volumes:
   postgres_data:
     driver: local
   pgadmin_data:
-    driver: local
-  uploads_data:
     driver: local

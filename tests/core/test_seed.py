@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
 from src.core.config import settings
-from src.core.seed import seed_admin
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
+from src.modules.auth.seed import seed_admin
 from src.modules.auth.service import AuthService
 
 

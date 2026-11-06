@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from src.bus.interface import MessageProducer
-    from src.modules.stt.downloader import MediaDownloader
+    from src.domain.media import MediaDownloader
     from src.modules.stt.providers.base import SttProvider
 
 logger = logging.getLogger(__name__)

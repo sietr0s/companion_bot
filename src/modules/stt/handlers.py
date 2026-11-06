@@ -4,7 +4,7 @@ from typing import Any
 
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
-from src.modules.stt.downloader import MediaDownloader
+from src.domain.media import MediaDownloader
 from src.modules.stt.providers.base import SttProvider
 from src.modules.stt.schemas.events import TranscribeCommand
 from src.modules.stt.service import SttService

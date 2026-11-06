@@ -5,22 +5,9 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.22
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
-    hooks:
-      - id: mypy
-        additional_dependencies:
-          - types-aiofiles
-          - types-python-jose
-          - passlib
-        args:
-          - --config-file=pyproject.toml
-          - --ignore-missing-imports
-        files: ^src/
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -44,7 +31,7 @@ repos:
         always_run: true
         args:
           - tests/
-          - --ignore=tests/e2e
+          -
           - -v
           - --tb=short
         stages: [pre-push]

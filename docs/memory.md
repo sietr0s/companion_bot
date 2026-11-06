@@ -1,100 +1,138 @@
 # Память диалога
 
-Модуль `memory` хранит переписку, rolling summary и векторный индекс **по темам**, не по батчам ответа. Батчер (`batching`) к нарезке тем не относится: он только копит входящие, чтобы бот ответил пачкой.
+`memory` хранит историю, rolling summary и векторный индекс закрытых тем.
+Входящий батч — единица накопления сообщений; он не является темой для retrieval.
+Разговор имеет ключ `(channel, account_id, chat_id)`.
 
-## Слои
+## Данные
 
-| Слой | Что это | Когда обновляется |
-|------|---------|-------------------|
-| `messages` | Каждое входящее/исходящее, `sequence_number` | Сразу в `process_batch` / `update_memory` |
-| `summary_states.current_summary` | Сжатая история | Если `last_sequence - checkpoint >= 50` |
-| `summary_states.cluster_checkpoint` | Последний seq **закрытой** темы | После успешной кластеризации |
-| `vector_records` | Одна строка = одна закрытая тема | После кластеризации; эмбеддинг от **названия темы** |
+| Таблица | Содержимое |
+| --- | --- |
+| `conversations` | Идентификатор канала/аккаунта/чата, sequence counter, активность |
+| `message_batches` | Сохранённые группы сообщений одной роли |
+| `messages` | Текст, direction, message_type, batch_id, sequence_number |
+| `summary_states` | `current_summary`, summary `checkpoint`, `cluster_checkpoint` |
+| `vector_records` | `text`, `kind`, `embedding`, `seq_from`, `seq_to`, `partial` |
 
-Батч ответа в вектор не пишется.
+`kind`, диапазон и `partial` — отдельные колонки; поля `extra_data` нет.
+Сохранённый текст включает display-разметку reply/forward; ORM-представление
+не строит промпт для провайдера.
 
-## Сохранение
+## Слои и структура
 
-Разговор уникален по `(channel, account_id, chat_id)`: два аккаунта бота с одним человеком не делят историю. Тот же ключ у in-memory батчера.
+`schemas/api.py` и `schemas/events.py` — транспортные DTO. `domain.py` содержит
+HistoryMessage, HistoryWindow, IndexedTopic, RollingSummary и правила разбиения
+окна. Репозиторий возвращает доменные снимки: после закрытия SQL-сессии они
+остаются доступны без lazy loading. Преобразование ORM находится на границе
+репозитория; отдельного `mapping.py` нет. Внутренние сервисы не импортируют
+ORM и транспортные DTO. SQL-типы находятся рядом с `models.py`.
 
-`memory.command.process_batch` (входящие) и `memory.command.update_memory` (исходящие, только `delivered`):
+Сервисы лежат только в `services/`, helpers — в `utils.py`. Менеджерские роутеры
+разделены по сущностям в `routers/manager/`. Полные правила —
+[ADR 0002](adr/0002-module-boundaries-and-layout.md).
 
-1. Дописать сообщения, увеличить `last_sequence_number`.
-2. Сразу опубликовать `memory.event.batch.processed` / `memory.event.memory.updated` — ответный пайплайн не ждёт индекс.
-3. Опубликовать `memory.command.maintain`. Хендлер **ждёт** `_run_maintain` (не `create_task`); на одном `conversation_id` maintain сериализуется lock'ом. На Kafka это занимает consume-цикл, пока кластеризация/summary не закончатся.
+## Запись и обслуживание
 
-`maintain`: `_maybe_cluster`, затем при пороге 50 с прошлого summary checkpoint — `summarize`. До 3 попыток разобрать JSON кластера. Ошибка **не откатывает** сообщения.
+`MemoryService` экспортируется из `src.modules.memory.services`.
+Фасад `services/pipeline.py` принимает команды и публикует события:
 
-## Кластеризация (`_maybe_cluster`)
+1. `process_batch` получает/создаёт разговор и сохраняет входящие.
+2. `update_memory` сохраняет исходящие только при `delivery_status=delivered`.
+3. `MessageBatchRepository.append_messages` фиксирует batch, сообщения и увеличение
+   sequence counter одной транзакцией. При сбое не остаётся половины batch.
+4. После commit публикуются `memory.event.batch.processed` /
+   `memory.event.memory.updated`, затем команда `memory.command.maintain`.
 
-Окно: все сообщения разговора с `sequence_number > cluster_checkpoint` (входящие и исходящие вместе).
+`services/maintenance.py` сериализует maintain для разговора локальным lock.
+Сначала выполняется кластеризация, затем при пороге — summary. Обработчик ждёт
+maintain; Kafka consume-цикл на это время занят. Это не распределённая блокировка.
+Ошибка обслуживания не отменяет уже сохранённую историю.
 
-- Меньше **20** сообщений — ничего не делать.
-- Иначе LLM (`cluster_topics`) получает строки `seq|User|text` / `seq|Assistant|text` и должен вернуть JSON:
+Summary строится из сообщений после предыдущего checkpoint и не дальше
+`current_sequence` команды. Порог обновления — 50 сообщений.
+
+## Индексация тем
+
+Окно — сообщения после `cluster_checkpoint`. Меньше 20 сообщений не кластеризуются.
+При 50 и более сообщениях обрабатываются первые 50, с принудительным закрытием.
+LLM получает `seq|User|text` / `seq|Assistant|text` и возвращает блоки:
 
 ```json
-[
-  {"topic": "Проблема с сервером", "ids": [12, 13, 14], "kind": "topic"}
-]
+[{"topic": "Проблема с сервером", "ids": [12, 13, 14], "kind": "topic"}]
 ```
 
-`kind`: `topic` или `noise`. `ids` — `sequence_number` из окна, непрерывные, без пересечений, покрывают всё окно.
+`utils.py` разбирает ответ LLM, а `domain.py` фильтрует ID вне окна, устраняет пересечения,
+разбивает разрывы на непрерывные диапазоны и заполняет остаток как `noise`.
+Одно сообщение не образует тему. После нормализации проверяется точное покрытие
+окна без повторов. Невалидный результат повторяется до трёх раз; при исчерпании
+попыток индекс и checkpoint остаются прежними.
 
-Код (`clustering.py`) парсит JSON и режет блоки:
+Последняя тема остаётся открытой и попадёт в следующее окно. Trailing noise
+закрывается сразу. При hard cap закрываются все блоки, `partial=True`.
+Noise продвигает checkpoint, но не создаёт вектор.
 
-- **Закрытые** — все, кроме блока, который содержит последний seq окна. Их индексируем.
-- **Открытый** — хвост текущей темы. Checkpoint на него не двигается, сообщения остаются в следующем окне.
-- Окно **≥ 50** (`CLUSTER_HARD_CAP`) — закрыть все блоки, в `extra_data.partial = true`.
-- Дыры, пересечения, чужие id — тик отменяется, индекс не трогаем.
-- `noise` двигает checkpoint, вектор не создаёт.
+`services/indexing.py` используется и live-maintenance, и reference-import:
 
-Индекс закрытой темы:
+- `VectorRecord.text` — заголовок для UI и reranking.
+- Embedding строится по заголовку **и тексту блока**, до 400 символов тела.
+- Все embeddings должны соответствовать числу тем до начала записи.
+- Векторы окна и cluster checkpoint фиксируются одной транзакцией.
 
-- `VectorRecord.text` = название темы (UI и `retrieve_post`).
-- `VectorRecord.kind` = `topic` или `reference` (фильтр поиска в SQL).
-- `embedding` = `embed([title + текст блока], role="document")`, тело обрезается (`TOPIC_EMBED_MAX_CHARS`).
-- `extra_data`: `kind`, `seq_from`, `seq_to`, `partial`.
+## Построение контекста
 
-## Сборка контекста (`build_context`)
+`services/context.py` возвращает доменный `ConversationContext`; фасад pipeline
+оборачивает его в `ContextBuiltEvent`:
 
-Память отдаёт структуру, не готовую строку промпта:
+- `summary` — rolling summary;
+- `recent: list[Batch]` — последние N сообщений, сгруппированные по batch_id;
+- `retrieved: list[Topic]` — релевантные темы текущего разговора;
+- `references: list[Topic]` — глобальные эталоны `kind=reference`.
 
-- `recent: list[Batch]` — last N сообщений, сгруппированные по `message_batches` (пачка одной роли).
-- `retrieved` / `references: list[Topic]` — `title` + `batches` в диапазоне `seq_from…seq_to`.
-- `summary` — rolling summary.
+`retrieve_pre` использует последние 8 реплик для короткого query. Query embedding
+ищет до 10 тем каждого вида, затем `retrieve_post` сохраняет только точные
+совпадения названий. Уже включённая в recent часть темы обрезается; из одного
+retrieved диапазона берутся максимум 12 сообщений. Ошибка AI retrieval оставляет
+recent и summary, но убирает retrieved/references.
 
-1. Last N сообщений + summary.
-2. `retrieve_pre` по хвосту диалога → query.
-3. `embed` → `search_similar` (`kind=topic` в чате, `kind=reference` глобально).
-4. `retrieve_post` оставляет точные совпадения названий.
-5. Тема, целиком лежащая в last N, отбрасывается; пересечение режется до `recent_min_seq - 1`.
-6. Сообщения темы грузятся из `messages` и группируются в `Batch` по `batch_id`.
+Готовый prompt строится в `llm/utils.py`. Память зависит от
+`MemoryIntelligence`, не от конкретного LLMService или SDK.
 
-Промпт (title + `User: a<next_message>b`) собирает модуль LLM (`src/modules/llm/formatting.py`).
+## Reference-import и HTTP
 
-Свежая незакрытая тема в индекс ещё не попала: она в `recent`.
+Импорт — отдельная developer-команда, а не runtime-сервис памяти:
 
-Админка: `GET /api/v1/public/memory/conversations/{id}/topics` — закрытые темы без эмбеддинга; `GET .../topics/{topic_id}` — сообщения диапазона `seq_from…seq_to`.
+```bash
+python -m scripts.import_reference export.json
+python -m scripts.import_reference export.json --replace
+```
 
-## Константы
+`--replace` заменяет историю импортированного разговора и сбрасывает checkpoints.
+Импорт ограничен `account_id=None`, поэтому не заменяет live-историю аккаунта.
 
-`src/modules/memory/constants.py`:
 
-| Имя | Значение | Смысл |
-|-----|----------|--------|
-| `CLUSTER_MIN_MESSAGES` | 20 | Минимальное окно для вызова LLM-кластеризатора |
-| `CLUSTER_HARD_CAP` | 50 | Форс-закрытие, даже если тема не кончилась |
-| `CLUSTER_RETRIES` | 3 | Повторы parse JSON кластера |
-| `SUMMARY_THRESHOLD` | 50 | Rolling summary |
-| `VECTOR_TOP_K` | 10 | Сколько тем достать из индекса |
-| `RETRIEVE_PRE_WINDOW` | 8 | Сколько последних реплик диалога уходит в retrieve_pre |
-| `DEFAULT_LAST_N` | 50 | Хвост диалога в промпт |
-| `SNIPPET_MAX_MESSAGES` | 12 | Потолок реплик в Retrieved-сниппете |
-| `TOPIC_EMBED_MAX_CHARS` | 400 | Сколько текста блока клеится к title для эмбеддинга |
-| `EMBEDDING_DIM` | 1024 | Qwen3-Embedding |
+`scripts.import_reference.load_reference_export` читает Telegram Desktop JSON, объединяет
+текстовые сущности и индексирует окна до 100 сообщений как `kind=reference`.
+В текущем формате отрицательный chat_id отделяет импорт от live-истории; направление
+peer-сообщений используется как стиль исходящих эталонов. При неразбираемом окне
+импорт продвигает checkpoint и продолжает со следующего, с записью warning.
+Это отличается от live-maintenance, где неудачное окно остаётся для повтора.
 
-Кластеризация: `memory.command.maintain` после save. Промпт: `src/modules/llm/prompts/cluster_topics.md`.
+Manager CRUD (требуют admin JWT) — `/api/v1/public/memory/*`. Темы без embedding:
 
-## Миграция
+- `GET /conversations/{id}/topics`
+- `GET /conversations/{id}/topics/{topic_id}` — с сообщениями диапазона.
 
-Актуальная схема — Alembic `20260918_baseline`: `create_all` по текущим моделям, unique conversation `(channel, account_id, chat_id)`. Инкрементальных ревизий нет. Нужен чистый volume: `docker compose down -v`.
+Оба пути указаны относительно `/api/v1/public/memory`. `TopicQueryService` не
+создаёт AI-провайдер: чтение уже сохранённых тем не требует API key.
+
+## Настройки и схема
+
+Пороговые константы — `src/modules/memory/constants.py`. Размерность embedding —
+1024 для выбранного Qwen; изменение модели/размерности требует отдельной миграции.
+Актуальная ревизия — `20260918_baseline`; старые ORM-таблицы DB-батчера в неё не
+входят. Удаление неиспользуемых Python-моделей не удаляет таблицы существующей БД.
+
+Для запуска применять `alembic upgrade head`. Не сбрасывать volume автоматически:
+несовместимая история миграций требует отдельного плана и резервной копии.
+Ограничения outbox, идемпотентности и нескольких worker описаны в
+[ADR 0001](adr/0001-module-consistency.md).

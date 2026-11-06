@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 def configure_langsmith() -> bool:
+    if settings.SAFE_MODE:
+        return False
     key = (settings.LANGSMITH_API_KEY or "").strip()
     tracing = bool(settings.LANGSMITH_TRACING) or bool(key)
     if not tracing:
