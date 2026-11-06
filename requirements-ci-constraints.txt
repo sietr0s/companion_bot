@@ -130,7 +130,7 @@ requests-toolbelt==1.0.0
 respx==0.23.1
 rich==15.0.0
 rsa==4.9.1
-ruff==0.15.22
+ruff==0.17.3
 safetensors==0.8.0
 scikit-learn==1.9.1
 scipy==1.18.1
