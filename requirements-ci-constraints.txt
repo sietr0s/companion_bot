@@ -75,7 +75,7 @@ librt==0.16.0
 license-expression==30.4.4
 magic-filter==1.0.12
 Mako==1.4.3
-mando==0.7.1
+mando==0.8.2
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
