@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Breadcrumb, Button, Layout, Menu, Space, Tag, Typography, message } from 'antd';
 import {
   DashboardOutlined,
@@ -92,6 +92,7 @@ export function ProtectedLayout() {
               icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
               onClick={toggleTheme}
               type="text"
+              aria-label={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
               title={mode === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
             />
             <Button
@@ -106,7 +107,15 @@ export function ProtectedLayout() {
           </Space>
         </Header>
         <Content className="app-content">
-          <Outlet />
+          <Suspense
+            fallback={
+              <div role="status" aria-live="polite">
+                Загрузка…
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

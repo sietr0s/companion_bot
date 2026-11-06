@@ -1,14 +1,25 @@
+import { lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { ProtectedLayout } from './components/layout/ProtectedLayout';
 import { LoginPage } from './pages/auth/LoginPage';
-import { DashboardPage } from './pages/dashboard/DashboardPage';
-import { UsersPage } from './pages/users/UsersPage';
-import { TelegramAccountsPage } from './pages/telegram/TelegramAccountsPage';
-import { TelegramChatsPage } from './pages/telegram/TelegramChatsPage';
-import { TelegramSettingsPage } from './pages/telegram/TelegramSettingsPage';
-import { MemoryPage } from './pages/memory/MemoryPage';
-import { InstagramAccountsPage } from './pages/instagram/InstagramAccountsPage';
+const DashboardPage = lazy(() =>
+  import('./pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage }))
+);
+const UsersPage = lazy(() => import('./pages/users/UsersPage').then((module) => ({ default: module.UsersPage })));
+const TelegramAccountsPage = lazy(() =>
+  import('./pages/telegram/TelegramAccountsPage').then((module) => ({ default: module.TelegramAccountsPage }))
+);
+const TelegramChatsPage = lazy(() =>
+  import('./pages/telegram/TelegramChatsPage').then((module) => ({ default: module.TelegramChatsPage }))
+);
+const TelegramSettingsPage = lazy(() =>
+  import('./pages/telegram/TelegramSettingsPage').then((module) => ({ default: module.TelegramSettingsPage }))
+);
+const MemoryPage = lazy(() => import('./pages/memory/MemoryPage').then((module) => ({ default: module.MemoryPage })));
+const InstagramAccountsPage = lazy(() =>
+  import('./pages/instagram/InstagramAccountsPage').then((module) => ({ default: module.InstagramAccountsPage }))
+);
 
 function ProtectedRoute() {
   const { token } = useAuth();

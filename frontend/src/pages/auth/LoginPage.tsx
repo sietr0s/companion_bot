@@ -39,12 +39,18 @@ export function LoginPage() {
           name="identifier"
           rules={[{ required: true, message: 'Укажите email, телефон или telegram' }]}
         >
-          <Input placeholder="user@example.com / +7900... / @username" />
+          <Input autoComplete="username" spellCheck={false} placeholder="user@example.com / +7900... / @username" />
         </Form.Item>
         <Form.Item label="Password" name="password" rules={[{ required: true, message: 'Введите пароль' }]}>
-          <Input.Password prefix={<LockOutlined />} />
+          <Input.Password autoComplete="current-password" prefix={<LockOutlined aria-hidden="true" />} />
         </Form.Item>
-        <Button type="primary" htmlType="submit" block loading={loginMutation.isPending} icon={<UserOutlined />}>
+        <Button
+          type="primary"
+          htmlType="submit"
+          block
+          loading={loginMutation.isPending}
+          icon={<UserOutlined aria-hidden="true" />}
+        >
           Войти
         </Button>
       </Form>
