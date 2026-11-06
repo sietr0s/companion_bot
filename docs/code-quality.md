@@ -81,7 +81,7 @@ git diff -- quality-baseline.json
 
 Инструменты Vite/Vitest и связанные пакеты обновлены до версий без найденных
 high/critical advisory; новые версии проверены тестами и production-сборкой.
-Остаются 9 moderate npm-замечаний, включая транзитивный minimatch и React Router.
+Остаются 7 moderate npm-замечаний в TypeScript ESLint и транзитивном minimatch.
 Их исправление требует отдельной совместимой миграции; они видны в security artifact,
 даже если security gate проходит. Не применять слепой `npm audit fix --force`.
 
@@ -100,7 +100,7 @@ requirements; после обновления нужно повторить те
 
 ```bash
 python -m pip install --upgrade pip setuptools -c requirements-ci-constraints.txt
-python -m pip install --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
+python -m pip install --no-deps --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
 python -m pip install -r requirements-dev.txt -r requirements-quality.txt -c requirements-ci-constraints.txt
 npm ci --prefix frontend --legacy-peer-deps --no-audit --no-fund
 python scripts/quality_report.py
@@ -147,3 +147,9 @@ Dependabot группирует Pydantic с Core; несовместимые в�
 После снятия ограничения нужно повторить установку с constraints, `pip check`,
 тесты и quality/security gates. Обновление одной строки замороженного набора
 без проверки resolver может остановить CI ещё до запуска тестов.
+
+CPU-индекс PyTorch не зеркалирует все версии зависимостей с PyPI: например,
+`filelock 4.2.7` отсутствует на CPU-индексе. Поэтому сначала устанавливается только
+закреплённый CPU-wheel (`--no-deps`), затем полный requirements-набор разрешает
+его зависимости через PyPI. Финальный `pip check` обязателен; зависимости Torch
+не исключаются ни из установки, ни из security-аудита.

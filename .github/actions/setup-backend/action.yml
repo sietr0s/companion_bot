@@ -21,9 +21,10 @@ runs:
     - name: Update packaging tools
       shell: bash
       run: python -m pip install --upgrade pip setuptools -c requirements-ci-constraints.txt
+    # Only the wheel comes from the CPU index; transitive packages use PyPI below.
     - name: Install CPU PyTorch
       shell: bash
-      run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
+      run: python -m pip install --no-deps --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
     - name: Install test dependencies
       shell: bash
       run: python -m pip install -r requirements-dev.txt -c requirements-ci-constraints.txt
