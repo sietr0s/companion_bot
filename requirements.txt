@@ -29,4 +29,4 @@ gliclass>=0.1.19
 transformers>=5.13.1
 torch>=2.0.0
 faster-whisper>=1.0.0
-langchain_google_genai==4.4.0
+langchain_google_genai==4.4.2

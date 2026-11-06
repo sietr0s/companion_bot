@@ -66,7 +66,7 @@ joblib==1.6.0
 jsonpatch==1.42
 jsonpointer==3.8
 langchain-core==1.7.6
-langchain-google-genai==4.4.0
+langchain-google-genai==4.4.2
 langchain-mistralai==1.1.6
 langchain-openai==1.7.4
 langchain-protocol==0.0.21
