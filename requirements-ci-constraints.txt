@@ -131,7 +131,7 @@ starlette==1.10.0
 stevedore==5.9.1
 sympy==1.14.0
 Telethon==1.45.0
-tenacity==9.1.4
+tenacity==9.2.1
 threadpoolctl==3.8.0
 tiktoken==0.14.0
 tokenizers==0.23.3
