@@ -28,7 +28,7 @@ Python 3.12, Node.js 24, PostgreSQL 15 с pgvector. Установить Python-
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip setuptools -c requirements-ci-constraints.txt
-python -m pip install --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
+python -m pip install --no-deps --index-url https://download.pytorch.org/whl/cpu torch -c requirements-ci-constraints.txt
 python -m pip install -r requirements-dev.txt -c requirements-ci-constraints.txt
 cp .env.example .env
 ```
