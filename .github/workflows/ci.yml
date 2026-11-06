@@ -49,6 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-backend
+        id: backend_setup
       - name: Run unit and integration tests
         run: >-
           python -m pytest tests --ignore=tests/e2e
@@ -59,10 +60,10 @@ jobs:
           --cov-report=xml:reports/coverage/backend/coverage.xml
           --cov-report=html:reports/coverage/backend/html
       - name: Check backend coverage floors
-        if: always()
+        if: ${{ !cancelled() && steps.backend_setup.outcome == 'success' }}
         run: python scripts/coverage_gate.py backend reports/coverage/backend/coverage.json
       - name: Upload tests and browsable coverage
-        if: always()
+        if: ${{ !cancelled() && steps.backend_setup.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: backend-tests-and-coverage

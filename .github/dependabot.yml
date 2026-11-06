@@ -5,6 +5,21 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      pydantic-runtime:
+        patterns:
+          - pydantic
+          - pydantic-core
+    # Current aiogram requires pydantic<2.14, LangSmith uuid-utils<1,
+    # and SymPy mpmath<1.4.
+    # Revisit these bounds with upgrades of the parent libraries.
+    ignore:
+      - dependency-name: pydantic
+        versions: [">=2.14"]
+      - dependency-name: uuid-utils
+        versions: [">=1.0"]
+      - dependency-name: mpmath
+        versions: [">=1.4"]
   - package-ecosystem: npm
     directory: /frontend
     schedule:
