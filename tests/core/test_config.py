@@ -53,6 +53,7 @@ def test_configure_langsmith_sets_env(monkeypatch):
         ls,
         "settings",
         SimpleNamespace(
+            SAFE_MODE=False,
             LANGSMITH_TRACING=True,
             LANGSMITH_API_KEY="ls-test",
             LANGSMITH_PROJECT="companion_bot",

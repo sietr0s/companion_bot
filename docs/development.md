@@ -4,11 +4,11 @@
 
 Python 3.12, Node.js 24, PostgreSQL 15/pgvector. Установка описана в
 [README](../README.md). `requirements.txt` содержит runtime-зависимости;
-`requirements-dev.txt` добавляет pytest/Hypothesis, SQLite driver и Ruff;
+`requirements-dev.txt` добавляет pytest/Hypothesis, Ruff;
 `requirements-quality.txt` — mypy, Radon, Bandit, Vulture и pip-audit.
 `requirements-ci-constraints.txt` закрепляет проверенный Linux/Python 3.12 набор.
 
-SQLite используется только в тестах. Kafka, Telethon, instagrapi, chat SDK и
+SQLite используется в тестах и offline safe mode. Kafka, Telethon, instagrapi, chat SDK и
 локальные ML-библиотеки относятся к действующим возможностям приложения и
 сохраняются, даже если CI заменяет внешние вызовы fake-провайдерами.
 
@@ -47,6 +47,33 @@ npm run build
 
 Генератор фильтрует HTTP-контракт панели. Не редактировать generated-клиент вручную.
 
+## Safe mode
+
+```bash
+# JWT_SECRET_KEY, ADMIN_EMAIL, ADMIN_PASSWORD должны быть заданы в .env.
+SAFE_MODE=true uvicorn src.main:app --host 127.0.0.1 --port 8000
+```
+
+В этом режиме API не подключается к PostgreSQL/Kafka, не загружает AI-модели,
+не восстанавливает Telegram/Instagram-сессии и не запускает AI/клиентские bus-handlers.
+`MESSAGE_BUS`, chat/STT/TTS provider и tracing-настройки не включают внешние службы.
+Каталог пользователей, авторизация и CRUD памяти работают на отдельной SQLite-базе
+`safe-mode.db`. Путь задаётся `SAFE_MODE_DATABASE_PATH`; БД создаётся автоматически,
+даже если `CREATE_TABLES_ON_STARTUP=False`. Обычная PostgreSQL-база не затрагивается.
+
+Telegram/Instagram API возвращает `503` с объяснением `SAFE_MODE`; AI-фабрики тоже
+отказывают явно. Это режим разработки API, без генерации ответов и имитации AI.
+В `/health` остаётся совместимый ответ `{"status":"ok"}`; выбранный режим виден в логе.
+При выключении `SAFE_MODE` возвращаются обычная БД и интеграции. SQLite-файл
+предназначен для разработки, переносить его в production не нужно. Для обновления
+несовместимой dev-схемы выберите новый путь к SQLite-файлу, сохранив старые данные.
+
+После установки Python-пакетов и сборки frontend запуск не требует Интернета.
+Первичная установка пакетов, Docker build/pull и npm install требуют доступа к registries.
+Для Docker с уже собранным образом: `docker run --env-file .env -e SAFE_MODE=true -p 127.0.0.1:8000:8000 companion-bot`.
+Compose по-прежнему описывает PostgreSQL; для режима без вспомогательных контейнеров
+используйте прямой запуск backend, показанный выше.
+
 ## Docker
 
 ```bash
@@ -56,7 +83,8 @@ docker compose up --build
 ```
 
 Compose передаёт настройки через `.env`; отдельный `.env.docker` не требуется.
-`docker-entrypoint.sh` выполняет `alembic upgrade head`, затем запускает uvicorn.
+`docker-entrypoint.sh` применяет Alembic через `scripts.migrate`, затем запускает uvicorn.
+В safe mode Alembic пропускается: отдельная SQLite-схема создаётся самим приложением.
 Backend image содержит CPU PyTorch и runtime-пакеты; frontend image использует Node 24.
 Markdown-промпты входят в image. Тесты, frontend node_modules, отчёты и локальные
 `.env` в backend image не копируются.
@@ -81,7 +109,7 @@ docker build --secret id=proxy_ca,src=/path/to/combined-ca-bundle.pem -t compani
 python -m pip install -r requirements-dev.txt -r requirements-quality.txt -c requirements-ci-constraints.txt
 ruff check src tests scripts
 ruff format --check src tests scripts
-pytest tests
+SAFE_MODE=false pytest tests
 python scripts/quality_report.py
 python scripts/audit_python.py
 cd frontend

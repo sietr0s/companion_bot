@@ -1,5 +1,6 @@
 from src.core.config import settings
 from src.core.endpoints import OPENROUTER_BASE_URL
+from src.core.runtime import require_external_services
 from src.modules.tts.providers.base import TtsProvider
 from src.modules.tts.providers.stub import StubTts
 
@@ -9,6 +10,7 @@ def get_tts_provider() -> TtsProvider:
 
 
 def build_tts_provider() -> TtsProvider:
+    require_external_services()
     name = (settings.TTS_PROVIDER or "stub").strip().lower()
     if name == "stub":
         return StubTts()

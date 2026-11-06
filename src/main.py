@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from src.bus import configure_bus
@@ -14,6 +14,7 @@ from src.composition.models import load_models
 from src.core.config import settings
 from src.core.database import create_async_session, dispose_db, init_db
 from src.core.exceptions import AppException
+from src.core.runtime import require_external_services
 from src.modules.auth.routers import router as auth_router
 from src.modules.auth.seed import seed_admin
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
@@ -52,6 +53,8 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     producer = container.producer
 
     register_users_handlers(consumer, producer)
+    if settings.SAFE_MODE:
+        return
     register_tg_handlers(consumer, container.telegram_client_manager, producer)
     register_ig_handlers(consumer, container.instagram_client_manager, producer)
     register_batching_handlers(consumer, producer)
@@ -63,40 +66,44 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
     register_orchestrator_handlers(consumer, producer)
 
 
+async def _restore_integrations(container: ApplicationContainer) -> None:
+    async with create_async_session() as session:
+        await container.telegram_service.restore_tg_sessions(session)
+
+    async with create_async_session() as session:
+        accounts = await container.telegram_service.get_active_accounts(session)
+        for account in accounts:
+            await container.telegram_service.read_unread_messages(session, account.id)
+
+    async with create_async_session() as session:
+        await container.instagram_service.restore_sessions(session)
+
+
 def _create_lifespan(container: ApplicationContainer):
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         producer = container.producer
         consumer = container.consumer
         client_manager = container.telegram_client_manager
-        telegram_service = container.telegram_service
         ig_manager = container.instagram_client_manager
-        instagram_service = container.instagram_service
 
         await init_db()
         from src.modules.llm.dependencies import warmup_heavy_models
         from src.modules.stt.dependencies import warmup_stt
 
-        await warmup_heavy_models()
-        await warmup_stt()
+        if not settings.SAFE_MODE:
+            await warmup_heavy_models()
+            await warmup_stt()
         await producer.start()
         await consumer.start()
 
         async with create_async_session() as session:
             await seed_admin(session, producer)
 
-        async with create_async_session() as session:
-            await telegram_service.restore_tg_sessions(session)
+        if not settings.SAFE_MODE:
+            await _restore_integrations(container)
 
-        async with create_async_session() as session:
-            accounts = await telegram_service.get_active_accounts(session)
-            for account in accounts:
-                await telegram_service.read_unread_messages(session, account.id)
-
-        async with create_async_session() as session:
-            await instagram_service.restore_sessions(session)
-
-        logger.info("Приложение запущено, шина: %s", settings.MESSAGE_BUS)
+        logger.info("Приложение запущено, safe_mode=%s", settings.SAFE_MODE)
 
         yield
 
@@ -142,8 +149,9 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
 
     application.include_router(auth_router)
     application.include_router(users_router)
-    application.include_router(tg_router)
-    application.include_router(ig_router)
+    integration_policy = [Depends(require_external_services)]
+    application.include_router(tg_router, dependencies=integration_policy)
+    application.include_router(ig_router, dependencies=integration_policy)
     application.include_router(memory_router)
 
     return application

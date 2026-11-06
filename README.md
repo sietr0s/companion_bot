@@ -1,5 +1,12 @@
 # Companion Bot
 
+Для запуска API без Интернета, моделей, Kafka и клиентских интеграций:
+`SAFE_MODE=true uvicorn src.main:app --host 127.0.0.1 --port 8000`.
+Нужны установленные Python-пакеты и JWT/admin-настройки из `.env`.
+Данные сохраняются в отдельной `safe-mode.db`; PostgreSQL не требуется.
+Подробнее — [safe mode](docs/development.md#safe-mode).
+
+
 Модульный монолит: FastAPI, PostgreSQL/pgvector, Telegram и Instagram,
 локальные embeddings и событийный пайплайн companion. Шина — in-memory или Kafka.
 

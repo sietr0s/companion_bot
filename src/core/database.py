@@ -7,8 +7,9 @@
 
 import logging
 from collections.abc import AsyncGenerator
+from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -40,21 +41,29 @@ def create_async_session() -> AsyncSession:
     return factory()
 
 
+def _sqlite_foreign_keys(connection: Any, _record: Any) -> None:
+    cursor = connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
 async def init_db() -> None:
     global _engine, _async_session_factory
 
     _engine = create_async_engine(
         settings.DATABASE_URL,
-        pool_size=settings.DATABASE_POOL_SIZE,
+        **({} if settings.SAFE_MODE else {"pool_size": settings.DATABASE_POOL_SIZE}),
         echo=False,
     )
+    if settings.SAFE_MODE:
+        event.listen(_engine.sync_engine, "connect", _sqlite_foreign_keys)
     _async_session_factory = async_sessionmaker(
         _engine,
         class_=AsyncSession,
         expire_on_commit=False,
     )
 
-    if settings.CREATE_TABLES_ON_STARTUP:
+    if settings.SAFE_MODE or settings.CREATE_TABLES_ON_STARTUP:
         async with _engine.begin() as conn:
             if conn.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

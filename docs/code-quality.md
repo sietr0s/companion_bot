@@ -34,8 +34,8 @@ HTML покрытия показывает конкретные непройде
 
 ## Точка отсчёта и пороги
 
-После расширения измерения backend покрыт на **84,29% строк / 60,56% ветвей**;
-комбинированный показатель coverage.py — **80,86%**. Выполняются 364 теста,
+После расширения измерения backend покрыт на **84,53% строк / 60,83% ветвей**;
+комбинированный показатель coverage.py — **81,08%**. Выполняются 375 тестов,
 в том числе шесть генеративных проверок Hypothesis. В CI они детерминированы,
 но перебирают множество входов, а не один зафиксированный пример.
 
@@ -110,7 +110,7 @@ python scripts/audit_python.py
 Backend coverage (с тестовыми env-параметрами из `ci.yml`):
 
 ```bash
-HYPOTHESIS_PROFILE=ci pytest tests --cov=src --cov-branch \
+SAFE_MODE=false HYPOTHESIS_PROFILE=ci pytest tests --cov=src --cov-branch \
   --cov-report=json:reports/coverage/backend/coverage.json \
   --cov-report=html:reports/coverage/backend/html
 python scripts/coverage_gate.py backend reports/coverage/backend/coverage.json

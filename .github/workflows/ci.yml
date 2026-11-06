@@ -39,6 +39,7 @@ jobs:
       JWT_SECRET_KEY: ci-test-only-key-with-at-least-32-characters
       ADMIN_EMAIL: ci@example.com
       ADMIN_PASSWORD: ci-test-only-password
+      SAFE_MODE: 'false'
       MESSAGE_BUS: in_memory
       LLM_PROVIDER: stub
       STT_PROVIDER: stub

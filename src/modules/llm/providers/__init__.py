@@ -1,6 +1,1 @@
-from src.domain.ai import ChatProvider
-from src.modules.llm.providers.mistral import MistralChat
-from src.modules.llm.providers.openai_compat import OpenAICompatChat
-from src.modules.llm.providers.stub import StubChat
-
-__all__ = ["ChatProvider", "MistralChat", "OpenAICompatChat", "StubChat"]
+"""Chat providers are imported explicitly to keep optional SDKs lazy."""

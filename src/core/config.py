@@ -14,6 +14,10 @@ from src.core.settings import EnvironmentSettings
 class Settings(EnvironmentSettings):
     """Настройки приложения, загружаемые из .env или переменных окружения."""
 
+    # Offline API development: isolated local data, no integration/AI workers.
+    SAFE_MODE: bool = False
+    SAFE_MODE_DATABASE_PATH: str = "safe-mode.db"
+
     # БД — собирается из компонентов
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
@@ -26,6 +30,8 @@ class Settings(EnvironmentSettings):
     @property
     def DATABASE_URL(self) -> str:  # noqa: N802 — property имитирует поле Settings
         """Собирает полный URL для подключения к БД с URL-кодированием пароля."""
+        if self.SAFE_MODE:
+            return f"sqlite+aiosqlite:///{self.SAFE_MODE_DATABASE_PATH}"
         return (
             f"{self.DB_DRIVER}://{self.DB_USER}"
             f":{quote(self.DB_PASSWORD, safe='')}"

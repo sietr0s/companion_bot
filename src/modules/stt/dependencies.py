@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from src.core.config import settings
+from src.core.runtime import require_external_services
 from src.modules.stt.providers.stub import StubStt
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ _stt: SttProvider | None = None
 
 
 def get_stt_provider() -> SttProvider:
+    require_external_services()
     global _stt
     if _stt is None:
         _stt = build_stt_provider()
@@ -24,6 +26,7 @@ def get_stt_provider() -> SttProvider:
 
 
 def build_stt_provider() -> SttProvider:
+    require_external_services()
     name = (settings.STT_PROVIDER or "faster_whisper").strip().lower()
     if name == "stub":
         return StubStt()

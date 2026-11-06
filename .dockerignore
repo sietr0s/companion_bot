@@ -83,3 +83,8 @@ tests/
 reports/
 .hypothesis/
 .mypy_cache/
+
+# Agent workflow instructions are development-only.
+.agents/
+AGENTS.md
+safe-mode.db*

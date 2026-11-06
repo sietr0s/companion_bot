@@ -39,3 +39,6 @@ frontend/reports/
 build/
 dist/
 .pytest_cache/
+
+# Isolated offline API database
+safe-mode.db*
