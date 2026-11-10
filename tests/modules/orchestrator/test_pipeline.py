@@ -14,6 +14,7 @@ from src.bus.in_memory.consumer import InMemoryConsumer
 from src.bus.in_memory.producer import InMemoryProducer
 from src.bus.in_memory.transport import InMemoryTransport
 from src.core.bus_topics import BusTopics
+from src.modules.batching.config import BatchingSettings
 from src.modules.batching.handlers import register_handlers as register_batching
 from src.modules.behavior.classifiers import FakeIntakeClassifier
 from src.modules.behavior.engine import Decision
@@ -105,8 +106,6 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session)
 
     pre_calls: list[list[str]] = []
@@ -125,7 +124,9 @@ async def test_incoming_message_reaches_telegram_send(db_session, monkeypatch):
     manager = AsyncMock()
     manager.send_message = AsyncMock()
 
-    register_batching(consumer, producer)
+    register_batching(
+        consumer, producer, BatchingSettings(BATCH_MAX_SIZE=1, BATCH_IDLE_SECONDS=0.01)
+    )
     register_memory(consumer, producer)
     register_behavior(consumer, producer)
     register_llm(consumer, producer)
@@ -176,8 +177,6 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session)
 
     class FakeDl:
@@ -189,7 +188,9 @@ async def test_voice_message_is_transcribed_then_replied(db_session, monkeypatch
     manager = AsyncMock()
     manager.send_message = AsyncMock()
 
-    register_batching(consumer, producer)
+    register_batching(
+        consumer, producer, BatchingSettings(BATCH_MAX_SIZE=1, BATCH_IDLE_SECONDS=0.01)
+    )
     register_memory(consumer, producer)
     register_behavior(consumer, producer)
     register_llm(consumer, producer)
@@ -233,12 +234,12 @@ async def test_ignore_does_not_send(db_session, monkeypatch):
     monkeypatch.setattr("src.modules.llm.dependencies.get_embedder", lambda: fake)
     monkeypatch.setattr("src.modules.llm.dependencies.get_chat_provider", lambda: stub)
     monkeypatch.setattr("src.modules.llm.dependencies._chat", stub)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_MAX_SIZE", 1)
-    monkeypatch.setattr("src.modules.batching.config.batching_settings.BATCH_IDLE_SECONDS", 0)
     _patch_behavior(monkeypatch, db_session, action="ignore")
     manager = AsyncMock()
     manager.send_message = AsyncMock()
-    register_batching(consumer, producer)
+    register_batching(
+        consumer, producer, BatchingSettings(BATCH_MAX_SIZE=1, BATCH_IDLE_SECONDS=0.01)
+    )
     register_memory(consumer, producer)
     register_behavior(consumer, producer)
     register_llm(consumer, producer)

@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from src.core.bus_topics import BusTopics
 from src.domain.chat import Batch
-from src.modules.batching.config import batching_settings
+from src.modules.batching.config import BatchingSettings
 from src.modules.batching.schemas.events import (
     AddMessageCommand,
     BatchReadyEvent,
@@ -39,13 +39,13 @@ class BatchService:
         pending: dict[tuple[str, str, int], PendingBatch] | None = None,
         max_size: int | None = None,
         idle_timeout: float | None = None,
+        config: BatchingSettings | None = None,
     ) -> None:
+        config = config if config is not None else BatchingSettings()
         self._message_bus = message_bus
         self._pending = pending if pending is not None else {}
-        self._max_size = max_size if max_size is not None else batching_settings.BATCH_MAX_SIZE
-        self._idle_timeout = (
-            idle_timeout if idle_timeout is not None else batching_settings.BATCH_IDLE_SECONDS
-        )
+        self._max_size = max_size if max_size is not None else config.BATCH_MAX_SIZE
+        self._idle_timeout = idle_timeout if idle_timeout is not None else config.BATCH_IDLE_SECONDS
         self._flush_tasks: dict[tuple[str, str, int], asyncio.Task] = {}
         self._locks: dict[tuple[str, str, int], asyncio.Lock] = {}
 

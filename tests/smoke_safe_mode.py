@@ -44,7 +44,7 @@ async def probe():
     assert settings.SAFE_MODE
     assert settings.DATABASE_URL.startswith("sqlite+aiosqlite:///")
     assert isinstance(app.state.container.producer, InMemoryProducer)
-    for _ in range(2):
+    for startup in range(2):
         async with (
             app.router.lifespan_context(app),
             httpx.AsyncClient(
@@ -63,6 +63,21 @@ async def probe():
             )
             assert response.status_code == 200, response.text
             headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+            config_path = "/api/v1/public/batching/configuration"
+            config_response = await client.get(config_path, headers=headers)
+            assert config_response.status_code == 200, config_response.text
+            if startup == 0:
+                before = app.state.batching_config.BATCH_MAX_SIZE
+                saved = await client.patch(
+                    config_path,
+                    headers=headers,
+                    json={"revision": 0, "values": {"BATCH_MAX_SIZE": 3}},
+                )
+                assert saved.status_code == 200, saved.text
+                assert before == app.state.batching_config.BATCH_MAX_SIZE
+            else:
+                assert app.state.batching_config.BATCH_MAX_SIZE == 3
+                assert config_response.json()["revision"] == 1
             for path in ["/users/", "/memory/conversations/"]:
                 assert (
                     await client.get("/api/v1/public" + path, headers=headers)

@@ -4,6 +4,7 @@
 def load_models() -> None:
     """Импортировать ORM-модели, чтобы они попали в Base.metadata."""
     from src.modules.auth.models import Auth  # noqa: F401
+    from src.modules.batching.config.model import BatchingConfigModel  # noqa: F401
     from src.modules.behavior.models import BehaviorAccountState, BehaviorChatState  # noqa: F401
     from src.modules.instagram_clients.models import (  # noqa: F401
         InstagramAccount,

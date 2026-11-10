@@ -4,12 +4,15 @@ from typing import Any
 
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
+from src.modules.batching.config import BatchingSettings
 from src.modules.batching.dependencies import build_batch_service
 from src.modules.batching.schemas.events import AddMessageCommand
 
 
-def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
-    service = build_batch_service(producer)
+def register_handlers(
+    consumer: MessageConsumer, producer: MessageProducer, config: BatchingSettings
+) -> None:
+    service = build_batch_service(producer, config)
 
     @consumer.subscribe(BusTopics.BATCH_ADD_MESSAGE)
     async def handle_add_message(message: dict[str, Any]) -> None:

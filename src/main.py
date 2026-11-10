@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -17,6 +18,8 @@ from src.core.exceptions import AppException
 from src.core.runtime import require_external_services
 from src.modules.auth.routers import router as auth_router
 from src.modules.auth.seed import seed_admin
+from src.modules.batching.config.routes import router as batching_config_router
+from src.modules.batching.config.service import BatchingConfigService
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
 from src.modules.behavior.handlers import register_handlers as register_behavior_handlers
 from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
@@ -34,6 +37,9 @@ from src.modules.tts.handlers import register_handlers as register_tts_handlers
 from src.modules.users.handlers import register_handlers as register_users_handlers
 from src.modules.users.routers import router as users_router
 
+if TYPE_CHECKING:
+    from src.modules.batching.config import BatchingSettings
+
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(
@@ -48,7 +54,9 @@ logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.orm").setLevel(logging.WARNING)
 
 
-def _register_bus_handlers(container: ApplicationContainer) -> None:
+def _register_bus_handlers(
+    container: ApplicationContainer, batching_config: BatchingSettings
+) -> None:
     consumer = container.consumer
     producer = container.producer
 
@@ -57,7 +65,7 @@ def _register_bus_handlers(container: ApplicationContainer) -> None:
         return
     register_tg_handlers(consumer, container.telegram_client_manager, producer)
     register_ig_handlers(consumer, container.instagram_client_manager, producer)
-    register_batching_handlers(consumer, producer)
+    register_batching_handlers(consumer, producer, batching_config)
     register_memory_handlers(consumer, producer)
     register_behavior_handlers(consumer, producer)
     register_llm_handlers(consumer, producer)
@@ -87,7 +95,15 @@ def _create_lifespan(container: ApplicationContainer):
         client_manager = container.telegram_client_manager
         ig_manager = container.instagram_client_manager
 
-        await init_db()
+        try:
+            await init_db()
+            async with create_async_session() as session:
+                batching_config = await BatchingConfigService().load_snapshot(session)
+        except Exception:
+            await dispose_db()
+            raise
+        app.state.batching_config = batching_config
+        _register_bus_handlers(container, batching_config)
         from src.modules.llm.dependencies import warmup_heavy_models
         from src.modules.stt.dependencies import warmup_stt
 
@@ -135,7 +151,6 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     configure_bus(container.producer, container.consumer)
     configure_telegram_client_manager(container.telegram_client_manager)
     configure_instagram_client_manager(container.instagram_client_manager)
-    _register_bus_handlers(container)
 
     application = FastAPI(
         title=settings.APP_TITLE,
@@ -153,6 +168,7 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.include_router(tg_router, dependencies=integration_policy)
     application.include_router(ig_router, dependencies=integration_policy)
     application.include_router(memory_router)
+    application.include_router(batching_config_router)
 
     return application
 
