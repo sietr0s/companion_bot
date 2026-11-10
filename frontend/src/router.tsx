@@ -21,6 +21,10 @@ const InstagramAccountsPage = lazy(() =>
   import('./pages/instagram/InstagramAccountsPage').then((module) => ({ default: module.InstagramAccountsPage }))
 );
 
+const ConfigurationPage = lazy(() =>
+  import('./pages/configuration/ConfigurationPage').then((module) => ({ default: module.ConfigurationPage }))
+);
+
 function ProtectedRoute() {
   const { token } = useAuth();
   const location = useLocation();
@@ -46,6 +50,7 @@ export function AppRouter() {
           <Route path="telegram/:accountId/settings" element={<TelegramSettingsPage />} />
           <Route path="instagram" element={<InstagramAccountsPage />} />
           <Route path="memory" element={<MemoryPage />} />
+          <Route path="configuration" element={<ConfigurationPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

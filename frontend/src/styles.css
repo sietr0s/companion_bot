@@ -208,3 +208,71 @@ body {
     flex-direction: column;
   }
 }
+
+.configuration-field {
+  min-width: 0;
+}
+
+.configuration-field .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.configuration-field .ant-form-item-label > label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  height: auto;
+}
+
+.configuration-source {
+  margin-bottom: 20px;
+}
+
+.configuration-actions,
+.configuration-actions > .ant-space-item {
+  max-width: 100%;
+}
+
+.configuration-actions .ant-btn {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  min-height: 32px;
+}
+
+@media (max-width: 576px) {
+  .app-header,
+  .app-content {
+    padding: 12px;
+  }
+
+  .app-header > .ant-space {
+    flex-wrap: wrap;
+  }
+
+  .app-header .ant-tag {
+    display: none;
+  }
+
+  .ant-layout-sider-collapsed .brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+
+  .configuration-card .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-block: 12px;
+  }
+
+  .configuration-card .ant-card-head-title {
+    white-space: normal;
+  }
+
+  .configuration-card .ant-card-head,
+  .configuration-card .ant-card-body {
+    padding-inline: 16px;
+  }
+}

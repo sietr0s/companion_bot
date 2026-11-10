@@ -8,6 +8,7 @@ import {
   SunOutlined,
   MoonOutlined,
   TeamOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,6 +40,7 @@ export function ProtectedLayout() {
     { key: '/telegram', icon: <MessageOutlined />, label: 'Telegram' },
     { key: '/instagram', icon: <MessageOutlined />, label: 'Instagram' },
     { key: '/memory', icon: <DatabaseOutlined />, label: 'Memory' },
+    { key: '/configuration', icon: <SettingOutlined />, label: 'Конфигурация' },
   ];
 
   const selectedKey =
@@ -53,6 +55,7 @@ export function ProtectedLayout() {
     telegram: 'Telegram',
     instagram: 'Instagram',
     memory: 'Memory',
+    configuration: 'Конфигурация',
     chats: 'Chats',
     settings: 'Settings',
   };
