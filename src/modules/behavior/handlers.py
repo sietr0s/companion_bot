@@ -11,10 +11,13 @@ from src.modules.behavior.schemas.events import (
     DecideIntakeCommand,
     NoteDeliveryCommand,
 )
+from src.modules.behavior.service import BehaviorService
 
 
-def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
-    service = build_behavior_service(producer)
+def register_handlers(
+    consumer: MessageConsumer, producer: MessageProducer, *, service: BehaviorService | None = None
+) -> None:
+    service = service if service is not None else build_behavior_service(producer)
 
     @consumer.subscribe(BusTopics.BEHAVIOR_DECIDE_INTAKE)
     async def handle_decide_intake(message: dict[str, Any]) -> None:

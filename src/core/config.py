@@ -58,23 +58,11 @@ class Settings(EnvironmentSettings):
     # В production использовать только Alembic миграции
     CREATE_TABLES_ON_STARTUP: bool = True
 
-    # Telegram (Telethon)
-    TG_API_ID: int = 0
-    TG_API_HASH: str = ""
-    TG_SESSION_DIR: str = "sessions"
-    TG_APP_VERSION: str = "modular_monolith"
-    TG_DEVICE_MODEL: str = "ModularMonolith"
-    TG_SYSTEM_VERSION: str = "4.16.30-vxCUSTOM"
-
     # Logging
     LOG_LEVEL: str = "INFO"
 
     # Local model cache shared by embeddings and speech recognition.
     MODEL_CACHE_DIR: str = "models"
-
-    # OpenAI-compatible endpoint used by the TTS adapter; chat owns its own settings.
-    LLM_API_KEY: str = ""
-    LLM_BASE_URL: str = ""
 
     # LangSmith tracing for LangChain calls
     LANGSMITH_TRACING: bool = False
@@ -82,15 +70,6 @@ class Settings(EnvironmentSettings):
     LANGSMITH_PROJECT: str = "companion_bot"
     LANGSMITH_ENDPOINT: str = ""
 
-    # STT / TTS
-    STT_PROVIDER: str = "faster_whisper"
-    WHISPER_MODEL: str = "base"
-    WHISPER_DEVICE: str = "cpu"
-    TTS_PROVIDER: str = "stub"
-    TTS_MODEL: str = "openai/gpt-4o-mini-tts-2025-12-15"
-    TTS_VOICE: str = "alloy"
-    TTS_RESPONSE_FORMAT: str = "mp3"
 
-
-# Глобальный экземпляр настроек — импортируется во всех модулях
+# Bootstrap-настройки процесса; изменяемые параметры принадлежат module/config.
 settings = Settings()

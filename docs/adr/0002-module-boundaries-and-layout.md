@@ -132,3 +132,12 @@ URL), пространство модуля (`/batching`, `/memory` и т.д.) �
 
 Например: `/api/v1` → `/public` → `/batching` → `/configuration`.
 Историческое слово public в URL не ослабляет manager permissions.
+
+Статические сущности, например `/configuration`, подключаются до CRUD `/{id}`:
+порядок Starlette/FastAPI иначе направит слово configuration в UUID-парсер.
+Общая политика safe mode применяется к операциям интеграции, а не ко всему
+модулю: административная конфигурация остаётся доступной без внешнего клиента.
+
+Модульные точки сборки и lifecycle обязательны для каждого модуля —
+[ADR 0005](0005-module-runtime-and-entrypoints.md). Конфигурационный пакет,
+собственная таблица и manager API — [ADR 0004](0004-module-configuration.md).

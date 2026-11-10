@@ -13,12 +13,15 @@ from src.modules.memory.schemas.events import (
     ProcessBatchCommand,
     UpdateMemoryCommand,
 )
+from src.modules.memory.services import MemoryService
 
 logger = logging.getLogger(__name__)
 
 
-def register_handlers(consumer: MessageConsumer, producer: MessageProducer) -> None:
-    service = build_memory_service(producer)
+def register_handlers(
+    consumer: MessageConsumer, producer: MessageProducer, *, service: MemoryService | None = None
+) -> None:
+    service = service if service is not None else build_memory_service(producer)
 
     @consumer.subscribe(BusTopics.MEMORY_PROCESS_BATCH)
     async def handle_process_batch(message: dict[str, Any]) -> None:

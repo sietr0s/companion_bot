@@ -12,7 +12,7 @@ from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import NotFoundError
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
-from src.modules.instagram_clients.config import instagram_clients_settings
+from src.modules.instagram_clients.config import get_settings
 from src.modules.instagram_clients.models import InstagramAccount
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
@@ -48,7 +48,7 @@ class InstagramAccountService(BaseService[InstagramAccountRepository, InstagramA
         payload.setdefault("is_connected", False)
         payload.setdefault("session_file", "pending")
         account = await self.repository.create(session, payload)
-        session_dir = instagram_clients_settings.INSTAGRAM_SESSION_DIR.rstrip("/\\")
+        session_dir = get_settings().INSTAGRAM_SESSION_DIR.rstrip("/\\")
         account = await self.repository.update(
             session,
             account,

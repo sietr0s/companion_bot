@@ -1,5 +1,13 @@
-"""Auth-owned bootstrap settings; never part of the editable configuration API."""
+from src.base.configuration.binding import ConfigBinding
 
 from .bootstrap import AuthBootstrapSettings
+from .schema import AuthConfiguration
 
-__all__ = ["AuthBootstrapSettings"]
+binding: ConfigBinding[AuthConfiguration, AuthConfiguration] = ConfigBinding(AuthConfiguration)
+
+
+def get_settings() -> AuthConfiguration:
+    return binding.get()
+
+
+__all__ = ["AuthConfiguration", "binding", "get_settings", "AuthBootstrapSettings"]

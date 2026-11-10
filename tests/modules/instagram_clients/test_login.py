@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.bus_topics import BusTopics
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
-from src.modules.instagram_clients.config import instagram_clients_settings
 from src.modules.instagram_clients.exceptions import InstagramTwoFactorRequiredError
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
@@ -59,7 +58,7 @@ def _service(manager: InstagramClientManager, producer) -> InstagramAccountServi
 
 @pytest.mark.asyncio
 async def test_login_success_dumps_settings(db_session: AsyncSession, tmp_path: Path, monkeypatch):
-    monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
+    monkeypatch.setenv("INSTAGRAM_SESSION_DIR", str(tmp_path))
     client = ScriptedClient()
     manager = InstagramClientManager(client_factory=lambda: client)
     producer = AsyncMock()
@@ -76,7 +75,7 @@ async def test_login_success_dumps_settings(db_session: AsyncSession, tmp_path: 
 
 @pytest.mark.asyncio
 async def test_login_two_factor_then_code(db_session: AsyncSession, tmp_path: Path, monkeypatch):
-    monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
+    monkeypatch.setenv("INSTAGRAM_SESSION_DIR", str(tmp_path))
     client = ScriptedClient(require_2fa=True)
     manager = InstagramClientManager(client_factory=lambda: client)
     producer = AsyncMock()

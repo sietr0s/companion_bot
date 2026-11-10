@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from src.modules.behavior.config import behavior_settings
+from src.modules.behavior.config import get_settings
 from src.modules.behavior.utils import is_night, is_short_greeting, word_count
 
 if TYPE_CHECKING:
@@ -92,7 +92,7 @@ class NightVoiceCriterion:
     name = "night_voice"
 
     def deltas(self, ctx: DecisionContext) -> dict[str, float]:
-        if is_night(ctx.now, behavior_settings.BEHAVIOR_TIMEZONE):
+        if is_night(ctx.now, get_settings().BEHAVIOR_TIMEZONE):
             return {"voice": 20.0, "text": -10.0}
         return {}
 

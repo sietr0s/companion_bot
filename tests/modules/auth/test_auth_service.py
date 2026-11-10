@@ -337,3 +337,23 @@ class TestIdentifierValidation:
                 password="securepass123",
             )
         assert "только буквы, цифры и подчеркивание" in str(exc_info.value)
+
+
+async def test_login_uses_module_configuration_token_lifetime(
+    auth_service, auth_account, db_session
+):
+    from datetime import UTC, datetime
+
+    from src.core.security import decode_access_token
+    from src.modules.auth.config import AuthConfiguration, binding
+
+    binding.install(AuthConfiguration(ACCESS_TOKEN_EXPIRE_MINUTES=3))
+    try:
+        token = await auth_service.login(
+            db_session, {"identifier": auth_account.identifier, "password": "testpassword"}
+        )
+        expiration = decode_access_token(token.access_token)["exp"]
+        remaining = expiration - datetime.now(UTC).timestamp()
+        assert 175 <= remaining <= 181
+    finally:
+        binding.clear()

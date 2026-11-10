@@ -8,6 +8,7 @@
 """
 
 import uuid
+from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from src.bus.interface import MessageProducer
 from src.core.bus_topics import BusTopics
 from src.core.exceptions import ConflictError, UnauthorizedError
 from src.core.security import create_access_token, hash_password, verify_password
+from src.modules.auth.config import get_settings
 from src.modules.auth.constants import ERROR_MESSAGES
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
@@ -89,7 +91,11 @@ class AuthService(BaseService[AuthRepository, Auth]):
         await self.message_bus.publish(BusTopics.USER_REGISTERED, event.to_bus_dict())
 
         # Генерируем токен для автоматического входа после регистрации
-        token = create_access_token(str(account.id), account.role)
+        token = create_access_token(
+            str(account.id),
+            account.role,
+            expires_delta=timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
         return TokenResponse(access_token=token)
 
     async def register_and_return_id(
@@ -144,7 +150,11 @@ class AuthService(BaseService[AuthRepository, Auth]):
         )
         await self.message_bus.publish(BusTopics.USER_LOGGED_IN, event.to_bus_dict())
 
-        token = create_access_token(str(account.id), account.role)
+        token = create_access_token(
+            str(account.id),
+            account.role,
+            expires_delta=timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
         return TokenResponse(access_token=token)
 
     async def change_password(

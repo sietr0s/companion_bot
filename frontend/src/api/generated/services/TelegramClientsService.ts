@@ -13,6 +13,9 @@ import type { ChatStateCreate } from '../models/ChatStateCreate';
 import type { ChatStateRead } from '../models/ChatStateRead';
 import type { ChatStateUpdate } from '../models/ChatStateUpdate';
 import type { CodeRequest } from '../models/CodeRequest';
+import type { ConfigPatch } from '../models/ConfigPatch';
+import type { ConfigRead } from '../models/ConfigRead';
+import type { ConfigReset } from '../models/ConfigReset';
 import type { MessageRead } from '../models/MessageRead';
 import type { PaginatedResponse_AccountRead_ } from '../models/PaginatedResponse_AccountRead_';
 import type { PaginatedResponse_ChatStateRead_ } from '../models/PaginatedResponse_ChatStateRead_';
@@ -29,6 +32,55 @@ import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TelegramClientsService {
+    /**
+     * Read
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static readApiV1PublicTelegramConfigurationGet(): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/telegram/configuration',
+        });
+    }
+    /**
+     * Patch
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static patchApiV1PublicTelegramConfigurationPatch(
+        requestBody: ConfigPatch,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/public/telegram/configuration',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Reset
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static resetApiV1PublicTelegramConfigurationResetPost(
+        requestBody: ConfigReset,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/telegram/configuration/reset',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
     /**
      * Список Telegram-аккаунтов
      * @param filters field+operator+value

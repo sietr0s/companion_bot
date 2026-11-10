@@ -6,10 +6,10 @@
 """
 
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from typing import Any
 
-from sqlalchemy import event, text
+from sqlalchemy import Table, event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -47,7 +47,7 @@ def _sqlite_foreign_keys(connection: Any, _record: Any) -> None:
     cursor.close()
 
 
-async def init_db() -> None:
+async def init_db(*, tables: Sequence[Table] | None = None) -> None:
     global _engine, _async_session_factory
 
     _engine = create_async_engine(
@@ -67,7 +67,7 @@ async def init_db() -> None:
         async with _engine.begin() as conn:
             if conn.dialect.name == "postgresql":
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(Base.metadata.create_all, tables=tables)
         logger.info("Таблицы БД созданы")
 
 

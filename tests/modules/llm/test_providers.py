@@ -134,8 +134,8 @@ async def test_warmup_calls_embedder_preload(monkeypatch):
 def test_build_chat_requires_mistral_key(monkeypatch):
     monkeypatch.setattr(
         llm_deps,
-        "llm_settings",
-        SimpleNamespace(
+        "get_settings",
+        lambda: SimpleNamespace(
             LLM_PROVIDER="mistral", MISTRAL_API_KEY="", MISTRAL_MODEL="mistral-small-latest"
         ),
     )
@@ -144,15 +144,17 @@ def test_build_chat_requires_mistral_key(monkeypatch):
 
 
 def test_build_chat_stub_when_requested(monkeypatch):
-    monkeypatch.setattr(llm_deps, "llm_settings", SimpleNamespace(LLM_PROVIDER="stub"))
+    monkeypatch.setattr(llm_deps, "get_settings", lambda: SimpleNamespace(LLM_PROVIDER="stub"))
     assert isinstance(build_chat_provider(), StubChat)
 
 
 def test_build_chat_requires_openrouter_key(monkeypatch):
     monkeypatch.setattr(
         llm_deps,
-        "llm_settings",
-        SimpleNamespace(LLM_PROVIDER="openrouter", LLM_API_KEY="", LLM_BASE_URL="", LLM_MODEL="x"),
+        "get_settings",
+        lambda: SimpleNamespace(
+            LLM_PROVIDER="openrouter", LLM_API_KEY="", LLM_BASE_URL="", LLM_MODEL="x"
+        ),
     )
     with pytest.raises(RuntimeError, match="LLM_API_KEY"):
         build_chat_provider()
@@ -161,8 +163,8 @@ def test_build_chat_requires_openrouter_key(monkeypatch):
 def test_build_chat_mistral_when_key_set(monkeypatch):
     monkeypatch.setattr(
         llm_deps,
-        "llm_settings",
-        SimpleNamespace(
+        "get_settings",
+        lambda: SimpleNamespace(
             LLM_PROVIDER="mistral",
             MISTRAL_API_KEY="sk-test",
             MISTRAL_MODEL="mistral-small-latest",
@@ -185,8 +187,8 @@ def test_build_chat_openrouter_when_key_set(monkeypatch):
 
     monkeypatch.setattr(
         llm_deps,
-        "llm_settings",
-        SimpleNamespace(
+        "get_settings",
+        lambda: SimpleNamespace(
             LLM_PROVIDER="openrouter",
             LLM_API_KEY="or-key",
             LLM_BASE_URL="",

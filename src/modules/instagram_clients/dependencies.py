@@ -27,7 +27,7 @@ def get_instagram_client_manager() -> InstagramClientManager:
     if _instagram_client_manager is None:
         raise RuntimeError(
             "InstagramClientManager не сконфигурирован. "
-            "Создайте ApplicationContainer или вызовите configure_instagram_client_manager."
+            "Создайте module/main.py или вызовите configure_instagram_client_manager."
         )
     return _instagram_client_manager
 

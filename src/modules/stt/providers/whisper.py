@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from src.core.config import settings
 from src.core.model_cache import apply_model_cache
+from src.modules.stt.config import get_settings
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class FasterWhisperStt:
     def __init__(self, model_size: str | None = None, device: str | None = None) -> None:
         self._model = None
-        self._model_size = model_size or settings.WHISPER_MODEL
-        self._device = device or settings.WHISPER_DEVICE
+        self._model_size = model_size or get_settings().WHISPER_MODEL
+        self._device = device or get_settings().WHISPER_DEVICE
 
     def _get_model(self):
         if self._model is None:

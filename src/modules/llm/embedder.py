@@ -6,7 +6,7 @@ import logging
 from typing import Literal, Protocol
 
 from src.core.model_cache import apply_model_cache
-from src.modules.llm.config import llm_settings
+from src.modules.llm.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class Embedder(Protocol):
 
 
 class QwenEmbedder:
-    """Lazy-loads SentenceTransformer(llm_settings.EMBEDDING_MODEL) on first embed."""
+    """Lazy-loads SentenceTransformer(get_settings().EMBEDDING_MODEL) on first embed."""
 
     def __init__(self) -> None:
         self._model = None
@@ -28,9 +28,9 @@ class QwenEmbedder:
             from sentence_transformers import SentenceTransformer
 
             apply_model_cache()
-            logger.info("Загрузка embedding-модели %s", llm_settings.EMBEDDING_MODEL)
-            self._model = SentenceTransformer(llm_settings.EMBEDDING_MODEL)
-            logger.info("Embedding-модель %s готова", llm_settings.EMBEDDING_MODEL)
+            logger.info("Загрузка embedding-модели %s", get_settings().EMBEDDING_MODEL)
+            self._model = SentenceTransformer(get_settings().EMBEDDING_MODEL)
+            logger.info("Embedding-модель %s готова", get_settings().EMBEDDING_MODEL)
         return self._model
 
     def preload(self) -> None:

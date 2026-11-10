@@ -8,11 +8,7 @@ from weakref import WeakValueDictionary
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.ai import MemoryIntelligence
-from src.modules.memory.constants import (
-    CLUSTER_HARD_CAP,
-    CLUSTER_MIN_MESSAGES,
-    SUMMARY_THRESHOLD,
-)
+from src.modules.memory.config import get_settings
 from src.modules.memory.repository import (
     MessageRepository,
     SummaryStateRepository,
@@ -47,11 +43,11 @@ class MemoryMaintenance:
         summary_state = await self._summaries.get_by_conversation_id(session, conversation_id)
         checkpoint = summary_state.cluster_checkpoint if summary_state else 0
         window = await self._messages.get_after_checkpoint(session, conversation_id, checkpoint)
-        if len(window) < CLUSTER_MIN_MESSAGES:
+        if len(window) < get_settings().CLUSTER_MIN_MESSAGES:
             return
-        hard_cap = len(window) >= CLUSTER_HARD_CAP
+        hard_cap = len(window) >= get_settings().CLUSTER_HARD_CAP
         if hard_cap:
-            window = window[:CLUSTER_HARD_CAP]
+            window = window[: get_settings().CLUSTER_HARD_CAP]
         try:
             closed = await cluster_window(self._llm, window, hard_cap=hard_cap)
             if closed is not None:
@@ -71,7 +67,7 @@ class MemoryMaintenance:
         summary_state = await self._summaries.get_by_conversation_id(session, conversation_id)
         checkpoint = summary_state.checkpoint if summary_state else 0
         current_summary = summary_state.current_summary if summary_state else None
-        if current_sequence - checkpoint < SUMMARY_THRESHOLD:
+        if current_sequence - checkpoint < get_settings().SUMMARY_THRESHOLD:
             return False
         try:
             after = await self._messages.get_between_inclusive(

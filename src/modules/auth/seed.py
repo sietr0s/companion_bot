@@ -19,14 +19,19 @@ from src.modules.auth.service import AuthService
 logger = logging.getLogger(__name__)
 
 
-async def seed_admin(session: AsyncSession, bus: MessageProducer | None = None) -> None:
+async def seed_admin(
+    session: AsyncSession,
+    bus: MessageProducer | None = None,
+    *,
+    bootstrap: AuthBootstrapSettings | None = None,
+) -> None:
     """
     Создать admin-пользователя при старте приложения.
 
     Проверяет, существует ли учётная запись с ADMIN_EMAIL.
     Если нет — создаёт через AuthService с ролью admin.
     """
-    settings = AuthBootstrapSettings.model_validate({})
+    settings = bootstrap if bootstrap is not None else AuthBootstrapSettings.model_validate({})
     bus = bus or get_producer()
     repo = AuthRepository()
     service = AuthService(repository=repo, message_bus=bus)

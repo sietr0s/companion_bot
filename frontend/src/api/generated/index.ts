@@ -21,6 +21,9 @@ export type { ChatStateCreate } from './models/ChatStateCreate';
 export type { ChatStateRead } from './models/ChatStateRead';
 export type { ChatStateUpdate } from './models/ChatStateUpdate';
 export type { CodeRequest } from './models/CodeRequest';
+export type { ConfigPatch } from './models/ConfigPatch';
+export type { ConfigRead } from './models/ConfigRead';
+export type { ConfigReset } from './models/ConfigReset';
 export type { ConversationCreate } from './models/ConversationCreate';
 export type { ConversationRead } from './models/ConversationRead';
 export type { ConversationUpdate } from './models/ConversationUpdate';
@@ -80,6 +83,7 @@ export type { WhitelistEntryCreate } from './models/WhitelistEntryCreate';
 
 export { AuthService } from './services/AuthService';
 export { AuthAccountsService } from './services/AuthAccountsService';
+export { ConfigurationService } from './services/ConfigurationService';
 export { HealthService } from './services/HealthService';
 export { InstagramAccountsService } from './services/InstagramAccountsService';
 export { InstagramChatStatesService } from './services/InstagramChatStatesService';

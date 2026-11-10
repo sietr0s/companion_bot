@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.ai import TopicIntelligence
-from src.modules.memory.constants import CLUSTER_RETRIES, TOPIC_EMBED_MAX_CHARS
+from src.modules.memory.config import get_settings
 from src.modules.memory.domain import (
     HistoryMessage,
     IndexedTopic,
@@ -25,8 +25,9 @@ async def cluster_window(
     window: list[HistoryMessage],
     *,
     hard_cap: bool,
-    retries: int = CLUSTER_RETRIES,
+    retries: int | None = None,
 ) -> list[TopicBlock] | None:
+    retries = retries if retries is not None else get_settings().CLUSTER_RETRIES
     seqs = [message.sequence_number for message in window]
     numbered = numbered_window(window)
     for attempt in range(1, retries + 1):
@@ -63,7 +64,7 @@ class TopicIndexer:
             topic_embed_text(
                 block.topic,
                 [(by_seq[seq].direction, by_seq[seq].text) for seq in block.ids],
-                max_chars=TOPIC_EMBED_MAX_CHARS,
+                max_chars=get_settings().TOPIC_EMBED_MAX_CHARS,
             )
             for block in topics
         ]

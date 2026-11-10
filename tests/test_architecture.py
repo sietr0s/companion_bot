@@ -157,3 +157,26 @@ def test_api_version_prefix_is_owned_by_module_router_composition():
                     and node.value.startswith("/api/")
                 ):
                     assert path == routers / "__init__.py", path
+
+
+def test_all_modules_own_configuration_entrypoint_and_manager_route():
+    for module in (ROOT / "src/modules").iterdir():
+        if not module.is_dir() or module.name.startswith("_"):
+            continue
+        for path in [
+            "main.py",
+            "config/schema.py",
+            "config/model.py",
+            "config/repository.py",
+            "config/service.py",
+            "routers/manager/configuration.py",
+        ]:
+            assert (module / path).is_file(), f"{module.name} must own {path}"
+        assert not (module / "config/routes").exists()
+        assert not (module / "config/routers").exists()
+
+
+def test_root_main_only_composes_modules():
+    targets = list(imported_targets(ROOT / "src/main.py"))
+    assert not any(target.startswith("src.modules.") for target in targets)
+    assert not any("handlers" in target or "routers" in target for target in targets)

@@ -17,7 +17,9 @@ def configure_bus(producer: MessageProducer, consumer: MessageConsumer) -> None:
     _consumer = consumer
 
 
-def create_bus(message_bus: str | None = None) -> tuple[MessageProducer, MessageConsumer]:
+def create_bus(
+    message_bus: str | None = None, *, group_id: str | None = None
+) -> tuple[MessageProducer, MessageConsumer]:
     """Создать независимую пару producer/consumer."""
     from src.core.config import settings
 
@@ -26,7 +28,7 @@ def create_bus(message_bus: str | None = None) -> tuple[MessageProducer, Message
         from src.bus.kafka.consumer import KafkaConsumerRouter
         from src.bus.kafka.producer import KafkaProducerBus
 
-        return KafkaProducerBus(), KafkaConsumerRouter()
+        return KafkaProducerBus(), KafkaConsumerRouter(group_id=group_id)
 
     from src.bus.in_memory import InMemoryConsumer, InMemoryProducer, InMemoryTransport
 

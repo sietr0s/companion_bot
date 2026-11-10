@@ -1,7 +1,7 @@
 """
 DI-зависимости модуля telegram_clients.
 
-Менеджер клиентов живёт в ApplicationContainer и
+Менеджер клиентов живёт в module/main.py и
 регистрируется через configure_telegram_client_manager.
 """
 
@@ -33,7 +33,7 @@ def get_telegram_client_manager() -> TelegramClientManager:
     if _telegram_client_manager is None:
         raise RuntimeError(
             "TelegramClientManager не сконфигурирован. "
-            "Создайте ApplicationContainer или вызовите configure_telegram_client_manager."
+            "Создайте module/main.py или вызовите configure_telegram_client_manager."
         )
     return _telegram_client_manager
 

@@ -39,7 +39,8 @@ class KafkaConsumerRouter:
 
     MAX_RETRIES = 10
 
-    def __init__(self) -> None:
+    def __init__(self, group_id: str | None = None) -> None:
+        self._group_id = group_id
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
         self._consumer: AIOKafkaConsumer | None = None
         self._task: asyncio.Task | None = None
@@ -75,7 +76,7 @@ class KafkaConsumerRouter:
         consumer = AIOKafkaConsumer(
             *self._topics,
             bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
-            group_id=settings.KAFKA_GROUP_ID,
+            group_id=self._group_id or settings.KAFKA_GROUP_ID,
             value_deserializer=lambda message: json.loads(message.decode("utf-8")),
         )
         try:

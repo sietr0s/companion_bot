@@ -8,8 +8,8 @@ from .configuration import router as configuration_router
 
 module_router = APIRouter(prefix="/batching")
 router = create_manager_router(prefix="/public")
-module_router.include_router(configuration_router)
 
+module_router.include_router(configuration_router)
 router.include_router(module_router)
 
 __all__ = ["router"]

@@ -29,7 +29,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     )
 
 
-def create_access_token(user_id: str, role: str = "user") -> str:
+def create_access_token(
+    user_id: str, role: str = "user", *, expires_delta: timedelta | None = None
+) -> str:
     """
     Создание JWT-токена с временем жизни из настроек.
 
@@ -37,7 +39,11 @@ def create_access_token(user_id: str, role: str = "user") -> str:
     role — роль пользователя (user/admin).
     exp — время истечения токена.
     """
-    expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     payload = {
         "sub": user_id,
         "role": role,

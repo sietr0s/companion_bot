@@ -7,11 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.ai import MemoryIntelligence
 from src.domain.chat import ChatRef, ConversationContext, Topic
-from src.modules.memory.constants import (
-    RETRIEVE_PRE_WINDOW,
-    SNIPPET_MAX_MESSAGES,
-    VECTOR_TOP_K,
-)
+from src.modules.memory.config import get_settings
 from src.modules.memory.domain import HistoryWindow
 from src.modules.memory.repository import (
     ConversationRepository,
@@ -56,7 +52,7 @@ class ContextBuilder:
             session,
             conversation_id,
             query_embedding,
-            VECTOR_TOP_K,
+            get_settings().VECTOR_TOP_K,
             kind=kind,
         )
         ranked = await self._llm.retrieve_post(query, [h.text for h in hits])
@@ -80,8 +76,11 @@ class ContextBuilder:
             msgs = await self._messages.get_between_inclusive(
                 session, hit.conversation_id, seq_from, seq_to
             )
-            if SNIPPET_MAX_MESSAGES > 0 and len(msgs) > SNIPPET_MAX_MESSAGES:
-                msgs = msgs[-SNIPPET_MAX_MESSAGES:]
+            if (
+                get_settings().SNIPPET_MAX_MESSAGES > 0
+                and len(msgs) > get_settings().SNIPPET_MAX_MESSAGES
+            ):
+                msgs = msgs[-get_settings().SNIPPET_MAX_MESSAGES :]
             conv = await self._conversations.get_state(session, hit.conversation_id)
             topic_chat = ChatRef(
                 channel=chat.channel,
@@ -119,7 +118,9 @@ class ContextBuilder:
         references: list[Topic] = []
         recent_min_seq = messages[0].sequence_number if messages else None
         try:
-            pre_lines, pre_fallback = retrieve_pre_input(recent_pairs, RETRIEVE_PRE_WINDOW)
+            pre_lines, pre_fallback = retrieve_pre_input(
+                recent_pairs, get_settings().RETRIEVE_PRE_WINDOW
+            )
             query = await self._llm.retrieve_pre(pre_lines, fallback=pre_fallback)
             qvec = (await self._llm.embed([query], role="query"))[0]
             retrieved = await self._retrieve_snippets(

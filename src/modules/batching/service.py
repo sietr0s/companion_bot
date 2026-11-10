@@ -120,3 +120,14 @@ class BatchService:
 
             self._arm_wait(key)
             return None
+
+    async def stop(self) -> None:
+        """Cancel idle timers and publish all pending batches before bus shutdown."""
+        tasks = list(self._flush_tasks.values())
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        self._flush_tasks.clear()
+        for key in list(self._pending):
+            async with self._lock(key):
+                await self._flush_unlocked(key)

@@ -8,6 +8,7 @@ from uuid import UUID
 from src.bus.interface import MessageConsumer, MessageProducer
 from src.core.bus_topics import BusTopics
 from src.domain.chat import Batch, ChatRef, ConversationContext, Message, message_texts
+from src.modules.orchestrator.config import get_settings
 from src.modules.orchestrator.schemas.state import OrchestratorState
 from src.utils.decision_report import format_decision_log
 
@@ -201,7 +202,7 @@ class OrchestratorService:
                 BusTopics.MEMORY_BUILD_CONTEXT,
                 {
                     **chat.bus_ids(),
-                    "last_n_messages": 50,
+                    "last_n_messages": get_settings().ORCHESTRATOR_CONTEXT_MESSAGES,
                 },
             )
 

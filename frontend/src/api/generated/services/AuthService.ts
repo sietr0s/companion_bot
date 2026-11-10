@@ -5,6 +5,9 @@
 import type { AuthAccountCreate } from '../models/AuthAccountCreate';
 import type { AuthAccountRead } from '../models/AuthAccountRead';
 import type { AuthAccountUpdate } from '../models/AuthAccountUpdate';
+import type { ConfigPatch } from '../models/ConfigPatch';
+import type { ConfigRead } from '../models/ConfigRead';
+import type { ConfigReset } from '../models/ConfigReset';
 import type { LoginRequest } from '../models/LoginRequest';
 import type { PaginatedResponse_AuthAccountRead_ } from '../models/PaginatedResponse_AuthAccountRead_';
 import type { RegisterRequest } from '../models/RegisterRequest';
@@ -44,6 +47,55 @@ export class AuthService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/public/auth/login',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Read
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static readApiV1PublicAuthConfigurationGet(): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/auth/configuration',
+        });
+    }
+    /**
+     * Patch
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static patchApiV1PublicAuthConfigurationPatch(
+        requestBody: ConfigPatch,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/public/auth/configuration',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Reset
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static resetApiV1PublicAuthConfigurationResetPost(
+        requestBody: ConfigReset,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/auth/configuration/reset',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

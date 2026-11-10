@@ -2,6 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ConfigPatch } from '../models/ConfigPatch';
+import type { ConfigRead } from '../models/ConfigRead';
+import type { ConfigReset } from '../models/ConfigReset';
 import type { InstagramAccountCreate } from '../models/InstagramAccountCreate';
 import type { InstagramAccountRead } from '../models/InstagramAccountRead';
 import type { InstagramAccountUpdate } from '../models/InstagramAccountUpdate';
@@ -21,6 +24,55 @@ import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class InstagramClientsService {
+    /**
+     * Read
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static readApiV1PublicInstagramConfigurationGet(): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/public/instagram/configuration',
+        });
+    }
+    /**
+     * Patch
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static patchApiV1PublicInstagramConfigurationPatch(
+        requestBody: ConfigPatch,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/public/instagram/configuration',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Reset
+     * @param requestBody
+     * @returns ConfigRead Successful Response
+     * @throws ApiError
+     */
+    public static resetApiV1PublicInstagramConfigurationResetPost(
+        requestBody: ConfigReset,
+    ): CancelablePromise<ConfigRead> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/public/instagram/configuration/reset',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
     /**
      * Login
      * @param accountId

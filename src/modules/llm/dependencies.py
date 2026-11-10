@@ -9,7 +9,7 @@ from src.core.langsmith import configure_langsmith
 from src.core.model_cache import apply_model_cache
 from src.core.runtime import require_external_services
 from src.domain.ai import ChatProvider
-from src.modules.llm.config import llm_settings
+from src.modules.llm.config import get_settings
 from src.modules.llm.embedder import Embedder, QwenEmbedder
 from src.modules.llm.providers.stub import StubChat
 from src.modules.llm.service import LLMService
@@ -38,26 +38,26 @@ def get_chat_provider() -> ChatProvider:
 
 def build_chat_provider() -> ChatProvider:
     require_external_services()
-    provider = llm_settings.LLM_PROVIDER
+    provider = get_settings().LLM_PROVIDER
     if provider == "stub":
         return StubChat()
     if provider == "mistral":
-        if not llm_settings.MISTRAL_API_KEY:
+        if not get_settings().MISTRAL_API_KEY:
             raise RuntimeError("LLM_PROVIDER=mistral требует MISTRAL_API_KEY")
         from src.modules.llm.providers.mistral import MistralChat
 
         return MistralChat(
-            api_key=llm_settings.MISTRAL_API_KEY,
-            model=llm_settings.MISTRAL_MODEL,
-            presets=llm_settings.presets(),
+            api_key=get_settings().MISTRAL_API_KEY,
+            model=get_settings().MISTRAL_MODEL,
+            presets=get_settings().presets(),
         )
     if provider == "google":
         from src.modules.llm.providers.google import GeminiChat
 
         return GeminiChat(
-            api_key=llm_settings.GOOGLE_API_KEY,
-            model=llm_settings.GOOGLE_MODEL,
-            presets=llm_settings.presets(),
+            api_key=get_settings().GOOGLE_API_KEY,
+            model=get_settings().GOOGLE_MODEL,
+            presets=get_settings().presets(),
         )
     if provider in {"openrouter", "openai", "openai_compat"}:
         from src.modules.llm.providers.openai_compat import (
@@ -66,9 +66,9 @@ def build_chat_provider() -> ChatProvider:
             OpenAICompatChat,
         )
 
-        if not llm_settings.LLM_API_KEY:
+        if not get_settings().LLM_API_KEY:
             raise RuntimeError(f"LLM_PROVIDER={provider} требует LLM_API_KEY")
-        base_url = llm_settings.LLM_BASE_URL
+        base_url = get_settings().LLM_BASE_URL
         if not base_url:
             if provider == "openrouter":
                 base_url = OPENROUTER_BASE_URL
@@ -77,10 +77,10 @@ def build_chat_provider() -> ChatProvider:
             else:
                 raise ValueError("LLM_BASE_URL обязателен для LLM_PROVIDER=openai_compat")
         return OpenAICompatChat(
-            api_key=llm_settings.LLM_API_KEY,
-            model=llm_settings.LLM_MODEL,
+            api_key=get_settings().LLM_API_KEY,
+            model=get_settings().LLM_MODEL,
             base_url=base_url,
-            presets=llm_settings.presets(),
+            presets=get_settings().presets(),
         )
     raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
 
@@ -109,3 +109,9 @@ def build_llm_service(message_bus: MessageProducer | None = None) -> LLMService:
 
 def get_llm_service() -> LLMService:
     return build_llm_service()
+
+
+def reset_providers() -> None:
+    global _embedder, _chat
+    _embedder = None
+    _chat = None

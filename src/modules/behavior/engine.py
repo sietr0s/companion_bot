@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.modules.behavior.config import behavior_settings
+from src.modules.behavior.config import get_settings
 from src.utils.decision_report import format_pre_softmax_log
 
 if TYPE_CHECKING:
@@ -154,7 +154,7 @@ def decide(
             before_softmax=noisy,
         ),
     )
-    temp = behavior_settings.BEHAVIOR_SOFTMAX_TEMP if temperature is None else temperature
+    temp = get_settings().BEHAVIOR_SOFTMAX_TEMP if temperature is None else temperature
     probabilities = softmax_probabilities(noisy, temp)
     action = softmax_sample(noisy, rng, temperature=temp, fallback=policy.fallback)
     return Decision(action=action, scores=noisy, blocked=blocked, probabilities=probabilities)

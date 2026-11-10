@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.instagram_clients.adapters.client_manager import InstagramClientManager
-from src.modules.instagram_clients.config import instagram_clients_settings
 from src.modules.instagram_clients.repository import (
     InstagramAccountRepository,
     InstagramChatStateRepository,
@@ -59,7 +58,7 @@ def _service(manager: InstagramClientManager) -> InstagramAccountService:
 async def test_restore_dead_session_marks_disconnected(
     db_session: AsyncSession, tmp_path: Path, monkeypatch
 ):
-    monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
+    monkeypatch.setenv("INSTAGRAM_SESSION_DIR", str(tmp_path))
     manager = InstagramClientManager(client_factory=DeadClient)
     service = _service(manager)
     account = await service.create(db_session, {"username": "bot"})
@@ -73,7 +72,7 @@ async def test_restore_dead_session_marks_disconnected(
 
 @pytest.mark.asyncio
 async def test_restore_live_session_attaches(db_session: AsyncSession, tmp_path: Path, monkeypatch):
-    monkeypatch.setattr(instagram_clients_settings, "INSTAGRAM_SESSION_DIR", str(tmp_path))
+    monkeypatch.setenv("INSTAGRAM_SESSION_DIR", str(tmp_path))
     manager = InstagramClientManager(client_factory=LiveClient)
     service = _service(manager)
     account = await service.create(db_session, {"username": "bot"})

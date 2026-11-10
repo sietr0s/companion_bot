@@ -98,4 +98,7 @@ Telegram/Instagram message
 Обязательные границы модулей, три слоя данных и структура routers/services:
 [ADR 0002](docs/adr/0002-module-boundaries-and-layout.md).
 
-Backend-пилот конфигурации модулей: [API и использование](docs/module-configuration.md).
+Конфигурация всех модулей: [API и использование](docs/module-configuration.md).
+
+Модульные точки запуска, жизненный цикл и ограничения выделения сервисов:
+[ADR 0005](docs/adr/0005-module-runtime-and-entrypoints.md).

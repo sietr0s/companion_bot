@@ -23,9 +23,9 @@ from telethon.errors import (
     SessionPasswordNeededError,
 )
 
-from src.core.config import settings
 from src.core.exceptions import NotFoundError
 from src.modules.telegram_clients.adapters.qr_auth import QrAuthManager
+from src.modules.telegram_clients.config import get_settings
 from src.modules.telegram_clients.schemas.events import Media, Sender, TgMessageReceived
 from src.modules.telegram_clients.utils import quoted_from_telethon
 
@@ -74,7 +74,7 @@ class TelegramClientManager:
 
     def get_session_path(self, account_id: uuid.UUID) -> str:
         """Формирует путь к session-файлу."""
-        session_dir = settings.TG_SESSION_DIR
+        session_dir = get_settings().TG_SESSION_DIR
         os.makedirs(session_dir, exist_ok=True)
         return os.path.join(session_dir, str(account_id))
 
@@ -82,11 +82,11 @@ class TelegramClientManager:
         """Создаёт экземпляр TelegramClient."""
         return TelegramClient(
             session_path,
-            settings.TG_API_ID,
-            settings.TG_API_HASH,
-            app_version=settings.TG_APP_VERSION,
-            system_version=settings.TG_SYSTEM_VERSION,
-            device_model=settings.TG_DEVICE_MODEL,
+            get_settings().TG_API_ID,
+            get_settings().TG_API_HASH,
+            app_version=get_settings().TG_APP_VERSION,
+            system_version=get_settings().TG_SYSTEM_VERSION,
+            device_model=get_settings().TG_DEVICE_MODEL,
         )
 
     # ── Авторизация (SMS-код) ──────────────────────────────────────

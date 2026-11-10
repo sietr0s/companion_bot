@@ -202,9 +202,9 @@ class InstagramClientManager:
         await self.stop_poll(account_id)
         delay = interval_s
         if delay is None:
-            from src.modules.instagram_clients.config import instagram_clients_settings
+            from src.modules.instagram_clients.config import get_settings
 
-            delay = instagram_clients_settings.INSTAGRAM_POLL_INTERVAL_S
+            delay = get_settings().INSTAGRAM_POLL_INTERVAL_S
 
         async def loop() -> None:
             while True:
