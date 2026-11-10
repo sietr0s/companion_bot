@@ -130,3 +130,14 @@ def test_memory_domain_and_inner_services_do_not_import_orm_or_transport_dtos():
             assert not target.startswith("src.modules.memory.schemas.api"), path
             if path.name not in {"pipeline.py", "__init__.py"}:
                 assert not target.startswith("src.modules.memory.schemas"), path
+
+
+def test_configuration_routes_belong_to_module_router_tree():
+    for module in (ROOT / "src/modules").iterdir():
+        if not module.is_dir():
+            continue
+        for folder in ("routes", "routers"):
+            assert not (module / "config" / folder).exists(), module
+    main = ROOT / "src/main.py"
+    for target in imported_targets(main):
+        assert ".config.routes" not in target and ".config.routers" not in target, target

@@ -58,3 +58,8 @@ UI, конфигурации аккаунтов/диалогов, live reload, �
 
 Миграция не переписывает историческую baseline. Создание таблицы использует
 checkfirst, потому что baseline создаёт актуальные metadata на чистой установке.
+
+Конфигурационные endpoints находятся в обычном `module/routers/manager.py`
+(или `module/routers/manager/configuration.py`, если сущностей несколько).
+Пакет `config/` не содержит роутеров. `main` подключает только `module.routers.router`;
+сборка HTTP-маршрутов принадлежит самому модулю.

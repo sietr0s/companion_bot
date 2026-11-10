@@ -41,7 +41,7 @@
 уже приняли конфигурацию. ENV-файлы и окружение процесса при сохранении не меняются.
 
 Новый модуль добавляет свою schema/model/repository/service, фабрику dependencies,
-router в `config/routes/manager.py` и миграцию таблицы. Его модель регистрируется в
+router в `routers/manager.py` и миграцию таблицы. Его модель регистрируется в
 composition/models.py, загрузка снимка выполняется в composition до создания его
 бизнес-сервисов. Сервис получает config явно; общего глобального mutable settings нет.
 Секреты и bootstrap-параметры в такие HTTP-схемы включать нельзя.
@@ -52,3 +52,8 @@ Frontend на этом этапе не изменён; контракт дост
 SQLite migration upgrade/downgrade; отдельный PostgreSQL-тест гонки двух редакторов
 в изолированной временной схеме. Полной истории изменений пока нет, сохраняются
 последняя revision, updated_at и updated_by.
+
+Конфигурационные endpoints находятся в обычном `module/routers/manager.py`
+(или `module/routers/manager/configuration.py`, если сущностей несколько).
+Пакет `config/` не содержит роутеров. `main` подключает только `module.routers.router`;
+сборка HTTP-маршрутов принадлежит самому модулю.

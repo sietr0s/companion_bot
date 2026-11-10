@@ -18,9 +18,9 @@ from src.core.exceptions import AppException
 from src.core.runtime import require_external_services
 from src.modules.auth.routers import router as auth_router
 from src.modules.auth.seed import seed_admin
-from src.modules.batching.config.routes import router as batching_config_router
 from src.modules.batching.config.service import BatchingConfigService
 from src.modules.batching.handlers import register_handlers as register_batching_handlers
+from src.modules.batching.routers import router as batching_router
 from src.modules.behavior.handlers import register_handlers as register_behavior_handlers
 from src.modules.instagram_clients.dependencies import configure_instagram_client_manager
 from src.modules.instagram_clients.handlers import register_handlers as register_ig_handlers
@@ -168,7 +168,7 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     application.include_router(tg_router, dependencies=integration_policy)
     application.include_router(ig_router, dependencies=integration_policy)
     application.include_router(memory_router)
-    application.include_router(batching_config_router)
+    application.include_router(batching_router)
 
     return application
 
