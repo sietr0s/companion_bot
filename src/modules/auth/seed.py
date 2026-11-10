@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
 from src.bus.interface import MessageProducer
-from src.core.config import settings
 from src.core.exceptions import ConflictError
+from src.modules.auth.config import AuthBootstrapSettings
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.service import AuthService
 
@@ -26,6 +26,7 @@ async def seed_admin(session: AsyncSession, bus: MessageProducer | None = None) 
     Проверяет, существует ли учётная запись с ADMIN_EMAIL.
     Если нет — создаёт через AuthService с ролью admin.
     """
+    settings = AuthBootstrapSettings.model_validate({})
     bus = bus or get_producer()
     repo = AuthRepository()
     service = AuthService(repository=repo, message_bus=bus)
@@ -47,7 +48,7 @@ async def seed_admin(session: AsyncSession, bus: MessageProducer | None = None) 
             {
                 "identifier": settings.ADMIN_EMAIL,
                 "identifier_type": "email",
-                "password": settings.ADMIN_PASSWORD,
+                "password": settings.ADMIN_PASSWORD.get_secret_value(),
                 "role": "admin",
             },
         )

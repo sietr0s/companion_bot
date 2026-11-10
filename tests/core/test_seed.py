@@ -12,11 +12,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.bus import get_producer
-from src.core.config import settings
+from src.modules.auth.config import AuthBootstrapSettings
 from src.modules.auth.models import Auth
 from src.modules.auth.repository import AuthRepository
 from src.modules.auth.seed import seed_admin
 from src.modules.auth.service import AuthService
+
+settings = AuthBootstrapSettings()
 
 
 @pytest.mark.asyncio
@@ -71,7 +73,7 @@ async def test_seed_admin_password_is_hashed(db_session: AsyncSession):
     admin = await repo.get_by_identifier(db_session, settings.ADMIN_EMAIL)
 
     assert admin is not None
-    assert admin.hashed_password != settings.ADMIN_PASSWORD
+    assert admin.hashed_password != settings.ADMIN_PASSWORD.get_secret_value()
     assert admin.hashed_password.startswith("$2b$")  # bcrypt hash
 
 
@@ -84,7 +86,10 @@ async def test_seed_admin_can_login(db_session: AsyncSession):
     service = AuthService(repository=AuthRepository(), message_bus=get_producer())
     response = await service.login(
         db_session,
-        {"identifier": settings.ADMIN_EMAIL, "password": settings.ADMIN_PASSWORD},
+        {
+            "identifier": settings.ADMIN_EMAIL,
+            "password": settings.ADMIN_PASSWORD.get_secret_value(),
+        },
     )
 
     assert response.access_token is not None

@@ -91,10 +91,6 @@ class Settings(EnvironmentSettings):
     TTS_VOICE: str = "alloy"
     TTS_RESPONSE_FORMAT: str = "mp3"
 
-    # Admin (seed-пользователь) — обязательные поля, без дефолтов
-    ADMIN_EMAIL: str
-    ADMIN_PASSWORD: str
-
 
 # Глобальный экземпляр настроек — импортируется во всех модулях
 settings = Settings()

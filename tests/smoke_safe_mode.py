@@ -38,9 +38,11 @@ from src.bus.in_memory.producer import InMemoryProducer  # noqa: E402
 from src.core.config import settings  # noqa: E402
 from src.core.database import create_async_session  # noqa: E402
 from src.main import app  # noqa: E402
+from src.modules.auth.config import AuthBootstrapSettings  # noqa: E402
 
 
 async def probe():
+    auth_settings = AuthBootstrapSettings()
     assert settings.SAFE_MODE
     assert settings.DATABASE_URL.startswith("sqlite+aiosqlite:///")
     assert isinstance(app.state.container.producer, InMemoryProducer)
@@ -57,8 +59,8 @@ async def probe():
             response = await client.post(
                 "/api/v1/public/auth/login",
                 json={
-                    "identifier": settings.ADMIN_EMAIL,
-                    "password": settings.ADMIN_PASSWORD,
+                    "identifier": auth_settings.ADMIN_EMAIL,
+                    "password": auth_settings.ADMIN_PASSWORD.get_secret_value(),
                 },
             )
             assert response.status_code == 200, response.text
