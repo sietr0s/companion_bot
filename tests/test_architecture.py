@@ -104,12 +104,12 @@ def test_services_and_access_levels_have_one_canonical_layout():
         if not routers.exists():
             continue
         for path in routers.glob("*.py"):
-            assert path.stem in {"__init__", "public", "internal", "manager"}, path
+            assert path.stem == "__init__", path
         for level in ["public", "internal", "manager"]:
             assert not ((routers / f"{level}.py").exists() and (routers / level).is_dir()), routers
             if (routers / level).is_dir():
                 entities = [p for p in (routers / level).glob("*.py") if p.name != "__init__.py"]
-                assert len(entities) > 1, f"One entity should use {level}.py: {routers}"
+                assert entities, f"Access level should contain entity routers: {routers}"
 
 
 def test_memory_domain_and_inner_services_do_not_import_orm_or_transport_dtos():
@@ -141,3 +141,19 @@ def test_configuration_routes_belong_to_module_router_tree():
     main = ROOT / "src/main.py"
     for target in imported_targets(main):
         assert ".config.routes" not in target and ".config.routers" not in target, target
+
+
+def test_api_version_prefix_is_owned_by_module_router_composition():
+    for module in (ROOT / "src/modules").iterdir():
+        routers = module / "routers"
+        if not routers.is_dir():
+            continue
+        for path in routers.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Constant)
+                    and isinstance(node.value, str)
+                    and node.value.startswith("/api/")
+                ):
+                    assert path == routers / "__init__.py", path

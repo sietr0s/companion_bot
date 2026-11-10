@@ -18,7 +18,7 @@
 ## Предлагаемая реализация
 
 Модуль `prompt_manager` владеет ORM-моделью, репозиторием, доменными правилами,
-service.py и `routers/manager.py` (одна сущность). Доступ — только admin JWT.
+service.py и `routers/manager/prompts.py` (одна сущность). Доступ — только admin JWT.
 Общий асинхронный порт чтения находится в `src/domain`; composition связывает
 его с реализацией. LLM и behavior получают порт через DI, без sibling imports.
 Файловый reader остаётся только инструментом seed/reset, без подмены БД в runtime.

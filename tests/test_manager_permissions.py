@@ -1,9 +1,9 @@
 """Every manager access level enforces the shared admin JWT policy."""
 
-import pytest
-from fastapi.routing import APIRoute
+import re
 
-from src.core.dependencies import get_current_admin
+import pytest
+
 from src.main import app
 
 MANAGER_PATHS = [
@@ -32,12 +32,30 @@ async def test_manager_endpoints_allow_admin_tokens(api_client, admin_token, pat
     assert response.json()["total"] == 0
 
 
-def test_every_manager_route_inherits_the_same_permission_dependency():
-    def dependencies(node):
-        yield node.call
-        for child in node.dependencies:
-            yield from dependencies(child)
-
-    for route in app.routes:
-        if isinstance(route, APIRoute) and ".routers.manager" in route.endpoint.__module__:
-            assert get_current_admin in dependencies(route.dependant), route.path
+@pytest.mark.asyncio
+async def test_every_manager_operation_rejects_anonymous_and_non_admin_requests(
+    api_client, auth_token
+):
+    operations = []
+    for path, methods in app.openapi()["paths"].items():
+        if not path.startswith("/api/v1/public/"):
+            continue
+        if path in {
+            "/api/v1/public/auth/login",
+            "/api/v1/public/auth/register",
+            "/api/v1/public/auth/me",
+            "/api/v1/public/auth/me/password",
+        }:
+            continue
+        url = re.sub(r"\{[^}]+\}", "00000000-0000-0000-0000-000000000001", path)
+        for method in methods:
+            if method in {"get", "post", "put", "patch", "delete"}:
+                operations.append((method, url))
+    assert operations, "Permission test must actually exercise manager endpoints"
+    for method, url in operations:
+        anonymous = await api_client.request(method, url, json={})
+        assert anonymous.status_code == 401, (method, url, anonymous.text)
+        user = await api_client.request(
+            method, url, json={}, headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert user.status_code == 403, (method, url, user.text)
