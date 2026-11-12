@@ -52,7 +52,7 @@ idna==3.20
 iniconfig==2.3.1
 instagrapi==3.2.3
 Jinja2==3.1.6
-jiter==0.18.0
+jiter==0.19.0
 joblib==1.6.0
 jsonpatch==1.42
 jsonpointer==3.8
